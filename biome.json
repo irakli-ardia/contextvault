@@ -1,0 +1,137 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["**", "!tools/oxlint/anti-slop"]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "noNestedTernary": "error",
+        "useBlockStatements": "error",
+        "noNonNullAssertion": "error",
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": true,
+            "requireAscii": true,
+            "filenameCases": ["kebab-case"]
+          }
+        }
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noImportCycles": "error"
+      },
+      "performance": {
+        "noReExportAll": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/core/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "next",
+                      "next/**",
+                      "react",
+                      "react/**",
+                      "elysia",
+                      "hono",
+                      "hono/**"
+                    ],
+                    "message": "Domain modules import no framework or ORM: declare a port and adapt it outside."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/core/**", "apps/web/**/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "fetch": "One HTTP client: use the shared client or an adapter behind a port."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/core/src/*/index.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**"],
+                    "message": "A module's index.ts exports only its own folder (./…). Import another module through its public entry, never its files."
+                  },
+                  {
+                    "group": [
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "next",
+                      "next/**",
+                      "react",
+                      "react/**",
+                      "elysia",
+                      "hono",
+                      "hono/**"
+                    ],
+                    "message": "Domain modules import no framework or ORM: declare a port and adapt it outside."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}
