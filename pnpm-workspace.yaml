@@ -7,3 +7,6 @@ saveExact: true
 minimumReleaseAge: 1440
 allowBuilds:
   msgpackr-extract: false
+# GHSA-q7qp-rjg7-q26m: @nestjs/platform-express@12.2.0 pins multer 2.4.0. Drop once Nest ships multer >=2.5.0.
+overrides:
+  multer@<2.5.0: 2.5.0
