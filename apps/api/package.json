@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "@types/supertest": "7.2.1",
+    "supertest": "7.3.1",
     "tsdown": "0.23.2"
   }
 }

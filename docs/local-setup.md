@@ -30,7 +30,11 @@ pnpm run lint           # Biome + type-aware oxlint
 pnpm run arch           # fallow: import cycles and package boundaries
 pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
-pnpm run test
+pnpm run test               # unit, offline
+pnpm run test:integration   # API over HTTP, in-process, no services
+pnpm run build
+pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
+pnpm run test:e2e           # needs a prior build; serves it on 127.0.0.1:3100
 node scripts/checks/docs-check.mjs
 ```
 
