@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["master"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventions:
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+      # Untrusted PR fields go through env vars, never straight into the script.
+      - name: Validate branch, commits, and PR title
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          node scripts/git/conventions.mjs branch "$HEAD_REF"
+          node scripts/git/conventions.mjs title "$PR_TITLE"
+          node scripts/git/conventions.mjs commits "$BASE_SHA" HEAD
+
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # fallow audit compares against the merge base.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Docs
+        run: "node scripts/checks/docs-check.mjs"
+      # Toolchain steps start once M0 adds package.json and the lockfile.
+      - uses: pnpm/action-setup@v4
+        if: hashFiles('package.json') != ''
+      - uses: actions/setup-node@v5
+        if: hashFiles('package.json') != ''
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - name: Install
+        if: hashFiles('package.json') != ''
+        run: "pnpm install --frozen-lockfile"
+      - name: Lint
+        if: hashFiles('package.json') != ''
+        run: "pnpm run lint"
+      - name: Architecture, dead code, duplication, complexity
+        if: hashFiles('package.json') != ''
+        run: "pnpm run fallow"
+      - name: Typecheck
+        if: hashFiles('package.json') != ''
+        run: "pnpm run typecheck"
+      - name: Test
+        if: hashFiles('package.json') != ''
+        run: "pnpm run test"

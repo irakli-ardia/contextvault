@@ -1,0 +1,5 @@
+#!/bin/sh
+node scripts/git/conventions.mjs current || exit 1
+node scripts/checks/docs-check.mjs || exit 1
+pnpm run lint || exit 1
+exec pnpm run fallow

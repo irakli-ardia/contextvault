@@ -1,0 +1,21 @@
+# dependencies and build output
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+.expo/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# environment — .env.example is the committed contract
+.env
+.env.*
+!.env.example
+
+# local tooling
+.DS_Store
+.vercel/
+temp/
