@@ -16,10 +16,13 @@
     "dead-code": "fallow dead-code",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run --project unit",
-    "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build"
+    "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
+    "@playwright/test": "1.64.1",
     "fallow": "3.36.0",
     "oxlint": "1.89.0",
     "oxlint-tsgolint": "7.0.2005",

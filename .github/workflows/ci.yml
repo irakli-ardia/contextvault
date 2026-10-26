@@ -65,9 +65,15 @@ jobs:
         run: pnpm run typecheck
       - name: Unit tests
         run: pnpm run test
+      - name: Integration tests
+        run: pnpm run test:integration
       - name: Build web
         run: pnpm --filter @contextvault/web run build
       - name: Build api
         run: pnpm --filter @contextvault/api run build
       - name: Build worker
         run: pnpm --filter @contextvault/worker run build
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Browser tests
+        run: pnpm run test:e2e
