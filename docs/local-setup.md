@@ -56,7 +56,7 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 | `API_PORT`, `API_HOST` | api | port 1-65535; explicit bind address (`127.0.0.1` locally, never all interfaces) |
 | `WEB_ORIGIN` | api | the one origin allowed to make unsafe requests: a bare origin, `https` in production |
 | `TRUSTED_PROXY_HOPS` | api | 0-3; 0 when the API is reached directly; mandatory in production (see [Proxy topology](#proxy-topology-and-cookies)) |
-| `API_INTERNAL_URL` | web (build time) | bare origin of the API for the `/api/*` rewrite; optional, defaults to `http://127.0.0.1:3001`. Baked into `next build`, so change it and rebuild |
+| `API_INTERNAL_URL` | web (build **and** run time) | bare origin of the API; optional, defaults to `http://127.0.0.1:3001`. The `/api/*` rewrite takes it at `next build` (changing it needs a rebuild); the upload Route Handler reads it from the running server's environment (a restart is enough). Set the same value for both, see below |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; the schema owner. Never given to a running app |
@@ -173,7 +173,8 @@ browser ─► web :3000 (Next.js, rewrites /api/* → API_INTERNAL_URL) ─► 
 - The browser only ever talks to the web origin, so the cookie is host-only to it and the API sends no CORS headers. The API listens on `API_HOST` (loopback locally) and `TRUSTED_PROXY_HOPS=0`: it ignores `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and `Secure` follows `NODE_ENV`, not the request scheme.
 - Next's rewrite does not append a client address, so locally (and behind the rewrite alone) the API sees the web server as the only client. The per-address login limit therefore acts as one shared bucket; the per-account limit does not depend on it.
 - **Production limits (not deployed yet):** serve web over HTTPS and set `WEB_ORIGIN` to that `https` origin; keep the API reachable only from the web server; set `TRUSTED_PROXY_HOPS` to the exact number of trusted proxies in front of the API that append the real client address (never 1 if the API can be reached directly). The login limiter is in memory and valid for a **single API instance**: run one instance until a Redis-backed limiter exists.
-- **Uploads (M1.3):** Next buffers rewritten request bodies and fails above 10 MB, so large uploads cannot use this rewrite as is; the upload path will be decided in M1.3 ([ADR 0008](adr/0008-first-party-authentication.md)).
+- **Uploads (M1.3):** the `/api/*` rewrite buffers bodies and fails above 10 MB, so uploads use a dedicated streaming Route Handler (`POST /api/workspaces/{workspaceId}/uploads`, raw body, `Content-Length` required, 10 MiB maximum; contract in [ADR 0009](adr/0009-streaming-upload-transport.md)). The handler reads `API_INTERNAL_URL` at runtime and forwards only `Cookie`, `Origin`, and the file description. The API endpoint behind it is not built yet.
+- **One variable, two readers.** `next build` freezes `API_INTERNAL_URL` into the `/api/*` rewrite; `next start` ignores a different value for it (verified on Next 16.4.3: built with the default, started with another origin, the rewrite still reached the default). The upload handler reads the value when the server starts, so a restart is enough for it but does not move the rewrite. A build and a server started with different values send ordinary calls and uploads to different origins. Keep one source for both (the same environment file or CI variable for the build step and the run step), and after changing it rebuild, then restart.
 
 ## Git hooks
 

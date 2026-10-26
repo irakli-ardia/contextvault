@@ -61,9 +61,12 @@ const apiEnvSchema = databaseEnvSchema
     }
   })
   .transform((env) => ({ ...env, TRUSTED_PROXY_HOPS: env.TRUSTED_PROXY_HOPS ?? 0 }));
-// The rewrite destination is baked into the web build. It must be a bare origin (no path or
-// credentials) so the proxy can only ever reach that one backend. The default is the loopback
-// development API; a production build that forgets it fails closed (connection refused).
+// The one API origin the web app may reach. It must be a bare origin (no path or credentials) so
+// the proxy can only ever reach that one backend. The default is the loopback development API; a
+// deployment that forgets it fails closed (connection refused).
+// Read twice, at different times (ADR 0009): `next build` bakes it into the `/api/*` rewrite, and
+// the upload Route Handler reads it again from the process environment at runtime. Set the same
+// value for the build and for the running server, or the two paths target different origins.
 const webEnvSchema = z.object({
   API_INTERNAL_URL: z
     .url({ protocol: /^https?$/ })

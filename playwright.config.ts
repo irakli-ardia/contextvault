@@ -46,5 +46,18 @@ export default defineConfig({
       timeout: 60_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },
+    {
+      // Same build, pointed at a test-only upstream (apps/web/e2e/upload-stub.ts) so the upload
+      // transport can be exercised before the API endpoint exists. The upload route reads
+      // API_INTERNAL_URL at runtime; the baked rewrite destination is irrelevant to it.
+      command:
+        "./node_modules/.bin/next start --hostname 127.0.0.1 --port 3101 > ../../playwright-report/web-upload.log 2>&1",
+      cwd: "apps/web",
+      env: { API_INTERNAL_URL: "http://127.0.0.1:3199" },
+      url: "http://127.0.0.1:3101",
+      reuseExistingServer: false,
+      timeout: 60_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+    },
   ],
 });

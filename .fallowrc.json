@@ -20,7 +20,7 @@
       { "name": "ai", "patterns": ["packages/ai/**"] }
     ],
     "rules": [
-      { "from": "web", "allow": ["config"] },
+      { "from": "web", "allow": ["config", "contracts"] },
       {
         "from": "api",
         "allow": ["auth", "config", "contracts", "db", "domain", "retrieval", "ai"]

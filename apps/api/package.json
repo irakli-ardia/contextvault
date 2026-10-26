@@ -10,6 +10,7 @@
   "dependencies": {
     "@contextvault/auth": "workspace:*",
     "@contextvault/config": "workspace:*",
+    "@contextvault/contracts": "workspace:*",
     "@contextvault/db": "workspace:*",
     "@contextvault/domain": "workspace:*",
     "@nestjs/common": "12.2.0",

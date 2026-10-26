@@ -200,6 +200,9 @@ importers:
       '@contextvault/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@contextvault/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@contextvault/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -252,6 +255,9 @@ importers:
       '@contextvault/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@contextvault/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       next:
         specifier: 16.4.3
         version: 16.4.3(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -316,6 +322,8 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+
+  packages/contracts: {}
 
   packages/db:
     dependencies:
