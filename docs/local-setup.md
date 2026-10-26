@@ -26,6 +26,7 @@ pnpm -v   # 12.15.0
 ```bash
 pnpm install --frozen-lockfile
 pnpm run typecheck
+pnpm run test
 node scripts/checks/docs-check.mjs
 ```
 
