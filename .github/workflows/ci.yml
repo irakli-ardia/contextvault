@@ -53,6 +53,14 @@ jobs:
         run: node scripts/checks/docs-check.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Format
+        run: pnpm run format:check
+      - name: Lint
+        run: pnpm run lint
+      - name: Architecture
+        run: pnpm run arch
+      - name: Dead code
+        run: pnpm run dead-code
       - name: Typecheck
         run: pnpm run typecheck
       - name: Unit tests

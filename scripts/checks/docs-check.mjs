@@ -27,8 +27,7 @@ const SKIP_DIRS = new Set([
   ".agents",
 ]);
 const TOKEN_BUDGETS = {}; // estimated characters / 4, keyed by repo-relative path
-const LINE_BUDGETS = {
-};
+const LINE_BUDGETS = {};
 
 // Leftover scaffold syntax: variables, if/unless/each block tags, and else.
 const PLACEHOLDER = /\{\{(?:[A-Z][A-Z0-9_]*|[#/](?:if|unless|each)\b[^}]*|else)\}\}/;

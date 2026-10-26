@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "categories": { "correctness": "error" },
+  "ignorePatterns": ["**/.next/**", "**/dist/**", "**/next-env.d.ts", ".claude/**", ".agents/**"],
+  "rules": {
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/only-throw-error": "error",
+    "prefer-promise-reject-errors": "error",
+    "no-async-promise-executor": "off"
+  }
+}

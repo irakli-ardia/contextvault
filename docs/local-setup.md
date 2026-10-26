@@ -25,6 +25,10 @@ pnpm -v   # 12.15.0
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm run format:check   # Biome formatting
+pnpm run lint           # Biome + type-aware oxlint
+pnpm run arch           # fallow: import cycles and package boundaries
+pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
 pnpm run test
 node scripts/checks/docs-check.mjs

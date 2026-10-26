@@ -13,6 +13,7 @@ const loop = spawn(
 );
 
 const killGroup = (signal) => {
+  if (loop.pid === undefined) return;
   try {
     process.kill(-loop.pid, signal);
   } catch {
