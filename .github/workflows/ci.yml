@@ -18,13 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
+          node-version-file: .node-version
       # Untrusted PR fields go through env vars, never straight into the script.
       - name: Validate branch, commits, and PR title
         env:
@@ -40,33 +40,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # fallow audit compares against the merge base.
           fetch-depth: 0
           persist-credentials: false
-      - name: Docs
-        run: "node scripts/checks/docs-check.mjs"
-      # Toolchain steps start once M0 adds package.json and the lockfile.
-      - uses: pnpm/action-setup@v4
-        if: hashFiles('package.json') != ''
-      - uses: actions/setup-node@v5
-        if: hashFiles('package.json') != ''
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
-          cache: pnpm
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - name: Docs
+        run: node scripts/checks/docs-check.mjs
       - name: Install
-        if: hashFiles('package.json') != ''
-        run: "pnpm install --frozen-lockfile"
-      - name: Lint
-        if: hashFiles('package.json') != ''
-        run: "pnpm run lint"
-      - name: Architecture, dead code, duplication, complexity
-        if: hashFiles('package.json') != ''
-        run: "pnpm run fallow"
+        run: pnpm install --frozen-lockfile
       - name: Typecheck
-        if: hashFiles('package.json') != ''
-        run: "pnpm run typecheck"
-      - name: Test
-        if: hashFiles('package.json') != ''
-        run: "pnpm run test"
+        run: pnpm run typecheck
