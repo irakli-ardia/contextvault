@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Design tokens: documented in context/ui-tokens.md. Dark values follow the OS setting. */
+/* Design tokens. Dark values follow the OS setting. */
 :root {
   --canvas: #fafaf9;
   --surface: #ffffff;

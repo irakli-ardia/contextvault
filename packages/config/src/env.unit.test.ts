@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EnvError, loadEnv, parseEnv } from "./env";
+import { EnvError, loadEnv, parseApiEnv, parseEnv, parseWorkerEnv } from "./env";
 
 const SECRET = "s3cr3t-value-must-not-leak";
 
@@ -51,4 +51,38 @@ describe("loadEnv", () => {
     expect(() => loadEnv()).toThrow(EnvError);
     expect(() => loadEnv()).not.toThrow(SECRET);
   });
+});
+
+describe("parseApiEnv", () => {
+  it("coerces API_PORT to a number", () => {
+    expect(parseApiEnv({ NODE_ENV: "test", API_PORT: "3001" })).toEqual({
+      NODE_ENV: "test",
+      API_PORT: 3001,
+    });
+  });
+
+  it.each(["", "abc", "0", "65536", "1.5", SECRET])("rejects API_PORT=%j without echoing it", (port) => {
+    expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).toThrow(/API_PORT/);
+    expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).not.toThrow(SECRET);
+  });
+
+  it("rejects a missing API_PORT", () => {
+    expect(() => parseApiEnv({ NODE_ENV: "test" })).toThrow(/API_PORT/);
+  });
+});
+
+describe("parseWorkerEnv", () => {
+  it("accepts redis and rediss URLs", () => {
+    for (const REDIS_URL of ["redis://localhost:6379", "rediss://:pw@host:6380/1"]) {
+      expect(parseWorkerEnv({ NODE_ENV: "test", REDIS_URL }).REDIS_URL).toBe(REDIS_URL);
+    }
+  });
+
+  it.each(["", "not a url", "http://localhost:6379", `redis-${SECRET}`])(
+    "rejects REDIS_URL=%j without echoing it",
+    (url) => {
+      expect(() => parseWorkerEnv({ NODE_ENV: "test", REDIS_URL: url })).toThrow(/REDIS_URL/);
+      expect(() => parseWorkerEnv({ NODE_ENV: "test", REDIS_URL: url })).not.toThrow(SECRET);
+    },
+  );
 });

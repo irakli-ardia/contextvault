@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run --project unit",
-    "build": "pnpm --filter @contextvault/web run build"
+    "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build"
   },
   "devDependencies": {
     "typescript": "6.0.3",
