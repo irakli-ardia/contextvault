@@ -10,9 +10,6 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
-        # Auth-library bumps are schema releases, patches included: never grouped, each one
-        # reviewed and verified against a real database.
-        exclude-patterns: []
   - package-ecosystem: github-actions
     directory: /
     schedule:
