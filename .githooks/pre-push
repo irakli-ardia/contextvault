@@ -1,5 +1,16 @@
 #!/bin/sh
 node scripts/git/conventions.mjs current || exit 1
 node scripts/checks/docs-check.mjs || exit 1
-pnpm run lint || exit 1
-exec pnpm run fallow
+
+# Toolchain checks run once package.json defines them; a defined script that fails blocks the push.
+has_script() {
+  [ -f package.json ] && node -e 'process.exit(require("./package.json").scripts?.[process.argv[1]] ? 0 : 1)' "$1"
+}
+
+for script in lint fallow typecheck test; do
+  if has_script "$script"; then
+    pnpm run "$script" || exit 1
+  else
+    echo "pre-push: skipping '$script' (no package.json script)"
+  fi
+done
