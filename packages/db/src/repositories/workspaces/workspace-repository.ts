@@ -98,13 +98,16 @@ export function createWorkspaceRepository(executor: Executor): WorkspaceReposito
 
     async listForUser(userId) {
       const rows = await executor
-        .select({ workspace: workspaces })
+        .select({ workspace: workspaces, role: memberships.role })
         .from(workspaces)
         .innerJoin(memberships, eq(memberships.workspaceId, workspaces.id))
         .where(eq(memberships.userId, userId))
         .orderBy(asc(workspaces.createdAt), asc(workspaces.id))
         .limit(listLimit);
-      return rows.map((row) => toWorkspace(row.workspace));
+      return rows.map((row) => {
+        if (!isRole(row.role)) throw new Error("Unexpected membership role in database");
+        return { ...toWorkspace(row.workspace), role: row.role };
+      });
     },
 
     addMember,

@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/tenant-fixture.ts"
   },
   "scripts": {
     "migrate": "tsdown && node --env-file-if-exists=../../.env dist/migrate.mjs",

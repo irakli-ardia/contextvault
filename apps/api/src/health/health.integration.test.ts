@@ -1,31 +1,27 @@
-import "reflect-metadata";
-import type { INestApplication } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AppModule } from "../app.module";
+import { type Api, startApi } from "../test-support";
 
-// In-process: the real AppModule behind a real HTTP server on an ephemeral port, no services.
+// In-process: the real AppModule behind a real HTTP server on an ephemeral port. The database
+// pool connects lazily, so health needs no query.
 describe("api http surface", () => {
-  let app: INestApplication;
+  let api: Api;
 
   beforeAll(async () => {
-    app = await NestFactory.create(AppModule, { logger: false });
-    await app.init();
+    api = await startApi();
   });
 
   afterAll(async () => {
-    await app.close();
+    await api.app.close();
   });
 
-  it("GET /health returns exactly { status: 'ok' } as JSON", async () => {
-    const res = await request(app.getHttpServer()).get("/health").expect(200);
+  it("GET /health is public and returns exactly { status: 'ok' } as JSON", async () => {
+    const res = await api.http.get("/health").expect(200);
 
     expect(res.headers["content-type"]).toMatch(/^application\/json/);
     expect(res.body).toStrictEqual({ status: "ok" });
   });
 
   it("returns 404 for an unknown route", async () => {
-    await request(app.getHttpServer()).get("/does-not-exist").expect(404);
+    await api.http.get("/does-not-exist").expect(404);
   });
 });

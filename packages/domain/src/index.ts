@@ -1,5 +1,7 @@
 export { type Email, parseEmail } from "./identity/email";
-export { HashingBusy } from "./identity/errors";
+export { HashingBusy, InvalidCredentials, Unauthenticated } from "./identity/errors";
+export { type LoginDeps, type LoginInput, login } from "./identity/login";
+export { getProfile, type Profile } from "./identity/me";
 export { type Password, parsePassword, passwordLength } from "./identity/password";
 export type {
   CredentialStore,
@@ -7,7 +9,14 @@ export type {
   SessionStore,
   StoredCredential,
   User,
+  UserRepository,
 } from "./identity/ports";
+export {
+  type Identity,
+  logout,
+  resolveSession,
+  type SessionDeps,
+} from "./identity/resolve-session";
 export {
   isSessionActive,
   needsTouch,
@@ -40,4 +49,13 @@ export {
   PermissionDenied,
 } from "./workspaces/permissions";
 export type { WorkspaceRepository } from "./workspaces/ports";
-export { isRole, type Membership, type Role, roles, type Workspace } from "./workspaces/workspace";
+export { readWorkspace } from "./workspaces/read-workspace";
+export { resolveActor } from "./workspaces/resolve-actor";
+export {
+  isRole,
+  type Membership,
+  type Role,
+  roles,
+  type Workspace,
+  type WorkspaceWithRole,
+} from "./workspaces/workspace";

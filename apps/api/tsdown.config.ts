@@ -6,6 +6,6 @@ export default defineConfig({
   format: "esm",
   platform: "node",
   target: "node24",
-  deps: { alwaysBundle: [/^@contextvault\//], onlyBundle: ["zod"] },
+  deps: { alwaysBundle: [/^@contextvault\//] },
   clean: true,
 });

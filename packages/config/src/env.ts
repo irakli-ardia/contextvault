@@ -12,7 +12,8 @@ const databaseEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
 // Owner-role connection, read only by the explicit migration command, never by an app.
-const migrationEnvSchema = baseEnvSchema.extend({
+// Pure-annotated so an app bundle that never calls the migration loaders drops it.
+const migrationEnvSchema = /* @__PURE__ */ baseEnvSchema.extend({
   DATABASE_MIGRATION_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
 const s3EnvSchema = baseEnvSchema.extend({
@@ -23,9 +24,43 @@ const s3EnvSchema = baseEnvSchema.extend({
   S3_SECRET_ACCESS_KEY: z.string().min(1),
 });
 
-const apiEnvSchema = baseEnvSchema.extend({
-  API_PORT: z.coerce.number().int().min(1).max(65535),
-});
+// API_HOST is an explicit bind address (no all-interfaces default). WEB_ORIGIN is the one origin
+// allowed to make unsafe requests: a bare origin, https in production. TRUSTED_PROXY_HOPS feeds
+// Express `trust proxy`; it has no production default because a wrong count makes the client
+// address spoofable.
+const apiEnvSchema = databaseEnvSchema
+  .extend({
+    API_PORT: z.coerce.number().int().min(1).max(65535),
+    API_HOST: z.string().min(1),
+    WEB_ORIGIN: z.url({ protocol: /^https?$/ }),
+    TRUSTED_PROXY_HOPS: z
+      .string()
+      .regex(/^[0-3]$/)
+      .transform(Number)
+      .optional(),
+  })
+  .superRefine((env, ctx) => {
+    // Refinements also run when a field failed its own check, hence canParse.
+    if (!URL.canParse(env.WEB_ORIGIN) || env.WEB_ORIGIN !== new URL(env.WEB_ORIGIN).origin) {
+      ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "Must be a bare origin" });
+    }
+    if (env.NODE_ENV !== "production") return;
+    if (!env.WEB_ORIGIN.startsWith("https://")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["WEB_ORIGIN"],
+        message: "Must be https in production",
+      });
+    }
+    if (env.TRUSTED_PROXY_HOPS === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["TRUSTED_PROXY_HOPS"],
+        message: "Required in production",
+      });
+    }
+  })
+  .transform((env) => ({ ...env, TRUSTED_PROXY_HOPS: env.TRUSTED_PROXY_HOPS ?? 0 }));
 const workerEnvSchema = baseEnvSchema.extend({
   REDIS_URL: z.url({ protocol: /^rediss?$/ }),
 });
