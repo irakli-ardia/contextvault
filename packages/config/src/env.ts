@@ -6,6 +6,19 @@ const baseEnvSchema = z.object({
 
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 
+// Reusable fragments for the apps that first read them (M1 adapters). Neither api nor worker
+// requires these yet, so neither depends on Postgres or S3 settings it does not use.
+const databaseEnvSchema = baseEnvSchema.extend({
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+});
+const s3EnvSchema = baseEnvSchema.extend({
+  S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
+  S3_REGION: z.string().min(1).default("us-east-1"),
+  S3_BUCKET: z.string().min(1),
+  S3_ACCESS_KEY_ID: z.string().min(1),
+  S3_SECRET_ACCESS_KEY: z.string().min(1),
+});
+
 const apiEnvSchema = baseEnvSchema.extend({
   API_PORT: z.coerce.number().int().min(1).max(65535),
 });
@@ -15,6 +28,8 @@ const workerEnvSchema = baseEnvSchema.extend({
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
+export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
+export type S3Env = z.infer<typeof s3EnvSchema>;
 
 type Source = Record<string, string | undefined>;
 
@@ -34,6 +49,12 @@ export const parseEnv = (source: Source): BaseEnv => parseWith(baseEnvSchema, so
 export const parseApiEnv = (source: Source): ApiEnv => parseWith(apiEnvSchema, source);
 export const parseWorkerEnv = (source: Source): WorkerEnv => parseWith(workerEnvSchema, source);
 
+export const parseDatabaseEnv = (source: Source): DatabaseEnv =>
+  parseWith(databaseEnvSchema, source);
+export const parseS3Env = (source: Source): S3Env => parseWith(s3EnvSchema, source);
+
 export const loadEnv = (): BaseEnv => parseEnv(process.env);
 export const loadApiEnv = (): ApiEnv => parseApiEnv(process.env);
 export const loadWorkerEnv = (): WorkerEnv => parseWorkerEnv(process.env);
+export const loadDatabaseEnv = (): DatabaseEnv => parseDatabaseEnv(process.env);
+export const loadS3Env = (): S3Env => parseS3Env(process.env);
