@@ -1,7 +1,7 @@
 # Local setup
 
-The repository holds the toolchain, the web, API, and worker skeletons, validated environment configuration,
-CI, and the local infrastructure described below.
+The repository holds the toolchain, the web, API, and worker apps, first-party authentication (operator-created
+users, sessions, same-origin proxy), validated environment configuration, CI, and the local infrastructure described below.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ node -v   # v24.22.1
 pnpm -v   # 12.15.0
 ```
 
-`engineStrict` is on, so `pnpm install` fails on an unsupported Node version.
+`engineStrict` is on, so `pnpm install` fails on an unsupported Node version. **The exact runtime matters for security:** password hashing uses `crypto.argon2`, which exists only on Node 24.7 and later, and the API refuses to start if its self-test fails. Node 24.22.1 is the only runtime verified; do not run the API on an older or different major.
 
 ## Clean clone, from zero
 
@@ -32,16 +32,17 @@ pnpm install --frozen-lockfile
 cp .env.example .env                        # development-only placeholders; never commit .env
 pnpm run infra:up                           # postgres, redis, s3; waits until healthy
 pnpm run db:migrate                         # create or update the schema (a deliberate step)
+pnpm run user:create -- --email you@example.com   # your login; prompts for a password (see User accounts)
 pnpm run dev                                # web, api, and worker, in parallel
 ```
 
 Startup order: infrastructure first, then the apps. The worker connects to Redis at boot and exits if it
-is unreachable; the API starts without any service because it opens no connection yet.
+is unreachable; the API connects to PostgreSQL at boot and exits if the role is not least-privileged.
 
 | App | Start alone | Address | Check |
 | --- | --- | --- | --- |
 | web | `pnpm --filter @contextvault/web dev` | `http://127.0.0.1:3000` | open in a browser |
-| api | `pnpm --filter @contextvault/api dev` | `http://127.0.0.1:3001` (`API_PORT`) | `curl http://127.0.0.1:3001/health` returns `{"status":"ok"}` |
+| api | `pnpm --filter @contextvault/api dev` | `http://127.0.0.1:3001` (`API_HOST`, `API_PORT`) | `curl http://127.0.0.1:3001/health` returns `{"status":"ok"}` |
 | worker | `pnpm --filter @contextvault/worker dev` | none | logs `worker ready`; `Ctrl-C` shuts it down cleanly |
 
 ## Environment
@@ -52,17 +53,18 @@ is unreachable; the API starts without any service because it opens no connectio
 | Variable | Read by | Rule |
 | --- | --- | --- |
 | `NODE_ENV` | api, worker | `development`, `test`, or `production` |
-| `API_PORT` | api | integer 1-65535 |
+| `API_PORT`, `API_HOST` | api | port 1-65535; explicit bind address (`127.0.0.1` locally, never all interfaces) |
+| `WEB_ORIGIN` | api | the one origin allowed to make unsafe requests: a bare origin, `https` in production |
+| `TRUSTED_PROXY_HOPS` | api | 0-3; 0 when the API is reached directly; mandatory in production (see [Proxy topology](#proxy-topology-and-cookies)) |
+| `API_INTERNAL_URL` | web (build time) | bare origin of the API for the `/api/*` rewrite; optional, defaults to `http://127.0.0.1:3001`. Baked into `next build`, so change it and rebuild |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
-| `DATABASE_URL` | none yet | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
-| `DATABASE_MIGRATION_URL` | `db:migrate` only | `postgres://` or `postgresql://` URL; the schema owner |
+| `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
+| `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; the schema owner. Never given to a running app |
 | `S3_ENDPOINT` | none yet | `http://` or `https://` URL |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | none yet | non-empty |
 | `S3_REGION` | none yet | optional, defaults to `us-east-1` |
 
-`DATABASE_URL`, `DATABASE_MIGRATION_URL`, and `S3_*` have validated, tested parsers in `packages/config` (`loadDatabaseEnv`, `loadMigrationEnv`, `loadS3Env`)
-for the M1 adapters, but no app requires them yet, so the API starts without Postgres or S3 settings and the
-worker without anything but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
+`S3_*` has a validated, tested parser in `packages/config` (`loadS3Env`) for the M1 adapters, but no app requires it yet, so the worker needs nothing but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
 missing or malformed variable stops the process with a list of variable names and rules, never values:
 
 ```text
@@ -87,7 +89,7 @@ pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isola
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
-pnpm run test:e2e           # needs a prior web build; serves it on 127.0.0.1:3100
+pnpm run test:e2e           # needs `build`, `infra:up`, `db:migrate`, `.env`; serves web on 127.0.0.1:3100 and the built API on 3001
 node scripts/checks/docs-check.mjs
 node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
 ```
@@ -146,6 +148,32 @@ pnpm run user:create -- --email ada@example.com --reset-password
 - Creation is three committed steps (user, workspace, credential); the credential comes last, so an account that can log in always has its workspace. If the command is interrupted, the half-created user cannot log in; run the same command again and it finishes the missing steps. An account that already has a password is refused, and `--workspace-name` is ignored (with a message saying so) when the user already has a workspace. Concurrent runs for one email take turns on a per-user transaction lock, so they never create two initial workspaces.
 - `--reset-password` replaces the hash and revokes every session of that user in one transaction. It is also the emergency revoke: run it with a new password to sign a user out everywhere.
 - The command prints only a result line or a fixed error; it never prints passwords, hashes, tokens, or connection strings. Run it only on a trusted terminal: shell history and process lists do not contain the password, but a screen recorder would.
+
+## Signing in, sessions, and cookies
+
+```bash
+# through the web origin (what a browser does); Origin is mandatory on unsafe methods
+curl -i -c jar.txt -H 'Origin: http://127.0.0.1:3000' -H 'Content-Type: application/json' \
+  -d '{"email":"ada@example.com","password":"<your password>"}' http://127.0.0.1:3000/api/auth/login
+curl -b jar.txt http://127.0.0.1:3000/api/auth/me         # user and workspaces
+curl -b jar.txt -X POST -H 'Origin: http://127.0.0.1:3000' http://127.0.0.1:3000/api/auth/logout
+```
+
+- Routes: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /workspaces/:workspaceId`, and the public `GET /health`. Everything else needs a session. There is no auth UI yet (M1.8).
+- The session cookie is `cv_session` in development and `__Host-cv_session` (`Secure`, no `Domain`) in production; both are `HttpOnly`, `SameSite=Lax`, `Path=/`, valid 7 days absolute and 24 hours idle. Its value is a random token; only a hash is stored. Logging in again, logging out, and a password reset revoke the old session.
+- Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send `Origin` exactly equal to `WEB_ORIGIN`; browsers do this, `curl` needs `-H 'Origin: ...'`. A missing or foreign origin gets 403. Unknown email and wrong password both give the same 401; a workspace you do not belong to, one that does not exist, and a malformed id all give the same 404.
+- Too many failed logins return 429 with `Retry-After`.
+
+### Proxy topology and cookies
+
+```text
+browser ─► web :3000 (Next.js, rewrites /api/* → API_INTERNAL_URL) ─► api 127.0.0.1:3001
+```
+
+- The browser only ever talks to the web origin, so the cookie is host-only to it and the API sends no CORS headers. The API listens on `API_HOST` (loopback locally) and `TRUSTED_PROXY_HOPS=0`: it ignores `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and `Secure` follows `NODE_ENV`, not the request scheme.
+- Next's rewrite does not append a client address, so locally (and behind the rewrite alone) the API sees the web server as the only client. The per-address login limit therefore acts as one shared bucket; the per-account limit does not depend on it.
+- **Production limits (not deployed yet):** serve web over HTTPS and set `WEB_ORIGIN` to that `https` origin; keep the API reachable only from the web server; set `TRUSTED_PROXY_HOPS` to the exact number of trusted proxies in front of the API that append the real client address (never 1 if the API can be reached directly). The login limiter is in memory and valid for a **single API instance**: run one instance until a Redis-backed limiter exists.
+- **Uploads (M1.3):** Next buffers rewritten request bodies and fails above 10 MB, so large uploads cannot use this rewrite as is; the upload path will be decided in M1.3 ([ADR 0008](adr/0008-first-party-authentication.md)).
 
 ## Git hooks
 

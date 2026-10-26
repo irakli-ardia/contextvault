@@ -61,11 +61,22 @@ const apiEnvSchema = databaseEnvSchema
     }
   })
   .transform((env) => ({ ...env, TRUSTED_PROXY_HOPS: env.TRUSTED_PROXY_HOPS ?? 0 }));
+// The rewrite destination is baked into the web build. It must be a bare origin (no path or
+// credentials) so the proxy can only ever reach that one backend. The default is the loopback
+// development API; a production build that forgets it fails closed (connection refused).
+const webEnvSchema = z.object({
+  API_INTERNAL_URL: z
+    .url({ protocol: /^https?$/ })
+    // Refinements also run when the URL check failed, hence canParse.
+    .refine((url) => URL.canParse(url) && new URL(url).origin === url, "Must be a bare origin")
+    .default("http://127.0.0.1:3001"),
+});
 const workerEnvSchema = baseEnvSchema.extend({
   REDIS_URL: z.url({ protocol: /^rediss?$/ }),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
+export type WebEnv = z.infer<typeof webEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
 export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
@@ -87,6 +98,7 @@ function parseWith<T>(schema: z.ZodType<T>, source: Source): T {
 
 export const parseEnv = (source: Source): BaseEnv => parseWith(baseEnvSchema, source);
 export const parseApiEnv = (source: Source): ApiEnv => parseWith(apiEnvSchema, source);
+export const parseWebEnv = (source: Source): WebEnv => parseWith(webEnvSchema, source);
 export const parseWorkerEnv = (source: Source): WorkerEnv => parseWith(workerEnvSchema, source);
 
 export const parseDatabaseEnv = (source: Source): DatabaseEnv =>
@@ -97,6 +109,7 @@ export const parseS3Env = (source: Source): S3Env => parseWith(s3EnvSchema, sour
 
 export const loadEnv = (): BaseEnv => parseEnv(process.env);
 export const loadApiEnv = (): ApiEnv => parseApiEnv(process.env);
+export const loadWebEnv = (): WebEnv => parseWebEnv(process.env);
 export const loadWorkerEnv = (): WorkerEnv => parseWorkerEnv(process.env);
 export const loadDatabaseEnv = (): DatabaseEnv => parseDatabaseEnv(process.env);
 export const loadMigrationEnv = (): MigrationEnv => parseMigrationEnv(process.env);

@@ -11,5 +11,6 @@ One short record per hard-to-reverse choice. A record is never edited to change 
 | [0005](0005-provider-sdk-over-orchestration-framework.md) | Provider SDK behind ports, not an orchestration framework | accepted |
 | [0006](0006-local-s3-seaweedfs.md) | SeaweedFS for local S3-compatible storage | accepted |
 | [0007](0007-monorepo-and-toolchain.md) | Monorepo and toolchain | accepted |
+| [0008](0008-first-party-authentication.md) | First-party authentication and sessions | accepted |
 
 Index and vector-search tuning (exact scan versus HNSW) and reranker choice are decided in the milestones that need them.

@@ -8,6 +8,7 @@ export {
   loadEnv,
   loadMigrationEnv,
   loadS3Env,
+  loadWebEnv,
   loadWorkerEnv,
   type MigrationEnv,
   parseApiEnv,
@@ -15,7 +16,9 @@ export {
   parseEnv,
   parseMigrationEnv,
   parseS3Env,
+  parseWebEnv,
   parseWorkerEnv,
   type S3Env,
+  type WebEnv,
   type WorkerEnv,
 } from "./env";
