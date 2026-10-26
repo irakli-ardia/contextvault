@@ -5,4 +5,5 @@ packages:
 engineStrict: true
 saveExact: true
 minimumReleaseAge: 1440
-allowBuilds: {}
+allowBuilds:
+  msgpackr-extract: false

@@ -57,5 +57,9 @@ jobs:
         run: pnpm run typecheck
       - name: Unit tests
         run: pnpm run test
-      - name: Build
-        run: pnpm run build
+      - name: Build web
+        run: pnpm --filter @contextvault/web run build
+      - name: Build api
+        run: pnpm --filter @contextvault/api run build
+      - name: Build worker
+        run: pnpm --filter @contextvault/worker run build

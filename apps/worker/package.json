@@ -1,0 +1,19 @@
+{
+  "name": "@contextvault/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../scripts/dev.mjs",
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@contextvault/config": "workspace:*",
+    "bullmq": "6.4.2",
+    "ioredis": "6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.2"
+  }
+}
