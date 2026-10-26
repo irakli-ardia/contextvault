@@ -1,6 +1,7 @@
 #!/bin/sh
 node scripts/git/conventions.mjs current || exit 1
 node scripts/checks/docs-check.mjs || exit 1
+node scripts/checks/tracked-files.mjs || exit 1
 
 # Integration tests need the local stack. Read-only check: this hook never starts or stops containers.
 if [ ! -f .env ]; then

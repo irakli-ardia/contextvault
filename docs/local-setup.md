@@ -86,6 +86,7 @@ pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
 pnpm run test:e2e           # needs a prior web build; serves it on 127.0.0.1:3100
 node scripts/checks/docs-check.mjs
+node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
 ```
 
 ## Local infrastructure
