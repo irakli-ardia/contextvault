@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["scripts/**/*.mjs"],
+  "rules": {
+    "unused-dev-dependencies": "error",
+    "type-only-dependencies": "error"
+  },
+  "boundaries": {
+    "zones": [
+      { "name": "web", "patterns": ["apps/web/**"] },
+      { "name": "api", "patterns": ["apps/api/**"] },
+      { "name": "worker", "patterns": ["apps/worker/**"] },
+      { "name": "config", "patterns": ["packages/config/**"] },
+      { "name": "contracts", "patterns": ["packages/contracts/**"] },
+      { "name": "domain", "patterns": ["packages/domain/**"] },
+      { "name": "ingestion", "patterns": ["packages/ingestion/**"] },
+      { "name": "retrieval", "patterns": ["packages/retrieval/**"] },
+      { "name": "ai", "patterns": ["packages/ai/**"] }
+    ],
+    "rules": [
+      { "from": "web", "allow": ["config"] },
+      { "from": "api", "allow": ["config", "contracts", "domain", "retrieval", "ai"] },
+      { "from": "worker", "allow": ["config", "domain", "ingestion", "ai"] },
+      { "from": "config", "allow": [] },
+      { "from": "contracts", "allow": [] },
+      { "from": "domain", "allow": [] },
+      { "from": "ingestion", "allow": ["domain"] },
+      { "from": "retrieval", "allow": ["domain"] },
+      { "from": "ai", "allow": ["domain"] }
+    ],
+    "coverage": { "requireAllFiles": true, "allowUnmatched": ["scripts/**", "**/*.config.ts"] }
+  }
+}

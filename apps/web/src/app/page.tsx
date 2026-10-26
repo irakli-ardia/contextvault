@@ -33,9 +33,9 @@ export default function Page() {
             Answers you can trace to the source.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted text-pretty">
-            ContextVault is a workbench for ingesting technical documents, comparing keyword,
-            vector and hybrid retrieval, and returning answers whose citations point at the exact
-            passage, or saying so when the evidence is not there.
+            ContextVault is a workbench for ingesting technical documents, comparing keyword, vector
+            and hybrid retrieval, and returning answers whose citations point at the exact passage,
+            or saying so when the evidence is not there.
           </p>
         </section>
 
@@ -45,10 +45,7 @@ export default function Page() {
           </h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-3">
             {principles.map((item) => (
-              <li
-                key={item.title}
-                className="rounded-card border border-line bg-surface p-6"
-              >
+              <li key={item.title} className="rounded-card border border-line bg-surface p-6">
                 <h3 className="font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">{item.body}</p>
               </li>

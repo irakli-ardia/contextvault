@@ -61,10 +61,13 @@ describe("parseApiEnv", () => {
     });
   });
 
-  it.each(["", "abc", "0", "65536", "1.5", SECRET])("rejects API_PORT=%j without echoing it", (port) => {
-    expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).toThrow(/API_PORT/);
-    expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).not.toThrow(SECRET);
-  });
+  it.each(["", "abc", "0", "65536", "1.5", SECRET])(
+    "rejects API_PORT=%j without echoing it",
+    (port) => {
+      expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).toThrow(/API_PORT/);
+      expect(() => parseApiEnv({ NODE_ENV: "test", API_PORT: port })).not.toThrow(SECRET);
+    },
+  );
 
   it("rejects a missing API_PORT", () => {
     expect(() => parseApiEnv({ NODE_ENV: "test" })).toThrow(/API_PORT/);

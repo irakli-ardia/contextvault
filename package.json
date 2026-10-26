@@ -8,11 +8,21 @@
     "node": ">=24.22.1 <25"
   },
   "scripts": {
+    "format:check": "biome format .",
+    "format": "biome format --write .",
+    "lint": "biome check . && oxlint --type-aware",
+    "lint:fix": "biome check --write . && oxlint --type-aware --fix",
+    "arch": "fallow architecture",
+    "dead-code": "fallow dead-code",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run --project unit",
     "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.3",
+    "fallow": "3.36.0",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   }

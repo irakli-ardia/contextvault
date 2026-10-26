@@ -1,52 +1,53 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
-    "includes": ["**", "!tools/oxlint/anti-slop"]
+    "includes": [
+      "**",
+      "!**/.next",
+      "!**/dist",
+      "!**/next-env.d.ts",
+      "!pnpm-lock.yaml",
+      "!**/*.md",
+      "!**/*.svg",
+      "!.claude",
+      "!.agents"
+    ]
   },
-  "css": {
-    "parser": {
-      "tailwindDirectives": true
-    }
-  },
-  "formatter": {
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 100
-  },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
-    "enabled": true,
     "rules": {
       "preset": "recommended",
+      "complexity": { "noUselessTernary": "error" },
+      "correctness": { "noUnusedImports": "error", "noUnusedVariables": "error" },
+      "performance": { "noReExportAll": "error" },
       "style": {
         "noNestedTernary": "error",
-        "useBlockStatements": "error",
         "noNonNullAssertion": "error",
+        "noProcessEnv": "error",
+        "useImportType": "error",
+        "noExcessiveLinesPerFile": { "level": "error", "options": { "maxLines": 250 } },
         "useFilenamingConvention": {
           "level": "error",
-          "options": {
-            "strictCase": true,
-            "requireAscii": true,
-            "filenameCases": ["kebab-case"]
-          }
+          "options": { "strictCase": true, "requireAscii": true, "filenameCases": ["kebab-case"] }
         }
       },
-      "suspicious": {
-        "noExplicitAny": "error",
-        "noImportCycles": "error"
-      },
-      "performance": {
-        "noReExportAll": "error"
-      }
+      "suspicious": { "noExplicitAny": "error", "noImportCycles": "error" }
     }
   },
   "overrides": [
     {
-      "includes": ["packages/core/**"],
+      "includes": ["packages/config/src/env.ts"],
+      "linter": { "rules": { "style": { "noProcessEnv": "off" } } }
+    },
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": { "rules": { "style": { "noExcessiveLinesPerFile": "off" } } }
+    },
+    {
+      "includes": ["packages/domain/**", "packages/contracts/**"],
       "linter": {
         "rules": {
           "style": {
@@ -56,68 +57,17 @@
                 "patterns": [
                   {
                     "group": [
-                      "drizzle-orm",
-                      "drizzle-orm/**",
                       "next",
                       "next/**",
                       "react",
                       "react/**",
-                      "elysia",
-                      "hono",
-                      "hono/**"
-                    ],
-                    "message": "Domain modules import no framework or ORM: declare a port and adapt it outside."
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "includes": ["packages/core/**", "apps/web/**/features/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedGlobals": {
-              "level": "error",
-              "options": {
-                "deniedGlobals": {
-                  "fetch": "One HTTP client: use the shared client or an adapter behind a port."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "includes": ["packages/core/src/*/index.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "patterns": [
-                  {
-                    "group": ["../**"],
-                    "message": "A module's index.ts exports only its own folder (./…). Import another module through its public entry, never its files."
-                  },
-                  {
-                    "group": [
+                      "@nestjs/**",
                       "drizzle-orm",
                       "drizzle-orm/**",
-                      "next",
-                      "next/**",
-                      "react",
-                      "react/**",
-                      "elysia",
-                      "hono",
-                      "hono/**"
+                      "bullmq",
+                      "ioredis"
                     ],
-                    "message": "Domain modules import no framework or ORM: declare a port and adapt it outside."
+                    "message": "Domain and contract packages import no framework, ORM, or queue client: declare a port and adapt it outside."
                   }
                 ]
               }
@@ -126,12 +76,5 @@
         }
       }
     }
-  ],
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  }
+  ]
 }
