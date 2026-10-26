@@ -66,7 +66,7 @@ untrusted     static page      GET /health      no client yet      Redis only
 - **The API listens on all interfaces.** `app.listen(port)` is not restricted to loopback. In development, `GET /health` is reachable from the local network. It exposes nothing, but the bind address must be an explicit deployment setting before the API serves anything else.
 - **No authentication, CORS policy, security headers, rate limiting, or request-size policy.** Nothing yet needs them; each is required before public deployment.
 - **No dependency vulnerability scan or secret scan runs in CI.** Dependabot version updates are not a vulnerability scan.
-- **`pnpm audit` reports one high advisory (2026-10-26):** `multer` 2.4.0, a transitive dependency of `@nestjs/platform-express`, is affected by a denial of service in a pending asynchronous `fileFilter` (fixed in 2.5.0). The API registers no upload handler, so the code path is unreachable today; it must be resolved before any upload endpoint exists (M1).
+- **`multer` advisory GHSA-q7qp-rjg7-q26m (high, resolved 2026-10-26):** `@nestjs/platform-express` 12.2.0 pins `multer` 2.4.0, which has a denial of service in a pending asynchronous `fileFilter`. A scoped override (`multer@<2.5.0: 2.5.0` in `pnpm-workspace.yaml`) installs 2.5.0; `pnpm audit` is clean. The override is temporary and is removed once Nest ships a fixed pin. The API registers no upload handler yet.
 - **Local credentials are placeholders.** The values in `.env.example` are public. Never reuse them outside the local Compose stack.
 - **Git history is public once pushed.** Commit author metadata and any past content cannot be retracted by later commits.
 
