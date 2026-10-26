@@ -131,6 +131,7 @@
     {
       "includes": [
         "packages/db/src/user-create.ts",
+        "packages/db/src/e2e-accounts.ts",
         "packages/db/src/provisioning/test-harness.ts"
       ],
       "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }

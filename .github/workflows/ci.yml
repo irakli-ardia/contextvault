@@ -87,16 +87,16 @@ jobs:
         run: pnpm --filter @contextvault/worker run build
       - name: Infrastructure smoke
         run: pnpm run infra:smoke
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Browser tests
+        run: pnpm run test:e2e
       - name: Infrastructure logs
         if: failure()
         run: pnpm run infra:logs
       - name: Stop infrastructure
         if: always()
         run: pnpm run infra:down
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps --only-shell chromium
-      - name: Browser tests
-        run: pnpm run test:e2e
       - name: Upload browser traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -249,6 +249,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@contextvault/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       next:
         specifier: 16.4.3
         version: 16.4.3(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

@@ -1,25 +1,50 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Dedicated port so a running dev server (3000) can never be mistaken for the tested build.
+// Dedicated web port so a running dev server (3000) can never be mistaken for the tested build.
+// The API uses its default port because the web build bakes in the rewrite destination
+// (`API_INTERNAL_URL`, default http://127.0.0.1:3001); a running dev API makes this run fail loudly.
 const port = 3100;
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "apps/web/e2e",
   fullyParallel: true,
+  // One worker: every login costs a 64 MiB Argon2id hash behind a two-slot queue.
+  workers: 1,
   forbidOnly: true,
   retries: 0,
   reporter: [["list"]],
   outputDir: "test-results",
   use: { baseURL, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    // The binary, not `pnpm exec`: a wrapper reports its own SIGTERM as a failure and can outlive the run.
-    command: `./node_modules/.bin/next start --hostname 127.0.0.1 --port ${port}`,
-    cwd: "apps/web",
-    url: baseURL,
-    reuseExistingServer: false,
-    timeout: 60_000,
-    gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-  },
+  webServer: [
+    {
+      // Built API against the real Postgres from .env; the process environment (below) wins over
+      // .env. The log file lets the tests prove no secret reaches it.
+      command:
+        "mkdir -p playwright-report && node --env-file-if-exists=.env apps/api/dist/main.mjs > playwright-report/api.log 2>&1",
+      cwd: ".",
+      env: {
+        NODE_ENV: "development",
+        API_PORT: "3001",
+        API_HOST: "127.0.0.1",
+        WEB_ORIGIN: baseURL,
+        // Reached only through the Next server, never directly by a client: no appended address.
+        TRUSTED_PROXY_HOPS: "0",
+      },
+      url: "http://127.0.0.1:3001/health",
+      reuseExistingServer: false,
+      timeout: 60_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+    },
+    {
+      // The binary, not `pnpm exec`: a wrapper reports its own SIGTERM as a failure and can outlive the run.
+      command: `./node_modules/.bin/next start --hostname 127.0.0.1 --port ${port} > ../../playwright-report/web.log 2>&1`,
+      cwd: "apps/web",
+      url: baseURL,
+      reuseExistingServer: false,
+      timeout: 60_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+    },
+  ],
 });

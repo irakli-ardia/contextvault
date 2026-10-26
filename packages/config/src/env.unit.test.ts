@@ -10,6 +10,7 @@ import {
   parseEnv,
   parseMigrationEnv,
   parseS3Env,
+  parseWebEnv,
   parseWorkerEnv,
 } from "./env";
 
@@ -130,6 +131,27 @@ describe("parseApiEnv", () => {
   it("rejects a missing API_PORT", () => {
     const { API_PORT: _omitted, ...source } = API;
     expect(() => parseApiEnv(source)).toThrow(/API_PORT/);
+  });
+});
+
+describe("parseWebEnv", () => {
+  it("defaults to the loopback development API", () => {
+    expect(parseWebEnv({}).API_INTERNAL_URL).toBe("http://127.0.0.1:3001");
+  });
+
+  it("accepts a bare origin and rejects paths, credentials, and other schemes", () => {
+    expect(parseWebEnv({ API_INTERNAL_URL: "http://api.internal:3001" }).API_INTERNAL_URL).toBe(
+      "http://api.internal:3001",
+    );
+    for (const value of [
+      "http://127.0.0.1:3001/",
+      "http://127.0.0.1:3001/v1",
+      "http://user:pw@127.0.0.1:3001",
+      "ftp://127.0.0.1:3001",
+      "not a url",
+    ]) {
+      expect(() => parseWebEnv({ API_INTERNAL_URL: value })).toThrow(EnvError);
+    }
   });
 });
 
