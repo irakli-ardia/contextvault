@@ -11,6 +11,8 @@ export interface Workspace {
   readonly createdAt: Date;
 }
 
+export type WorkspaceWithRole = Workspace & { readonly role: Role };
+
 export interface Membership {
   readonly workspaceId: WorkspaceId;
   readonly userId: UserId;

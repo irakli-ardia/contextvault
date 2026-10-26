@@ -54,6 +54,15 @@ describe("reads under workspace A's context", () => {
     expect(await list(u1, u3)).toEqual([]);
   });
 
+  it("returns the caller's own role in each listed workspace", async () => {
+    const roles = (userId: UserId) =>
+      run({ userId }, (r) => r.workspaces.listForUser(userId)).then((ws) =>
+        Object.fromEntries(ws.map((w) => [w.id, w.role])),
+      );
+    expect(await roles(u1)).toEqual({ [wsA]: "owner" });
+    expect(await roles(u3)).toEqual({ [wsA]: "member", [wsB]: "member" });
+  });
+
   it("returns the caller's own membership with its role", async () => {
     const m = await run({ userId: u3, workspaceId: wsA }, (r) =>
       r.workspaces.findMembership(wsA, u3),

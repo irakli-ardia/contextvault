@@ -15,6 +15,7 @@
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },
+  "javascript": { "parser": { "unsafeParameterDecoratorsEnabled": true } },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
@@ -68,6 +69,40 @@
                   {
                     "group": ["@contextvault/db/*", "**/packages/db/**"],
                     "message": "Import @contextvault/db only through its entry point."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/**/*.test.ts", "apps/**/test-support.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@contextvault/config": {
+                    "importNames": ["loadMigrationEnv", "parseMigrationEnv"],
+                    "message": "The owner-role migration URL is read only by the db:migrate command."
+                  }
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm", "drizzle-orm/**", "pg", "pg/**"],
+                    "message": "Only packages/db imports the ORM and the Postgres driver."
+                  },
+                  {
+                    "group": ["**/packages/db/**"],
+                    "message": "Import @contextvault/db through its entry points."
+                  },
+                  {
+                    "group": ["@contextvault/db/*", "!@contextvault/db/testing"],
+                    "message": "Tests may use only the @contextvault/db/testing entry."
                   }
                 ]
               }

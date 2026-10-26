@@ -38,3 +38,8 @@ export interface SessionStore {
   /** Removes the user's expired or revoked sessions; returns how many. */
   deleteExpiredForUser(userId: UserId, now: Date): Promise<number>;
 }
+
+export interface UserRepository {
+  /** Policy-filtered: only the acting user's own row is visible. */
+  findById(id: UserId): Promise<User | null>;
+}

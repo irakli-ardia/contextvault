@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadMigrationEnv } from "@contextvault/config";
 import { parseUserId, parseWorkspaceId, type UserId, type WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
-import { createPersistence, type Persistence } from "./index";
+import { createPersistence, type Persistence } from "./persistence";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
 
 // Real-Postgres fixture for integration tests. `owner` seeds users and cleans up (the migration
@@ -13,7 +13,7 @@ export interface TenantFixture {
   seedUser(): Promise<UserId>;
   createWorkspace(userId: UserId, name?: string): Promise<WorkspaceId>;
   /** Owner-seeded credential; returns the (fake) stored hash. */
-  seedCredential(userId: UserId): Promise<string>;
+  seedCredential(userId: UserId, passwordHash?: string): Promise<string>;
   /** Owner-seeded session; returns its id and token hash (hex). */
   seedSession(
     userId: UserId,
@@ -69,8 +69,9 @@ export function createTenantFixture(poolSize = 4): TenantFixture {
       );
       return id;
     },
-    async seedCredential(userId) {
-      const hash = `$argon2id$v=19$m=64,t=1,p=1$${randomBytes(16).toString("base64url")}$fake`;
+    async seedCredential(userId, passwordHash) {
+      const hash =
+        passwordHash ?? `$argon2id$v=19$m=64,t=1,p=1$${randomBytes(16).toString("base64url")}$fake`;
       await owner.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
         userId,
         hash,

@@ -58,6 +58,11 @@ describe("unit of work", () => {
   });
 
   it("exposes no raw client", () => {
-    expect(Object.keys(fx.persistence).toSorted()).toEqual(["auth", "close", "unitOfWork"]);
+    expect(Object.keys(fx.persistence).toSorted()).toEqual([
+      "assertLeastPrivilege",
+      "auth",
+      "close",
+      "unitOfWork",
+    ]);
   });
 });
