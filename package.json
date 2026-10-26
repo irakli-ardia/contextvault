@@ -12,13 +12,19 @@
     "format": "biome format --write .",
     "lint": "biome check . && oxlint --type-aware",
     "lint:fix": "biome check --write . && oxlint --type-aware --fix",
-    "arch": "fallow architecture",
-    "dead-code": "fallow dead-code",
+    "arch": "fallow architecture --config .fallowrc.json",
+    "dead-code": "fallow dead-code --config .fallowrc.json",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run --project unit",
     "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build",
-    "test:integration": "vitest run --project integration",
-    "test:e2e": "playwright test"
+    "test:integration": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --project integration",
+    "test:e2e": "playwright test",
+    "infra:up": "docker compose --env-file .env -f infra/compose.yaml up --wait --wait-timeout 180",
+    "infra:down": "docker compose --env-file .env -f infra/compose.yaml down",
+    "infra:ps": "docker compose --env-file .env -f infra/compose.yaml ps",
+    "infra:logs": "docker compose --env-file .env -f infra/compose.yaml logs --tail 100",
+    "infra:reset": "docker compose --env-file .env -f infra/compose.yaml down --volumes",
+    "infra:smoke": "node scripts/checks/infra-smoke.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",

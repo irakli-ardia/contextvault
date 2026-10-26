@@ -53,6 +53,8 @@ jobs:
         run: node scripts/checks/docs-check.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Local environment
+        run: cp .env.example .env
       - name: Format
         run: pnpm run format:check
       - name: Lint
@@ -65,6 +67,8 @@ jobs:
         run: pnpm run typecheck
       - name: Unit tests
         run: pnpm run test
+      - name: Start infrastructure
+        run: pnpm run infra:up
       - name: Integration tests
         run: pnpm run test:integration
       - name: Build web
@@ -73,6 +77,14 @@ jobs:
         run: pnpm --filter @contextvault/api run build
       - name: Build worker
         run: pnpm --filter @contextvault/worker run build
+      - name: Infrastructure smoke
+        run: pnpm run infra:smoke
+      - name: Infrastructure logs
+        if: failure()
+        run: pnpm run infra:logs
+      - name: Stop infrastructure
+        if: always()
+        run: pnpm run infra:down
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Browser tests

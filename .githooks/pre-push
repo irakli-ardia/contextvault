@@ -2,6 +2,17 @@
 node scripts/git/conventions.mjs current || exit 1
 node scripts/checks/docs-check.mjs || exit 1
 
+# Integration tests need the local stack. Read-only check: this hook never starts or stops containers.
+if [ ! -f .env ]; then
+  echo "pre-push: .env is missing. Run: cp .env.example .env && pnpm run infra:up" >&2
+  exit 1
+fi
+healthy=$(pnpm --silent run infra:ps --format '{{.Health}}' 2>/dev/null | grep -c '^healthy$')
+if [ "$healthy" -ne 3 ]; then
+  echo "pre-push: local infrastructure is not healthy ($healthy of 3 services). Run: pnpm run infra:up" >&2
+  exit 1
+fi
+
 # Every check is mandatory: a missing script is a failure, not a skip.
 for script in format:check lint arch dead-code typecheck test test:integration build test:e2e; do
   pnpm run "$script" || exit 1
