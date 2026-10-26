@@ -132,6 +132,21 @@ pnpm run db:check      # fails if the schema and the migrations disagree
 Migrations never run at API or worker startup. `DATABASE_MIGRATION_URL` belongs to the `db:migrate` command only: lint rejects reading it from `apps/*`, and a deployment should not provide it to the API or worker. Hand-written statements that Drizzle cannot generate
 (`FORCE ROW LEVEL SECURITY`, grants) go in a migration created with `drizzle-kit generate --custom`.
 
+## User accounts
+
+There is no registration or password-reset endpoint. The operator creates accounts and resets passwords from a terminal:
+
+```bash
+pnpm run user:create -- --email ada@example.com [--workspace-name "Research"]
+pnpm run user:create -- --email ada@example.com --reset-password
+```
+
+- The password is prompted for twice on the terminal without echo. It is never accepted as an argument, and there is no fallback to piped stdin or an environment variable: without an interactive terminal the command refuses. Passwords follow the login policy (12-128 characters, NFKC-normalised); the email is normalised exactly as at login.
+- `user:create` uses both connections: `DATABASE_MIGRATION_URL` (owner role) to write the user and credential, and `DATABASE_URL` (application role, under the new user's own context) to create the personal workspace and owner membership. It refuses to run when `DATABASE_URL` is not a least-privileged role. `--reset-password` needs only `DATABASE_URL`.
+- Creation is three committed steps (user, workspace, credential); the credential comes last, so an account that can log in always has its workspace. If the command is interrupted, the half-created user cannot log in; run the same command again and it finishes the missing steps. An account that already has a password is refused, and `--workspace-name` is ignored (with a message saying so) when the user already has a workspace. Concurrent runs for one email take turns on a per-user transaction lock, so they never create two initial workspaces.
+- `--reset-password` replaces the hash and revokes every session of that user in one transaction. It is also the emergency revoke: run it with a new password to sign a user out everywhere.
+- The command prints only a result line or a fixed error; it never prints passwords, hashes, tokens, or connection strings. Run it only on a trusted terminal: shell history and process lists do not contain the password, but a screen recorder would.
+
 ## Git hooks
 
 Enable the git hooks once per clone:

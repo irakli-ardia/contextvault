@@ -316,6 +316,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@contextvault/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@contextvault/config':
         specifier: workspace:*
         version: link:../config

@@ -28,6 +28,7 @@
     "infra:smoke": "node scripts/checks/infra-smoke.mjs",
     "db:generate": "pnpm --filter @contextvault/db exec drizzle-kit generate",
     "db:migrate": "pnpm --filter @contextvault/db run migrate",
+    "user:create": "pnpm --filter @contextvault/db run bundle && node --env-file-if-exists=.env packages/db/dist/user-create.mjs",
     "db:check": "node scripts/checks/db-check.mjs"
   },
   "devDependencies": {

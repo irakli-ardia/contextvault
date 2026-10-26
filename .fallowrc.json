@@ -30,7 +30,7 @@
       { "from": "config", "allow": [] },
       { "from": "contracts", "allow": [] },
       { "from": "domain", "allow": [] },
-      { "from": "db", "allow": ["config", "domain"] },
+      { "from": "db", "allow": ["auth", "config", "domain"] },
       { "from": "ingestion", "allow": ["domain"] },
       { "from": "retrieval", "allow": ["domain"] },
       { "from": "ai", "allow": ["domain"] }
