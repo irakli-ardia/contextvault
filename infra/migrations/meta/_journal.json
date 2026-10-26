@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793023822356,
+      "tag": "0000_persistence_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793023822735,
+      "tag": "0001_rls_force_and_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793028004453,
+      "tag": "0002_workspace_created_at_server_owned",
+      "breakpoints": true
+    }
+  ]
+}

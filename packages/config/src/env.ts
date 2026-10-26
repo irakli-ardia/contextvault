@@ -11,6 +11,10 @@ export type BaseEnv = z.infer<typeof baseEnvSchema>;
 const databaseEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
+// Owner-role connection, read only by the explicit migration command, never by an app.
+const migrationEnvSchema = baseEnvSchema.extend({
+  DATABASE_MIGRATION_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+});
 const s3EnvSchema = baseEnvSchema.extend({
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
   S3_REGION: z.string().min(1).default("us-east-1"),
@@ -29,6 +33,7 @@ const workerEnvSchema = baseEnvSchema.extend({
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
+export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
 export type S3Env = z.infer<typeof s3EnvSchema>;
 
 type Source = Record<string, string | undefined>;
@@ -51,10 +56,13 @@ export const parseWorkerEnv = (source: Source): WorkerEnv => parseWith(workerEnv
 
 export const parseDatabaseEnv = (source: Source): DatabaseEnv =>
   parseWith(databaseEnvSchema, source);
+export const parseMigrationEnv = (source: Source): MigrationEnv =>
+  parseWith(migrationEnvSchema, source);
 export const parseS3Env = (source: Source): S3Env => parseWith(s3EnvSchema, source);
 
 export const loadEnv = (): BaseEnv => parseEnv(process.env);
 export const loadApiEnv = (): ApiEnv => parseApiEnv(process.env);
 export const loadWorkerEnv = (): WorkerEnv => parseWorkerEnv(process.env);
 export const loadDatabaseEnv = (): DatabaseEnv => parseDatabaseEnv(process.env);
+export const loadMigrationEnv = (): MigrationEnv => parseMigrationEnv(process.env);
 export const loadS3Env = (): S3Env => parseS3Env(process.env);

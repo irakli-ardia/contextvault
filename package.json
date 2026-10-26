@@ -25,7 +25,10 @@
     "infra:ps": "docker compose --env-file .env -f infra/compose.yaml ps",
     "infra:logs": "docker compose --env-file .env -f infra/compose.yaml logs --tail 100",
     "infra:reset": "docker compose --env-file .env -f infra/compose.yaml down --volumes",
-    "infra:smoke": "node scripts/checks/infra-smoke.mjs"
+    "infra:smoke": "node scripts/checks/infra-smoke.mjs",
+    "db:generate": "pnpm --filter @contextvault/db exec drizzle-kit generate",
+    "db:migrate": "pnpm --filter @contextvault/db run migrate",
+    "db:check": "node scripts/checks/db-check.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",

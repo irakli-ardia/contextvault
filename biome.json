@@ -47,6 +47,36 @@
       "linter": { "rules": { "style": { "noExcessiveLinesPerFile": "off" } } }
     },
     {
+      "includes": ["apps/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@contextvault/config": {
+                    "importNames": ["loadMigrationEnv", "parseMigrationEnv"],
+                    "message": "The owner-role migration URL is read only by the db:migrate command."
+                  }
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm", "drizzle-orm/**", "pg", "pg/**"],
+                    "message": "Only packages/db imports the ORM and the Postgres driver."
+                  },
+                  {
+                    "group": ["@contextvault/db/*", "**/packages/db/**"],
+                    "message": "Import @contextvault/db only through its entry point."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/domain/**", "packages/contracts/**"],
       "linter": {
         "rules": {
@@ -64,6 +94,8 @@
                       "@nestjs/**",
                       "drizzle-orm",
                       "drizzle-orm/**",
+                      "pg",
+                      "pg/**",
                       "bullmq",
                       "ioredis"
                     ],

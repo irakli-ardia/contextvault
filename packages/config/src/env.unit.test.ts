@@ -3,10 +3,12 @@ import {
   EnvError,
   loadDatabaseEnv,
   loadEnv,
+  loadMigrationEnv,
   loadS3Env,
   parseApiEnv,
   parseDatabaseEnv,
   parseEnv,
+  parseMigrationEnv,
   parseS3Env,
   parseWorkerEnv,
 } from "./env";
@@ -14,6 +16,7 @@ import {
 const SECRET = "s3cr3t-value-must-not-leak";
 
 const DATABASE = { DATABASE_URL: `postgres://app:${SECRET}@127.0.0.1:5432/db` };
+const MIGRATION = { DATABASE_MIGRATION_URL: `postgres://owner:${SECRET}@127.0.0.1:5432/db` };
 const S3 = {
   S3_ENDPOINT: "http://127.0.0.1:8333",
   S3_BUCKET: "bucket",
@@ -123,6 +126,12 @@ describe("app schemas stay independent of Postgres and S3", () => {
 
 describe.each([
   ["parseDatabaseEnv", parseDatabaseEnv, { NODE_ENV: "test", ...DATABASE }, Object.keys(DATABASE)],
+  [
+    "parseMigrationEnv",
+    parseMigrationEnv,
+    { NODE_ENV: "test", ...MIGRATION },
+    Object.keys(MIGRATION),
+  ],
   ["parseS3Env", parseS3Env, { NODE_ENV: "test", ...S3 }, Object.keys(S3)],
 ] as const)("%s", (_name, parse, valid, required) => {
   it("accepts the full set", () => {
@@ -146,6 +155,7 @@ describe("parseDatabaseEnv and parseS3Env malformed values", () => {
   it.each([
     [parseDatabaseEnv, DATABASE, "DATABASE_URL", `mysql://u:${SECRET}@h/db`],
     [parseDatabaseEnv, DATABASE, "DATABASE_URL", `not a url ${SECRET}`],
+    [parseMigrationEnv, MIGRATION, "DATABASE_MIGRATION_URL", `mysql://u:${SECRET}@h/db`],
     [parseS3Env, S3, "S3_ENDPOINT", `ftp://u:${SECRET}@h`],
     [parseS3Env, S3, "S3_ENDPOINT", `nonsense ${SECRET}`],
     [parseS3Env, S3, "S3_REGION", ""],
@@ -153,7 +163,7 @@ describe("parseDatabaseEnv and parseS3Env malformed values", () => {
     const run = () => parse({ NODE_ENV: "test", ...valid, [name]: value });
     expect(run).toThrow(new RegExp(`- ${name}:`));
     expect(run).not.toThrow(SECRET);
-    expect(run).not.toThrow(/postgres:|app:/);
+    expect(run).not.toThrow(/postgres:|app:|owner:/);
   });
 
   it("defaults S3_REGION to us-east-1 and honours an override", () => {
@@ -173,6 +183,8 @@ describe("loadDatabaseEnv and loadS3Env", () => {
     for (const [name, value] of Object.entries(S3)) vi.stubEnv(name, value);
     expect(loadDatabaseEnv().DATABASE_URL).toBe(DATABASE.DATABASE_URL);
     expect(loadS3Env().S3_BUCKET).toBe("bucket");
+    vi.stubEnv("DATABASE_MIGRATION_URL", MIGRATION.DATABASE_MIGRATION_URL);
+    expect(loadMigrationEnv().DATABASE_MIGRATION_URL).toBe(MIGRATION.DATABASE_MIGRATION_URL);
     vi.stubEnv("S3_ENDPOINT", `nonsense ${SECRET}`);
     expect(() => loadS3Env()).toThrow(EnvError);
     expect(() => loadS3Env()).not.toThrow(SECRET);
