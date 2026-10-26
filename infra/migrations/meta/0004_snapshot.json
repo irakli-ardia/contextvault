@@ -1,0 +1,466 @@
+{
+  "id": "1e5a6070-7729-4e09-80b5-0e6acf7e8d9a",
+  "prevId": "b7b8cf86-a9b0-4cdc-81ce-fbd8e1917e3f",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.memberships": {
+      "name": "memberships",
+      "schema": "",
+      "columns": {
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "memberships_user_id_idx": {
+          "name": "memberships_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "memberships_workspace_id_workspaces_id_fk": {
+          "name": "memberships_workspace_id_workspaces_id_fk",
+          "tableFrom": "memberships",
+          "columnsFrom": ["workspace_id"],
+          "tableTo": "workspaces",
+          "columnsTo": ["id"],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "memberships_user_id_users_id_fk": {
+          "name": "memberships_user_id_users_id_fk",
+          "tableFrom": "memberships",
+          "columnsFrom": ["user_id"],
+          "tableTo": "users",
+          "columnsTo": ["id"],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "memberships_workspace_id_user_id_pk": {
+          "name": "memberships_workspace_id_user_id_pk",
+          "columns": ["workspace_id", "user_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "memberships_select_own": {
+          "name": "memberships_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "\"memberships\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid\n        and (nullif(current_setting('app.workspace_id', true), '')::uuid is null or \"memberships\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid)"
+        },
+        "memberships_insert": {
+          "name": "memberships_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["contextvault_app"],
+          "withCheck": "(nullif(current_setting('app.workspace_id', true), '')::uuid is null or \"memberships\".\"workspace_id\" = nullif(current_setting('app.workspace_id', true), '')::uuid)\n        and (\n          (\"memberships\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid and \"memberships\".\"role\" = 'owner' and exists (\n            select 1 from \"workspaces\" w\n            where w.id = \"memberships\".\"workspace_id\"\n              and w.created_by = nullif(current_setting('app.user_id', true), '')::uuid and w.created_at = now()))\n          or exists (\n            select 1 from \"memberships\" actor\n            where actor.workspace_id = \"memberships\".\"workspace_id\" and actor.user_id = nullif(current_setting('app.user_id', true), '')::uuid\n              and (actor.role = 'owner' or (actor.role = 'admin' and \"memberships\".\"role\" <> 'owner')))\n        )"
+        }
+      },
+      "checkConstraints": {
+        "memberships_role": {
+          "name": "memberships_role",
+          "value": "\"memberships\".\"role\" in ('owner', 'admin', 'member')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sessions_user_id_idx": {
+          "name": "sessions_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "sessions_expires_at_idx": {
+          "name": "sessions_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "columnsFrom": ["user_id"],
+          "tableTo": "users",
+          "columnsTo": ["id"],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_token_hash_unique": {
+          "name": "sessions_token_hash_unique",
+          "columns": ["token_hash"],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "sessions_select_proof": {
+          "name": "sessions_select_proof",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "\"sessions\".\"token_hash\" = case\n  when current_setting('app.session_token_hash', true) ~ '^[0-9a-f]{64}$'\n  then decode(current_setting('app.session_token_hash', true), 'hex') end"
+        },
+        "sessions_select_own": {
+          "name": "sessions_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "\"sessions\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "sessions_insert_own": {
+          "name": "sessions_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["contextvault_app"],
+          "withCheck": "\"sessions\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "sessions_update_proof": {
+          "name": "sessions_update_proof",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["contextvault_app"],
+          "using": "\"sessions\".\"token_hash\" = case\n  when current_setting('app.session_token_hash', true) ~ '^[0-9a-f]{64}$'\n  then decode(current_setting('app.session_token_hash', true), 'hex') end",
+          "withCheck": "\"sessions\".\"token_hash\" = case\n  when current_setting('app.session_token_hash', true) ~ '^[0-9a-f]{64}$'\n  then decode(current_setting('app.session_token_hash', true), 'hex') end"
+        },
+        "sessions_update_own": {
+          "name": "sessions_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["contextvault_app"],
+          "using": "\"sessions\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid",
+          "withCheck": "\"sessions\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "sessions_delete_own_dead": {
+          "name": "sessions_delete_own_dead",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["contextvault_app"],
+          "using": "\"sessions\".\"user_id\" = nullif(current_setting('app.user_id', true), '')::uuid\n        and (\"sessions\".\"revoked_at\" is not null or \"sessions\".\"expires_at\" <= now())"
+        }
+      },
+      "checkConstraints": {
+        "sessions_token_hash_length": {
+          "name": "sessions_token_hash_length",
+          "value": "octet_length(\"sessions\".\"token_hash\") = 32"
+        },
+        "sessions_expires_after_created": {
+          "name": "sessions_expires_after_created",
+          "value": "\"sessions\".\"expires_at\" > \"sessions\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.user_credentials": {
+      "name": "user_credentials",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "password_changed_at": {
+          "name": "password_changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_credentials_user_id_users_id_fk": {
+          "name": "user_credentials_user_id_users_id_fk",
+          "tableFrom": "user_credentials",
+          "columnsFrom": ["user_id"],
+          "tableTo": "users",
+          "columnsTo": ["id"],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "user_credentials_select_login": {
+          "name": "user_credentials_select_login",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "exists (\n      select 1 from \"users\" u where u.id = \"user_credentials\".\"user_id\" and u.email = nullif(current_setting('app.login_email', true), ''))"
+        },
+        "user_credentials_update_login": {
+          "name": "user_credentials_update_login",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["contextvault_app"],
+          "using": "exists (\n      select 1 from \"users\" u where u.id = \"user_credentials\".\"user_id\" and u.email = nullif(current_setting('app.login_email', true), ''))",
+          "withCheck": "exists (\n      select 1 from \"users\" u where u.id = \"user_credentials\".\"user_id\" and u.email = nullif(current_setting('app.login_email', true), ''))"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "columns": ["email"],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {
+        "users_select_self": {
+          "name": "users_select_self",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "\"users\".\"id\" = nullif(current_setting('app.user_id', true), '')::uuid"
+        },
+        "users_select_login": {
+          "name": "users_select_login",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "\"users\".\"email\" = nullif(current_setting('app.login_email', true), '')"
+        }
+      },
+      "checkConstraints": {
+        "users_email_lowercase": {
+          "name": "users_email_lowercase",
+          "value": "\"users\".\"email\" = lower(\"users\".\"email\")"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.workspaces": {
+      "name": "workspaces",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workspaces_created_by_users_id_fk": {
+          "name": "workspaces_created_by_users_id_fk",
+          "tableFrom": "workspaces",
+          "columnsFrom": ["created_by"],
+          "tableTo": "users",
+          "columnsTo": ["id"],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "workspaces_select_member": {
+          "name": "workspaces_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["contextvault_app"],
+          "using": "(nullif(current_setting('app.workspace_id', true), '')::uuid is null or \"workspaces\".\"id\" = nullif(current_setting('app.workspace_id', true), '')::uuid)\n        and (\n          exists (select 1 from \"memberships\" m\n            where m.workspace_id = \"workspaces\".\"id\" and m.user_id = nullif(current_setting('app.user_id', true), '')::uuid)\n          or (\"workspaces\".\"created_by\" = nullif(current_setting('app.user_id', true), '')::uuid and \"workspaces\".\"created_at\" = now())\n        )"
+        },
+        "workspaces_insert_creator": {
+          "name": "workspaces_insert_creator",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["contextvault_app"],
+          "withCheck": "\"workspaces\".\"created_by\" = nullif(current_setting('app.user_id', true), '')::uuid\n        and (nullif(current_setting('app.workspace_id', true), '')::uuid is null or \"workspaces\".\"id\" = nullif(current_setting('app.workspace_id', true), '')::uuid)"
+        }
+      },
+      "checkConstraints": {
+        "workspaces_name_length": {
+          "name": "workspaces_name_length",
+          "value": "char_length(\"workspaces\".\"name\") between 1 and 120"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

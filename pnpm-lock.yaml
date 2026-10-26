@@ -273,6 +273,16 @@ importers:
         specifier: 0.23.2
         version: 0.23.2(tsx@4.23.15)(typescript@6.0.3)
 
+  packages/auth:
+    dependencies:
+      '@contextvault/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+
   packages/config:
     dependencies:
       zod:

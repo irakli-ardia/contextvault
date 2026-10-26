@@ -18,3 +18,12 @@ export function parseWorkspaceId(value: string): WorkspaceId {
   if (!isWorkspaceId(value)) throw new DomainError("id.invalid", "Invalid workspace id");
   return value;
 }
+
+export type SessionId = string & { readonly brand: "SessionId" };
+
+const isSessionId = (value: string): value is SessionId => isUuid(value);
+
+export function parseSessionId(value: string): SessionId {
+  if (!isSessionId(value)) throw new DomainError("id.invalid", "Invalid session id");
+  return value;
+}

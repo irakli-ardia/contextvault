@@ -77,6 +77,37 @@
       }
     },
     {
+      "includes": ["packages/auth/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "next",
+                      "next/**",
+                      "@nestjs/**",
+                      "express",
+                      "node:http",
+                      "node:https",
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "pg",
+                      "pg/**"
+                    ],
+                    "message": "packages/auth knows neither HTTP nor SQL: it adapts domain ports to Node crypto."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/domain/**", "packages/contracts/**"],
       "linter": {
         "rules": {
