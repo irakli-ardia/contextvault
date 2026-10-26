@@ -7,10 +7,12 @@
     "./testing": "./src/tenant-fixture.ts"
   },
   "scripts": {
+    "bundle": "tsdown",
     "migrate": "tsdown && node --env-file-if-exists=../../.env dist/migrate.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@contextvault/auth": "workspace:*",
     "@contextvault/config": "workspace:*",
     "@contextvault/domain": "workspace:*",
     "drizzle-orm": "0.45.4",

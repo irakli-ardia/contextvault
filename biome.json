@@ -112,6 +112,30 @@
       }
     },
     {
+      "includes": ["packages/db/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@contextvault/auth": "Persistence code never depends on the password hasher; only the operator entry point (user-create.ts) injects it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "packages/db/src/user-create.ts",
+        "packages/db/src/provisioning/test-harness.ts"
+      ],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    },
+    {
       "includes": ["packages/auth/**"],
       "linter": {
         "rules": {
