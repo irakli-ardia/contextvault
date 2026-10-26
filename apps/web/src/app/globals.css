@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Design tokens: documented in context/ui-tokens.md. Dark values follow the OS setting. */
+:root {
+  --canvas: #fafaf9;
+  --surface: #ffffff;
+  --ink: #1c1917;
+  --muted: #57534e;
+  --line: #e7e5e4;
+  --accent: #0f766e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0c0a09;
+    --surface: #1c1917;
+    --ink: #fafaf9;
+    --muted: #a8a29e;
+    --line: #292524;
+    --accent: #5eead4;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-card: 0.75rem;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
