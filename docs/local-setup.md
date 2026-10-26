@@ -31,6 +31,7 @@ node -v && pnpm -v                          # v24.22.1 and 12.15.0
 pnpm install --frozen-lockfile
 cp .env.example .env                        # development-only placeholders; never commit .env
 pnpm run infra:up                           # postgres, redis, s3; waits until healthy
+pnpm run db:migrate                         # create or update the schema (a deliberate step)
 pnpm run dev                                # web, api, and worker, in parallel
 ```
 
@@ -53,14 +54,15 @@ is unreachable; the API starts without any service because it opens no connectio
 | `NODE_ENV` | api, worker | `development`, `test`, or `production` |
 | `API_PORT` | api | integer 1-65535 |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
-| `DATABASE_URL` | none yet | `postgres://` or `postgresql://` URL |
+| `DATABASE_URL` | none yet | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
+| `DATABASE_MIGRATION_URL` | `db:migrate` only | `postgres://` or `postgresql://` URL; the schema owner |
 | `S3_ENDPOINT` | none yet | `http://` or `https://` URL |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | none yet | non-empty |
 | `S3_REGION` | none yet | optional, defaults to `us-east-1` |
 
-`DATABASE_URL` and `S3_*` have validated, tested parsers in `packages/config` (`loadDatabaseEnv`, `loadS3Env`)
+`DATABASE_URL`, `DATABASE_MIGRATION_URL`, and `S3_*` have validated, tested parsers in `packages/config` (`loadDatabaseEnv`, `loadMigrationEnv`, `loadS3Env`)
 for the M1 adapters, but no app requires them yet, so the API starts without Postgres or S3 settings and the
-worker without anything but Redis. `POSTGRES_*` and `REDIS_PASSWORD` are read by Docker Compose only. A
+worker without anything but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
 missing or malformed variable stops the process with a list of variable names and rules, never values:
 
 ```text
@@ -80,7 +82,8 @@ pnpm run arch           # fallow: import cycles and package boundaries
 pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
 pnpm run test               # unit, offline
-pnpm run test:integration   # API over HTTP in-process, plus Redis (needs `pnpm run infra:up` and `.env`)
+pnpm run db:check           # committed migrations match the Drizzle schema
+pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation (needs `infra:up`, `db:migrate`, `.env`)
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
@@ -107,11 +110,27 @@ pnpm run infra:smoke       # pgvector, Redis, S3 round trip, worker connect and 
 | `s3` | `chrislusf/seaweedfs:4.51` (single process, S3 gateway) | `127.0.0.1:8333` | `s3-data` | master `/dir/assign` and S3 `/status` |
 
 - Every port binds to loopback only. Credentials come from `.env`; Compose refuses to start when one is missing.
-- `infra/postgres/init.sql` enables the `vector` extension on first initialisation of an empty volume. No schema or migrations exist yet.
+- `infra/postgres/init.sql` enables the `vector` extension, and `infra/postgres/init-roles.sh` creates the application role `contextvault_app`, on first initialisation of an empty volume. **A volume created before this change has no application role: run `pnpm run infra:reset` (deletes local data), then `infra:up` and `db:migrate`.**
 - The S3 bucket (`S3_BUCKET`) is created by the smoke script; the application storage adapter will own that later.
 - `infra:up` can take about 30 seconds on a restart with existing data: SeaweedFS waits for its topology to load before accepting writes.
 - Ports 5432, 6379, and 8333 must be free; stop a local Postgres or Redis first.
 - Updating an image: change the tag and digest together (`docker buildx imagetools inspect <image:tag>`), then run `infra:smoke`.
+
+## Database
+
+PostgreSQL has two roles. `POSTGRES_USER` owns the schema and is used only by `pnpm run db:migrate`
+(`DATABASE_MIGRATION_URL`). Applications connect as `contextvault_app` (`DATABASE_URL`): it is not a superuser,
+owns no table, has no `BYPASSRLS`, cannot run DDL, and is limited to `SELECT` and `INSERT`. Row-level security
+policies scope every row to the user and workspace set for the current transaction.
+
+```bash
+pnpm run db:generate   # after editing packages/db/src/schema: writes SQL to infra/migrations; review it
+pnpm run db:migrate    # applies pending migrations; running it twice is a no-op
+pnpm run db:check      # fails if the schema and the migrations disagree
+```
+
+Migrations never run at API or worker startup. `DATABASE_MIGRATION_URL` belongs to the `db:migrate` command only: lint rejects reading it from `apps/*`, and a deployment should not provide it to the API or worker. Hand-written statements that Drizzle cannot generate
+(`FORCE ROW LEVEL SECURITY`, grants) go in a migration created with `drizzle-kit generate --custom`.
 
 ## Git hooks
 
@@ -123,7 +142,7 @@ node scripts/git/conventions.mjs install-hooks
 
 The `pre-push` hook runs `pnpm run typecheck`, so push from a shell where `node -v` prints `v24.22.1`.
 On another Node version, `engineStrict` makes the hook fail by design.
-The hook also runs the integration tests, so start the infrastructure first (`pnpm run infra:up`).
+The hook also applies migrations and runs the integration tests, so start the infrastructure first (`pnpm run infra:up`).
 
 ## Troubleshooting
 

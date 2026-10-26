@@ -14,7 +14,10 @@ if [ "$healthy" -ne 3 ]; then
   exit 1
 fi
 
+# Migrations are idempotent; integration tests need them applied.
+pnpm run db:migrate || exit 1
+
 # Every check is mandatory: a missing script is a failure, not a skip.
-for script in format:check lint arch dead-code typecheck test test:integration build test:e2e; do
+for script in format:check lint arch dead-code db:check typecheck test test:integration build test:e2e; do
   pnpm run "$script" || exit 1
 done

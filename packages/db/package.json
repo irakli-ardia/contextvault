@@ -1,0 +1,24 @@
+{
+  "name": "@contextvault/db",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "migrate": "tsdown && node --env-file-if-exists=../../.env dist/migrate.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@contextvault/config": "workspace:*",
+    "@contextvault/domain": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "tsdown": "0.23.2"
+  }
+}

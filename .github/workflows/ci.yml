@@ -67,12 +67,16 @@ jobs:
         run: pnpm run arch
       - name: Dead code
         run: pnpm run dead-code
+      - name: Migrations match schema
+        run: pnpm run db:check
       - name: Typecheck
         run: pnpm run typecheck
       - name: Unit tests
         run: pnpm run test
       - name: Start infrastructure
         run: pnpm run infra:up
+      - name: Migrate database
+        run: pnpm run db:migrate
       - name: Integration tests
         run: pnpm run test:integration
       - name: Build web

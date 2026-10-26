@@ -13,17 +13,19 @@
       { "name": "config", "patterns": ["packages/config/**"] },
       { "name": "contracts", "patterns": ["packages/contracts/**"] },
       { "name": "domain", "patterns": ["packages/domain/**"] },
+      { "name": "db", "patterns": ["packages/db/**"] },
       { "name": "ingestion", "patterns": ["packages/ingestion/**"] },
       { "name": "retrieval", "patterns": ["packages/retrieval/**"] },
       { "name": "ai", "patterns": ["packages/ai/**"] }
     ],
     "rules": [
       { "from": "web", "allow": ["config"] },
-      { "from": "api", "allow": ["config", "contracts", "domain", "retrieval", "ai"] },
-      { "from": "worker", "allow": ["config", "domain", "ingestion", "ai"] },
+      { "from": "api", "allow": ["config", "contracts", "db", "domain", "retrieval", "ai"] },
+      { "from": "worker", "allow": ["config", "db", "domain", "ingestion", "ai"] },
       { "from": "config", "allow": [] },
       { "from": "contracts", "allow": [] },
       { "from": "domain", "allow": [] },
+      { "from": "db", "allow": ["config", "domain"] },
       { "from": "ingestion", "allow": ["domain"] },
       { "from": "retrieval", "allow": ["domain"] },
       { "from": "ai", "allow": ["domain"] }

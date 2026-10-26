@@ -7,6 +7,10 @@ saveExact: true
 minimumReleaseAge: 1440
 allowBuilds:
   msgpackr-extract: false
+  # drizzle-kit (dev only) pulls esbuild; the postinstall is an optional binary self-check.
+  esbuild: false
 # GHSA-q7qp-rjg7-q26m: @nestjs/platform-express@12.2.0 pins multer 2.4.0. Drop once Nest ships multer >=2.5.0.
 overrides:
   multer@<2.5.0: 2.5.0
+  # GHSA-67mh-4wv8-2f99: drizzle-kit's legacy @esbuild-kit loader pins esbuild 0.18 (dev only). Drop once drizzle-kit stops using it.
+  esbuild@<0.25.0: 0.25.12
