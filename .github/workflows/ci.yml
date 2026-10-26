@@ -9,8 +9,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Only superseded PR pushes are cancelled; each master commit has its own group (and verdict),
+  # because a queued run in a shared group would be dropped.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   conventions:
@@ -89,3 +91,11 @@ jobs:
         run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Browser tests
         run: pnpm run test:e2e
+      - name: Upload browser traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
