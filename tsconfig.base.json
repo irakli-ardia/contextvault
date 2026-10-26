@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2024", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+    "lib": ["ES2024", "ESNext.Disposable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
@@ -9,6 +9,10 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
@@ -16,7 +20,7 @@
     "skipLibCheck": true,
     "allowJs": false,
     "noEmit": true,
-    "jsx": "react-jsx",
+    "types": [],
     "paths": {}
   }
 }
