@@ -22,6 +22,20 @@
       "when": 1793028004453,
       "tag": "0002_workspace_created_at_server_owned",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793030228199,
+      "tag": "0003_identity_credentials_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793030228562,
+      "tag": "0004_identity_rls_force_and_grants",
+      "breakpoints": true
     }
   ]
 }

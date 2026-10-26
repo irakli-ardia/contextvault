@@ -10,6 +10,7 @@
       { "name": "web", "patterns": ["apps/web/**"] },
       { "name": "api", "patterns": ["apps/api/**"] },
       { "name": "worker", "patterns": ["apps/worker/**"] },
+      { "name": "auth", "patterns": ["packages/auth/**"] },
       { "name": "config", "patterns": ["packages/config/**"] },
       { "name": "contracts", "patterns": ["packages/contracts/**"] },
       { "name": "domain", "patterns": ["packages/domain/**"] },
@@ -20,8 +21,12 @@
     ],
     "rules": [
       { "from": "web", "allow": ["config"] },
-      { "from": "api", "allow": ["config", "contracts", "db", "domain", "retrieval", "ai"] },
+      {
+        "from": "api",
+        "allow": ["auth", "config", "contracts", "db", "domain", "retrieval", "ai"]
+      },
       { "from": "worker", "allow": ["config", "db", "domain", "ingestion", "ai"] },
+      { "from": "auth", "allow": ["domain"] },
       { "from": "config", "allow": [] },
       { "from": "contracts", "allow": [] },
       { "from": "domain", "allow": [] },
