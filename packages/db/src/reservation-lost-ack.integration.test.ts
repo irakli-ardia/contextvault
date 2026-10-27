@@ -12,22 +12,28 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createPersistence } from "./persistence";
 import { createTenantFixture } from "./tenant-fixture";
 
-// A relay between the app and the real PostgreSQL that, once armed, forwards the next COMMIT and
-// then cuts the client side: the database commits, the application never hears of it.
+// A relay between the app and the real PostgreSQL that, once armed, forwards the next COMMIT,
+// swallows the database's answer and then cuts the client side: the database has committed (its
+// answer proves it), the application never hears of it. Cutting before that answer would let the
+// test read the table before PostgreSQL ran the COMMIT.
 function startRelay(target: URL) {
   let armed = false;
   const sockets = new Set<net.Socket>();
   const server = net.createServer((client) => {
     const upstream = net.connect({ host: target.hostname, port: Number(target.port) });
+    let swallowing = false;
     sockets.add(client).add(upstream);
     client.on("data", (data) => {
       upstream.write(data);
       if (armed && data.toString("latin1").toLowerCase().includes("commit")) {
         armed = false;
-        client.destroy();
+        swallowing = true;
       }
     });
-    upstream.pipe(client);
+    upstream.on("data", (data) => {
+      if (swallowing) client.destroy();
+      else client.write(data);
+    });
     for (const socket of [client, upstream]) {
       socket.on("error", () => undefined);
       socket.on("close", () => {
