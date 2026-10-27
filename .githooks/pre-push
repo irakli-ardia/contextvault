@@ -8,6 +8,10 @@ if [ ! -f .env ]; then
   echo "pre-push: .env is missing. Run: cp .env.example .env && pnpm run infra:up" >&2
   exit 1
 fi
+if [ ! -f .env.test ]; then
+  echo "pre-push: .env.test is missing. See docs/local-setup.md (Environment)." >&2
+  exit 1
+fi
 healthy=$(pnpm --silent run infra:ps --format '{{.Health}}' 2>/dev/null | grep -c '^healthy$')
 if [ "$healthy" -ne 3 ]; then
   echo "pre-push: local infrastructure is not healthy ($healthy of 3 services). Run: pnpm run infra:up" >&2
