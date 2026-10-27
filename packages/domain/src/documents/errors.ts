@@ -32,3 +32,31 @@ export class UploadConflict extends DomainError {
     super("upload.conflict", "Upload id already in use", options);
   }
 }
+
+export type UploadRejectionCode =
+  | "upload.invalid_name"
+  | "upload.unsupported_type"
+  | "upload.invalid_length"
+  | "upload.empty"
+  | "upload.too_large"
+  | "upload.content_mismatch"
+  | "upload.incomplete"
+  | "upload.quota_documents"
+  | "upload.quota_bytes"
+  | "storage.unavailable";
+
+/**
+ * Whether the pending-upload reservation was removed: `retained` means an object may still exist
+ * and the reservation stays discoverable for reconciliation (M1.4). Messages are fixed text.
+ */
+export type ReservationState = "none" | "released" | "retained";
+
+export class UploadRejected extends DomainError {
+  constructor(
+    override readonly code: UploadRejectionCode,
+    readonly reservation: ReservationState = "none",
+    options?: ErrorOptions,
+  ) {
+    super(code, "Upload rejected", options);
+  }
+}

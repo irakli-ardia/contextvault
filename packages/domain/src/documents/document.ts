@@ -35,3 +35,6 @@ export interface UploadQuota {
 }
 
 export const uploadQuota: UploadQuota = { maxDocuments: 50, maxBytes: 200 * 1024 * 1024 };
+
+/** Repeated from `packages/contracts` and the SQL check on purpose: the domain imports neither. */
+export const maxUploadBytes = 10 * 1024 * 1024;

@@ -75,3 +75,16 @@ export interface DocumentRepository {
   list(workspaceId: WorkspaceId, limit: number): Promise<readonly DocumentSummary[]>;
   findById(workspaceId: WorkspaceId, documentId: DocumentId): Promise<DocumentSummary | null>;
 }
+
+/** Incremental SHA-256; the domain does not import `node:crypto`, so an adapter supplies it. */
+export interface Sha256 {
+  update(chunk: Uint8Array): void;
+  /** 32 bytes. */
+  digest(): Uint8Array;
+}
+
+export interface UploadServices {
+  /** A fresh random UUID. */
+  newId(): string;
+  newSha256(): Sha256;
+}

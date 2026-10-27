@@ -4,19 +4,30 @@ export {
   documentMimes,
   isDocumentMime,
   isVersionStatus,
+  maxUploadBytes,
   type UploadQuota,
   uploadQuota,
   type VersionStatus,
   versionStatuses,
 } from "./documents/document";
 export {
+  type ReservationState,
   StorageError,
   type StorageErrorCode,
   UploadConflict,
+  UploadRejected,
+  type UploadRejectionCode,
   UploadReservationMissing,
 } from "./documents/errors";
+export { sanitizeFileName } from "./documents/filename";
 export type { DocumentStore, StoredObject } from "./documents/ports";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
+export {
+  type UploadDocumentCommand,
+  type UploadDocumentDeps,
+  type UploadDocumentResult,
+  uploadDocument,
+} from "./documents/upload-document";
 export type {
   DocumentRepository,
   FinalizeResult,
@@ -25,7 +36,9 @@ export type {
   QuotaRefusal,
   ReserveResult,
   ReserveUploadInput,
+  Sha256,
   UploadRepository,
+  UploadServices,
 } from "./documents/upload-ports";
 export { type Email, parseEmail } from "./identity/email";
 export { HashingBusy, InvalidCredentials, Unauthenticated } from "./identity/errors";
