@@ -190,7 +190,7 @@ export async function uploadDocument(
       ),
     );
   } catch (error) {
-    return settleFailedFinalize(deps, comp, documentId, error);
+    return { outcome: "created", document: await settleFailedFinalize(comp, documentId, error) };
   }
 
   if (finalized.outcome === "created") return finalized;

@@ -3,10 +3,10 @@ import type { TenantContext, UnitOfWork } from "../kernel/unit-of-work";
 import { type ReservationState, UploadRejected } from "./errors";
 import type { DocumentStore } from "./ports";
 import type { StorageKey } from "./storage-key";
-import type { UploadRepository } from "./upload-ports";
+import type { DocumentRepository, UploadRepository } from "./upload-ports";
 
 export interface Compensation {
-  readonly uow: UnitOfWork<{ uploads: UploadRepository }>;
+  readonly uow: UnitOfWork<{ uploads: UploadRepository; documents: DocumentRepository }>;
   readonly store: DocumentStore;
   readonly context: TenantContext;
   readonly workspaceId: WorkspaceId;

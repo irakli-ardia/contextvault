@@ -1,9 +1,9 @@
 import { DomainError, TransactionOutcomeUnknown } from "../kernel/errors";
 import type { DocumentId } from "../kernel/ids";
+import type { DocumentSummary } from "./document";
 import { StorageError, UploadConflict, UploadRejected } from "./errors";
 import type { DeadlineSignal } from "./ports";
 import { type Compensation, discardObject, unavailable } from "./upload-compensation";
-import type { UploadDocumentDeps, UploadDocumentResult } from "./upload-document";
 import type { Verification } from "./verified-body";
 
 // Returns only when the object provably landed (storage failed after the last byte but `head`
@@ -41,12 +41,12 @@ export async function settleFailedPut(
   }
 }
 
+// Returns the document only when the failed finalization is proven to have committed.
 export async function settleFailedFinalize(
-  deps: UploadDocumentDeps,
   comp: Compensation,
   documentId: DocumentId,
   error: unknown,
-): Promise<UploadDocumentResult> {
+): Promise<DocumentSummary> {
   // Ids or key already used: the object under this key may belong to someone else.
   if (error instanceof UploadConflict) {
     comp.retained();
@@ -54,14 +54,14 @@ export async function settleFailedFinalize(
   }
   // A failed commit can still have committed. The document id is this upload's alone, and the
   // document and its version are written in one transaction, so finding the id means ours committed.
-  const committed = await deps.uow
+  const committed = await comp.uow
     .run(comp.context, (r) => r.documents.findById(comp.workspaceId, documentId))
     .catch(() => undefined);
   if (committed === undefined) {
     comp.retained(); // unknown: keep object and reservation
     throw error;
   }
-  if (committed !== null) return { outcome: "created", document: committed };
+  if (committed !== null) return committed;
   // Not found is proof of a rollback only when the repository reported one (a DomainError). After
   // a lost connection or timeout a commit may still be in flight, invisible to this read; deleting
   // then could orphan a committed document, so object and reservation stay for reconciliation.

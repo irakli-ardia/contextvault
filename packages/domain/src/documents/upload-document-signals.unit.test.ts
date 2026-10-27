@@ -269,4 +269,29 @@ describe("reservation outcomes", () => {
     await uploadDocument(plain, command());
     expect(plain.timeouts).toEqual([10_000, 10_000]); // reserve, finalize
   });
+
+  it("bounds the commit-check read after a failed finalization", async () => {
+    const fx = fakeUpload();
+    fx.faults.finalize = "throw";
+    await uploadDocument({ ...fx, transactionTimeoutMs: 2_500 }, command()).catch(() => undefined);
+    expect(fx.timeouts).toEqual([2_500, 2_500, 2_500]); // reserve, finalize, commit check
+    const plain = fakeUpload();
+    plain.faults.finalize = "throw";
+    await uploadDocument(plain, command()).catch(() => undefined);
+    expect(plain.timeouts).toEqual([10_000, 10_000, 10_000]);
+  });
+
+  it.each([
+    ["the commit check times out", "throw"],
+    ["an unknown commit outcome and a failed commit check", "unknownCommit"],
+  ] as const)("%s: object and reservation are retained, nothing deleted", async (_n, finalize) => {
+    const fx = withHook(fakeUpload());
+    fx.faults.finalize = finalize;
+    fx.faults.readFails = true;
+    await expect(uploadDocument(fx, command())).rejects.toBeInstanceOf(Error);
+    expect(fx.log).not.toContain("delete");
+    expect(fx.objects.size).toBe(1);
+    expect(fx.reservations.size).toBe(1);
+    expect(fx.onRetained).toHaveBeenCalledTimes(1);
+  });
 });
