@@ -13,7 +13,8 @@ Run `chrislusf/seaweedfs` as a single container in S3 mode, pinned by digest, bo
 ## Consequences
 
 - Mature, actively maintained, Apache-2.0; one container.
-- Larger feature surface than a single-purpose store, and behavior differs from AWS S3 in details; presigned URLs and multipart upload are verified when the storage adapter is built.
+- M1.3b verified the adapter against it (streamed `PutObject` with an exact `Content-Length`, `HeadObject`, idempotent `DeleteObject`, aborted puts leave nothing, path-style addressing). Presigned URLs and multipart upload are not used: the plan forbids the first and the raw-body contract ([ADR 0009](0009-streaming-upload-transport.md)) removes the need for the second. Differences found: a missing bucket is created by the first authenticated `PutObject` unless the server runs with `-s3.autoCreateBucket=false`, which Compose now sets; `DeleteObject` of a missing key answers 204; conditional `If-None-Match: *` writes are atomic (412 on conflict, exactly one concurrent winner); `HeadBucket` answers 404 for a missing bucket; the SDK's default checksum trailer is unusable for streams (see the M1.3 plan).
+- Larger feature surface than a single-purpose store, and behavior differs from AWS S3 in details; presigned URLs and multipart upload are not used (see below).
 - If the smoke test cannot be kept passing, RustFS is the fallback (never both) and this record is superseded.
 
 ## Alternatives considered

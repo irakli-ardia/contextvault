@@ -60,11 +60,11 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; the schema owner. Never given to a running app |
-| `S3_ENDPOINT` | none yet | `http://` or `https://` URL |
-| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | none yet | non-empty |
-| `S3_REGION` | none yet | optional, defaults to `us-east-1` |
+| `S3_ENDPOINT` | api | bare `http://` or `https://` origin (no path, query, or credentials); `https` in production |
+| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | api | non-empty |
+| `S3_REGION` | api | optional, defaults to `us-east-1` |
 
-`S3_*` has a validated, tested parser in `packages/config` (`loadS3Env`) for the M1 adapters, but no app requires it yet, so the worker needs nothing but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
+The api requires `S3_*` at startup (the `DocumentStore` adapter, M1.3b); the worker needs nothing but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
 missing or malformed variable stops the process with a list of variable names and rules, never values:
 
 ```text
@@ -113,7 +113,7 @@ pnpm run infra:smoke       # pgvector, Redis, S3 round trip, worker connect and 
 
 - Every port binds to loopback only. Credentials come from `.env`; Compose refuses to start when one is missing.
 - `infra/postgres/init.sql` enables the `vector` extension, and `infra/postgres/init-roles.sh` creates the application role `contextvault_app`, on first initialisation of an empty volume. **A volume created before this change has no application role: run `pnpm run infra:reset` (deletes local data), then `infra:up` and `db:migrate`.**
-- The S3 bucket (`S3_BUCKET`) is created by the smoke script; the application storage adapter will own that later.
+- The S3 bucket (`S3_BUCKET`) is created by `pnpm run infra:up` (`scripts/infra-bucket.mjs`, idempotent) and nowhere else. The API checks once at start that the bucket exists and is accessible (`HeadBucket`) and refuses to start otherwise, logging `STORAGE_MISCONFIGURED` (missing bucket or refused credentials) or `STORAGE_UNAVAILABLE` (provider unreachable or failing), never the bucket name. It never creates a bucket or changes permissions: in production, create a private bucket first. SeaweedFS creates a missing bucket on an authenticated `PutObject` by default (spike S5), so Compose starts it with `-s3.autoCreateBucket=false`: a put to a missing bucket now fails with `NoSuchBucket` (`storage.rejected`), whether the bucket was mistyped or disappeared while the API runs. `infra-bucket.mjs` only issues a bucket PUT, refuses any non-loopback `S3_ENDPOINT`, and passes credentials to curl on stdin so they never appear in the process list or in an error. After pulling this change, `pnpm run infra:up` recreates the `s3` container (data and the bucket are kept).
 - `infra:up` can take about 30 seconds on a restart with existing data: SeaweedFS waits for its topology to load before accepting writes.
 - Ports 5432, 6379, and 8333 must be free; stop a local Postgres or Redis first.
 - Updating an image: change the tag and digest together (`docker buildx imagetools inspect <image:tag>`), then run `infra:smoke`.

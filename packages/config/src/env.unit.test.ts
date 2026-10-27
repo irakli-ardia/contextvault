@@ -30,6 +30,7 @@ const API = {
   API_HOST: "127.0.0.1",
   WEB_ORIGIN: "http://127.0.0.1:3000",
   ...DATABASE,
+  ...S3,
 };
 const WORKER = { NODE_ENV: "test", REDIS_URL: "redis://localhost:6379" };
 
@@ -105,7 +106,7 @@ describe("parseApiEnv", () => {
   );
 
   it("requires an https WEB_ORIGIN and explicit TRUSTED_PROXY_HOPS in production", () => {
-    const prod = { ...API, NODE_ENV: "production" };
+    const prod = { ...API, NODE_ENV: "production", S3_ENDPOINT: "https://s3.example.test" };
     expect(() => parseApiEnv({ ...prod, TRUSTED_PROXY_HOPS: "1" })).toThrow(/WEB_ORIGIN/);
     const secure = { ...prod, WEB_ORIGIN: "https://app.example.test" };
     expect(() => parseApiEnv(secure)).toThrow(/TRUSTED_PROXY_HOPS/);
@@ -171,16 +172,48 @@ describe("parseWorkerEnv", () => {
   );
 });
 
+describe("S3_ENDPOINT shape", () => {
+  it.each([
+    "http://127.0.0.1:8333/",
+    "http://127.0.0.1:8333/bucket",
+    "http://127.0.0.1:8333?x=1",
+    `http://user:${SECRET}@127.0.0.1:8333`,
+  ])("rejects %j as a non-bare origin without echoing it", (endpoint) => {
+    expect(() => parseS3Env({ NODE_ENV: "test", ...S3, S3_ENDPOINT: endpoint })).toThrow(
+      /S3_ENDPOINT/,
+    );
+    expect(() => parseS3Env({ NODE_ENV: "test", ...S3, S3_ENDPOINT: endpoint })).not.toThrow(
+      SECRET,
+    );
+  });
+
+  it("requires https in production, for the api too", () => {
+    const production = { NODE_ENV: "production", TRUSTED_PROXY_HOPS: "1" };
+    expect(() => parseS3Env({ ...S3, NODE_ENV: "production" })).toThrow(/S3_ENDPOINT/);
+    expect(() => parseApiEnv({ ...API, ...production, WEB_ORIGIN: "https://app.test" })).toThrow(
+      /S3_ENDPOINT/,
+    );
+    const https = { ...S3, S3_ENDPOINT: "https://s3.example.test", NODE_ENV: "production" };
+    expect(() => parseS3Env(https)).not.toThrow();
+  });
+});
+
 describe("app schemas stay independent of what they do not read", () => {
   it("the worker parses without DATABASE_URL or S3_*", () => {
     expect(parseWorkerEnv(WORKER)).toEqual(WORKER);
   });
 
-  it("api and worker ignore malformed S3_* values; the worker ignores DATABASE_URL", () => {
+  it("the worker ignores malformed DATABASE_URL and S3_* values", () => {
     const bad = { DATABASE_URL: "nonsense", S3_ENDPOINT: "nonsense", S3_BUCKET: "" };
-    expect(() => parseApiEnv({ ...API, S3_ENDPOINT: "nonsense", S3_BUCKET: "" })).not.toThrow();
     expect(() => parseWorkerEnv({ ...WORKER, ...bad })).not.toThrow();
   });
+
+  it.each(["S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"])(
+    "the api requires %s",
+    (name) => {
+      expect(() => parseApiEnv({ ...API, [name]: undefined })).toThrow(name);
+    },
+  );
 
   it("the api never reads the owner-role migration URL", () => {
     expect(parseApiEnv({ ...API, ...MIGRATION })).not.toHaveProperty("DATABASE_MIGRATION_URL");

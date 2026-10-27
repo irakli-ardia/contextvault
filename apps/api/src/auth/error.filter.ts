@@ -2,6 +2,7 @@ import {
   HashingBusy,
   InvalidCredentials,
   PermissionDenied,
+  StorageError,
   Unauthenticated,
   WorkspaceAccessDenied,
 } from "@contextvault/domain";
@@ -50,6 +51,13 @@ function classify(error: unknown): {
     return { status: 404, code: "not_found", headers: {} };
   if (error instanceof HashingBusy) {
     return { status: 429, code: "auth.throttled", headers: { "Retry-After": "1" } };
+  }
+  // Storage unreachable or refusing us is an operational failure, not a client error.
+  if (
+    error instanceof StorageError &&
+    ["storage.unavailable", "storage.rejected"].includes(error.code)
+  ) {
+    return { status: 503, code: "storage.unavailable", headers: {} };
   }
   if (error instanceof HttpException) return fromHttpException(error.getStatus());
   return { status: 500, code: "internal", headers: {} };

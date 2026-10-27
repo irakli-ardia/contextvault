@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { createPasswordHasher } from "@contextvault/auth";
-import { loadDatabaseEnv, parseApiEnv } from "@contextvault/config";
+import { loadDatabaseEnv, loadS3Env, parseApiEnv } from "@contextvault/config";
 import { createTenantFixture, type TenantFixture } from "@contextvault/db/testing";
 import { type PasswordHasher, parsePassword, type UserId } from "@contextvault/domain";
 import { NestFactory } from "@nestjs/core";
@@ -8,6 +8,11 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 import { AppModule } from "./app.module";
 import { configureApp } from "./configure-app";
+
+function s3Settings(): Record<string, string> {
+  const { NODE_ENV: _, ...s3 } = loadS3Env();
+  return s3;
+}
 
 export const webOrigin = "http://127.0.0.1:3000";
 export const password = "correct horse battery staple";
@@ -22,6 +27,7 @@ export async function startApi(
     API_HOST: "127.0.0.1",
     WEB_ORIGIN: webOrigin,
     DATABASE_URL: loadDatabaseEnv().DATABASE_URL,
+    ...s3Settings(),
     ...overrides,
   });
   const app = await NestFactory.create<NestExpressApplication>(AppModule.register(env, options), {

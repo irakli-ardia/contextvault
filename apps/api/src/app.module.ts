@@ -18,6 +18,7 @@ import { SessionGuard } from "./auth/session.guard";
 import { SessionCookies } from "./auth/session-cookies";
 import { WorkspaceGuard } from "./auth/workspace.guard";
 import { HealthController } from "./health/health.controller";
+import { storageProviders } from "./storage/storage.providers";
 import { WorkspacesController } from "./workspaces/workspaces.controller";
 
 @Module({})
@@ -28,6 +29,7 @@ export class AppModule implements NestModule {
       controllers: [HealthController, AuthController, WorkspacesController],
       providers: [
         ...authProviders(env, options.hasher),
+        ...storageProviders,
         AuthService,
         SessionCookies,
         // Order matters: origin (CSRF) first, then identity, then workspace membership.

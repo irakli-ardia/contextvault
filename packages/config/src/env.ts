@@ -6,8 +6,8 @@ const baseEnvSchema = z.object({
 
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 
-// Reusable fragments for the apps that first read them (M1 adapters). Neither api nor worker
-// requires these yet, so neither depends on Postgres or S3 settings it does not use.
+// Reusable fragments for the apps that read them. The worker needs neither Postgres nor S3 yet,
+// so it depends on no setting it does not use.
 const databaseEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
@@ -16,19 +16,35 @@ const databaseEnvSchema = baseEnvSchema.extend({
 const migrationEnvSchema = /* @__PURE__ */ baseEnvSchema.extend({
   DATABASE_MIGRATION_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
-const s3EnvSchema = baseEnvSchema.extend({
+const s3Fields = {
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
   S3_REGION: z.string().min(1).default("us-east-1"),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_SECRET_ACCESS_KEY: z.string().min(1),
-});
+};
+// The endpoint is a bare origin (no credentials, path, or query) so object keys are the only thing
+// that varies per request, and it is https in production. The adapter never creates the bucket.
+const refineS3 = (
+  env: { NODE_ENV: string; S3_ENDPOINT: string },
+  ctx: z.RefinementCtx<unknown>,
+): void => {
+  // Refinements also run when a field failed its own check, hence canParse.
+  if (!URL.canParse(env.S3_ENDPOINT) || env.S3_ENDPOINT !== new URL(env.S3_ENDPOINT).origin) {
+    ctx.addIssue({ code: "custom", path: ["S3_ENDPOINT"], message: "Must be a bare origin" });
+  }
+  if (env.NODE_ENV === "production" && !env.S3_ENDPOINT.startsWith("https://")) {
+    ctx.addIssue({ code: "custom", path: ["S3_ENDPOINT"], message: "Must be https in production" });
+  }
+};
+const s3EnvSchema = baseEnvSchema.extend(s3Fields).superRefine(refineS3);
 
 // API_HOST is an explicit bind address (no all-interfaces default). WEB_ORIGIN is the one origin
 // allowed to make unsafe requests: a bare origin, https in production. TRUSTED_PROXY_HOPS feeds
 // Express `trust proxy`; it has no production default because a wrong count makes the client
 // address spoofable.
 const apiEnvSchema = databaseEnvSchema
+  .extend(s3Fields)
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535),
     API_HOST: z.string().min(1),
@@ -40,6 +56,7 @@ const apiEnvSchema = databaseEnvSchema
       .optional(),
   })
   .superRefine((env, ctx) => {
+    refineS3(env, ctx);
     // Refinements also run when a field failed its own check, hence canParse.
     if (!URL.canParse(env.WEB_ORIGIN) || env.WEB_ORIGIN !== new URL(env.WEB_ORIGIN).origin) {
       ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "Must be a bare origin" });

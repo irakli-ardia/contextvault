@@ -209,6 +209,7 @@ describe("production settings", () => {
       NODE_ENV: "production",
       WEB_ORIGIN: origin,
       TRUSTED_PROXY_HOPS: "1",
+      S3_ENDPOINT: "https://s3.example.test",
     });
     try {
       const res = await prod.http

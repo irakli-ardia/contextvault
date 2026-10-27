@@ -27,3 +27,20 @@ export function parseSessionId(value: string): SessionId {
   if (!isSessionId(value)) throw new DomainError("id.invalid", "Invalid session id");
   return value;
 }
+
+export type DocumentId = string & { readonly brand: "DocumentId" };
+export type DocumentVersionId = string & { readonly brand: "DocumentVersionId" };
+
+const isDocumentId = (value: string): value is DocumentId => isUuid(value);
+const isDocumentVersionId = (value: string): value is DocumentVersionId => isUuid(value);
+
+export function parseDocumentId(value: string): DocumentId {
+  if (!isDocumentId(value)) throw new DomainError("id.invalid", "Invalid document id");
+  return value;
+}
+
+export function parseDocumentVersionId(value: string): DocumentVersionId {
+  if (!isDocumentVersionId(value))
+    throw new DomainError("id.invalid", "Invalid document version id");
+  return value;
+}

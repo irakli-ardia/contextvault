@@ -45,6 +45,10 @@ beforeAll(async () => {
     API_HOST: "127.0.0.1",
     WEB_ORIGIN: "http://127.0.0.1:3000",
     DATABASE_URL: "postgres://unused:unused@127.0.0.1:1/unused",
+    S3_ENDPOINT: "http://127.0.0.1:1",
+    S3_BUCKET: "unused",
+    S3_ACCESS_KEY_ID: "unused",
+    S3_SECRET_ACCESS_KEY: "unused",
   });
   app = await NestFactory.create<NestExpressApplication>(ProbeModule, { logger: false });
   configureApp(app, env);

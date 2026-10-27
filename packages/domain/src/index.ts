@@ -1,3 +1,6 @@
+export { StorageError, type StorageErrorCode } from "./documents/errors";
+export type { DocumentStore, StoredObject } from "./documents/ports";
+export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
 export { type Email, parseEmail } from "./identity/email";
 export { HashingBusy, InvalidCredentials, Unauthenticated } from "./identity/errors";
 export { type LoginDeps, type LoginInput, login } from "./identity/login";
@@ -31,6 +34,10 @@ export {
 } from "./identity/tokens";
 export { DomainError } from "./kernel/errors";
 export {
+  type DocumentId,
+  type DocumentVersionId,
+  parseDocumentId,
+  parseDocumentVersionId,
   parseSessionId,
   parseUserId,
   parseWorkspaceId,
