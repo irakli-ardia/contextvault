@@ -23,7 +23,13 @@ export interface Reservation {
 function inspect(workspaceId: string): { documents: Stored[]; pending: Reservation[] } {
   const out = execFileSync(
     "node",
-    ["--env-file-if-exists=.env", "packages/db/dist/e2e-accounts.mjs", "inspect", workspaceId],
+    [
+      "--env-file-if-exists=.env",
+      "--env-file-if-exists=.env.test",
+      "packages/db/dist/e2e-accounts.mjs",
+      "inspect",
+      workspaceId,
+    ],
     { cwd: process.cwd(), encoding: "utf8" },
   );
   return JSON.parse(out)[0];

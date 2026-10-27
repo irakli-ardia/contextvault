@@ -49,6 +49,7 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 
 `api` and `worker` read their variables through `packages/config`, the only module that touches `process.env`.
 `.env.example` is the committed contract; `.env` (gitignored) is loaded by the dev scripts and by `test:integration`.
+Test-only credentials live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. Nothing requires it yet: copy it only when a command asks for it.
 
 | Variable | Read by | Rule |
 | --- | --- | --- |
@@ -60,6 +61,8 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; the schema owner. Never given to a running app |
+| `DATABASE_FIXTURE_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; seeds and cleanup. Refused when `NODE_ENV=production`; never falls back to `DATABASE_URL` |
+| `DATABASE_BOOTSTRAP_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; superuser for catalog probes only. Same rules as above |
 | `S3_ENDPOINT` | api | bare `http://` or `https://` origin (no path, query, or credentials); `https` in production |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | api | non-empty |
 | `S3_REGION` | api | optional, defaults to `us-east-1` |

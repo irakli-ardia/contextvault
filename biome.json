@@ -57,8 +57,15 @@
               "options": {
                 "paths": {
                   "@contextvault/config": {
-                    "importNames": ["loadMigrationEnv", "parseMigrationEnv"],
-                    "message": "The owner-role migration URL is read only by the db:migrate command."
+                    "importNames": [
+                      "loadMigrationEnv",
+                      "parseMigrationEnv",
+                      "loadFixtureEnv",
+                      "parseFixtureEnv",
+                      "loadBootstrapEnv",
+                      "parseBootstrapEnv"
+                    ],
+                    "message": "Owner, fixture, and bootstrap URLs belong to db:migrate and test tooling, never to an app."
                   }
                 },
                 "patterns": [
@@ -87,8 +94,15 @@
               "options": {
                 "paths": {
                   "@contextvault/config": {
-                    "importNames": ["loadMigrationEnv", "parseMigrationEnv"],
-                    "message": "The owner-role migration URL is read only by the db:migrate command."
+                    "importNames": [
+                      "loadMigrationEnv",
+                      "parseMigrationEnv",
+                      "loadFixtureEnv",
+                      "parseFixtureEnv",
+                      "loadBootstrapEnv",
+                      "parseBootstrapEnv"
+                    ],
+                    "message": "Owner, fixture, and bootstrap URLs belong to db:migrate and test tooling, never to an app."
                   }
                 },
                 "patterns": [

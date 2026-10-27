@@ -12,7 +12,12 @@ export interface Account {
 function seeder(args: string[]): string {
   return execFileSync(
     "node",
-    ["--env-file-if-exists=.env", "packages/db/dist/e2e-accounts.mjs", ...args],
+    [
+      "--env-file-if-exists=.env",
+      "--env-file-if-exists=.env.test",
+      "packages/db/dist/e2e-accounts.mjs",
+      ...args,
+    ],
     { cwd: process.cwd(), encoding: "utf8" },
   );
 }

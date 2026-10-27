@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Keeps the public repository independent of local-only files:
-//   - no tracked assistant/planning files, environment files (except .env.example), or key material
+//   - no tracked assistant/planning files, environment files (except .env.example and .env.test.example), or key material
 //   - no tracked text file that refers to a local-only file
 //
 //   tracked-files.mjs [--root <dir>]
@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const FORBIDDEN_PATH =
-  /^context\/|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.agents\/)|(^|\/)\.env(?!\.example$)[^/]*$|\.(pem|key)$/;
+  /^context\/|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.agents\/)|(^|\/)\.env(?!\.(test\.)?example$)[^/]*$|\.(pem|key)$/;
 const LOCAL_REFERENCE = /(^|[^\w./-])(context\/|AGENTS\.md|CLAUDE\.md|PLAN\.md|memory\.md)/;
 // This file names the patterns it enforces.
 const REFERENCE_ALLOWLIST = new Set(["scripts/checks/tracked-files.mjs"]);

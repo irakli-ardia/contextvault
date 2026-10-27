@@ -16,6 +16,23 @@ const databaseEnvSchema = baseEnvSchema.extend({
 const migrationEnvSchema = /* @__PURE__ */ baseEnvSchema.extend({
   DATABASE_MIGRATION_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
+// Test-tooling connections (.env.test, never .env): a fixture role for seeds and cleanup, and a
+// bootstrap superuser for catalog probes. Each loader returns only its URL, never falls back to
+// DATABASE_URL, and refuses production, so a stray copy of these credentials cannot run an app.
+const refuseProduction = (env: { NODE_ENV: string }, ctx: z.RefinementCtx<unknown>): void => {
+  if (env.NODE_ENV === "production") {
+    ctx.addIssue({ code: "custom", path: ["NODE_ENV"], message: "Refused in production" });
+  }
+};
+const postgresUrl = z.url({ protocol: /^postgres(ql)?$/ });
+const fixtureEnvSchema = /* @__PURE__ */ baseEnvSchema
+  .extend({ DATABASE_FIXTURE_URL: postgresUrl })
+  .superRefine(refuseProduction)
+  .transform((env) => ({ DATABASE_FIXTURE_URL: env.DATABASE_FIXTURE_URL }));
+const bootstrapEnvSchema = /* @__PURE__ */ baseEnvSchema
+  .extend({ DATABASE_BOOTSTRAP_URL: postgresUrl })
+  .superRefine(refuseProduction)
+  .transform((env) => ({ DATABASE_BOOTSTRAP_URL: env.DATABASE_BOOTSTRAP_URL }));
 const s3Fields = {
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
   S3_REGION: z.string().min(1).default("us-east-1"),
@@ -100,6 +117,8 @@ export type WebEnv = z.infer<typeof webEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
 export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
+export type FixtureEnv = z.infer<typeof fixtureEnvSchema>;
+export type BootstrapEnv = z.infer<typeof bootstrapEnvSchema>;
 export type S3Env = z.infer<typeof s3EnvSchema>;
 
 type Source = Record<string, string | undefined>;
@@ -125,6 +144,9 @@ export const parseDatabaseEnv = (source: Source): DatabaseEnv =>
   parseWith(databaseEnvSchema, source);
 export const parseMigrationEnv = (source: Source): MigrationEnv =>
   parseWith(migrationEnvSchema, source);
+export const parseFixtureEnv = (source: Source): FixtureEnv => parseWith(fixtureEnvSchema, source);
+export const parseBootstrapEnv = (source: Source): BootstrapEnv =>
+  parseWith(bootstrapEnvSchema, source);
 export const parseS3Env = (source: Source): S3Env => parseWith(s3EnvSchema, source);
 
 export const loadEnv = (): BaseEnv => parseEnv(process.env);
@@ -134,3 +156,5 @@ export const loadWorkerEnv = (): WorkerEnv => parseWorkerEnv(process.env);
 export const loadDatabaseEnv = (): DatabaseEnv => parseDatabaseEnv(process.env);
 export const loadMigrationEnv = (): MigrationEnv => parseMigrationEnv(process.env);
 export const loadS3Env = (): S3Env => parseS3Env(process.env);
+export const loadFixtureEnv = (): FixtureEnv => parseFixtureEnv(process.env);
+export const loadBootstrapEnv = (): BootstrapEnv => parseBootstrapEnv(process.env);

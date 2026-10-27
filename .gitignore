@@ -10,10 +10,11 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 
-# environment — .env.example is the committed contract
+# environment — .env.example and .env.test.example are the committed contracts
 .env
 .env.*
 !.env.example
+!.env.test.example
 
 # local tooling
 .DS_Store
