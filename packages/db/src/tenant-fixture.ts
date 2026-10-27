@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { parseUserId, parseWorkspaceId, type UserId, type WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
+import { deleteAccounts } from "./account-cleanup";
 import { createPersistence, type Persistence } from "./persistence";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
 
@@ -136,9 +137,7 @@ export async function createTenantFixture(poolSize = 4): Promise<TenantFixture> 
     },
     async close() {
       try {
-        await fixture.query("delete from workspaces where created_by = any($1)", [users]);
-        await fixture.query("delete from memberships where user_id = any($1)", [users]);
-        await fixture.query("delete from users where id = any($1)", [users]);
+        await deleteAccounts(fixture, users);
       } finally {
         await Promise.all([persistence.close(), rawApp.end(), fixture.end()]);
       }

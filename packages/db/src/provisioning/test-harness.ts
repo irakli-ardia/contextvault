@@ -8,6 +8,7 @@ import {
   parseSessionId,
   parseUserId,
 } from "@contextvault/domain";
+import { deleteAccounts } from "../account-cleanup";
 import { createDatabase } from "../client";
 import { createTenantFixture } from "../tenant-fixture";
 import { createEnsureWorkspace, type EnsureWorkspace } from "./ensure-workspace";
@@ -99,16 +100,20 @@ export async function provisioningHarness() {
       };
     },
     async close() {
-      const ids = (
-        await fx.fixture.query<{ id: string }>("select id from users where email = any($1)", [
-          emails,
-        ])
-      ).rows.map((r) => r.id);
-      await fx.fixture.query("delete from workspaces where created_by = any($1)", [ids]);
-      await fx.fixture.query("delete from memberships where user_id = any($1)", [ids]);
-      await fx.fixture.query("delete from users where id = any($1)", [ids]);
-      await Promise.all([owner.close(), app.close()]);
-      await fx.close();
+      try {
+        const ids = (
+          await fx.fixture.query<{ id: string }>("select id from users where email = any($1)", [
+            emails,
+          ])
+        ).rows.map((r) => r.id);
+        await deleteAccounts(fx.fixture, ids);
+      } finally {
+        try {
+          await Promise.all([owner.close(), app.close()]);
+        } finally {
+          await fx.close();
+        }
+      }
     },
   };
 }

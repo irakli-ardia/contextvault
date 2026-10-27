@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { assertArgon2Runtime, createPasswordHasher } from "@contextvault/auth";
-import { loadEnv, loadMigrationEnv } from "@contextvault/config";
-import { sql } from "drizzle-orm";
-import { createDatabase } from "./client";
+import { loadEnv, loadFixtureEnv } from "@contextvault/config";
+import pg from "pg";
+import { deleteAccounts } from "./account-cleanup";
 import { openOps } from "./provisioning/open-ops";
 
 // Browser-test fixtures, run by Playwright as a child process (never imported by an app):
@@ -34,65 +34,68 @@ async function create(count: number): Promise<void> {
   console.log(JSON.stringify(accounts));
 }
 
-async function remove(emails: string[]): Promise<void> {
-  if (!emails.every((email) => emailPattern.test(email))) throw new Error("Not an e2e account");
-  const owner = createDatabase({
-    connectionString: loadMigrationEnv().DATABASE_MIGRATION_URL,
-    poolSize: 1,
-  });
+// Fixture DML and reads run on DATABASE_FIXTURE_URL (no fallback); `create` goes through
+// openOps, which keeps the provisioning path on the migration role.
+async function withFixture<T>(work: (pool: pg.Pool) => Promise<T>): Promise<T> {
+  const pool = new pg.Pool({ connectionString: loadFixtureEnv().DATABASE_FIXTURE_URL, max: 1 });
+  pool.on("error", () => undefined);
   try {
-    const list = sql.join(
-      emails.map((email) => sql`${email}`),
-      sql`, `,
-    );
-    const ids = sql`(select id from users where email in (${list}))`;
-    await owner.db.execute(sql`delete from memberships where user_id in ${ids}`);
-    await owner.db.execute(sql`delete from workspaces where created_by in ${ids}`);
-    await owner.db.execute(sql`delete from users where email in (${list})`);
+    return await work(pool);
   } finally {
-    await owner.close();
+    await pool.end();
   }
 }
 
-// Read-only views for browser tests that must see the database, not just HTTP answers.
-async function query(text: ReturnType<typeof sql>): Promise<void> {
-  const owner = createDatabase({
-    connectionString: loadMigrationEnv().DATABASE_MIGRATION_URL,
-    poolSize: 1,
+async function remove(emails: string[]): Promise<void> {
+  if (!emails.every((email) => emailPattern.test(email))) throw new Error("Not an e2e account");
+  await withFixture(async (pool) => {
+    const { rows } = await pool.query<{ id: string }>(
+      "select id from users where email = any($1)",
+      [emails],
+    );
+    // deleteAccounts only knows the ids it is given, so a missing account is caught here.
+    if (rows.length !== new Set(emails).size) throw new Error("E2E account missing");
+    await deleteAccounts(
+      pool,
+      rows.map((row) => row.id),
+    );
   });
-  try {
-    console.log(JSON.stringify((await owner.db.execute(text)).rows));
-  } finally {
-    await owner.close();
-  }
+}
+
+// Read-only views for browser tests that must see the database, not just HTTP answers.
+function query(text: string, values: unknown[]): Promise<void> {
+  return withFixture(async (pool) => {
+    console.log(JSON.stringify((await pool.query(text, values)).rows));
+  });
 }
 
 const uuidPattern = /^[0-9a-f-]{36}$/;
 
 function inspect(workspaceId: string): Promise<void> {
   if (!uuidPattern.test(workspaceId)) throw new Error("Not a workspace id");
-  return query(sql`select
+  return query(
+    `select
     (select coalesce(json_agg(json_build_object('id', d.id, 'displayName', d.display_name,
        'mime', d.mime, 'sizeBytes', d.size_bytes, 'sha256', encode(d.content_sha256, 'hex'),
        'status', v.status, 'storageKey', v.storage_key) order by d.created_at), '[]'::json)
      from documents d join document_versions v on v.document_id = d.id
-     where d.workspace_id = ${workspaceId}::uuid) as documents,
+     where d.workspace_id = $1::uuid) as documents,
     (select coalesce(json_agg(json_build_object('id', p.id, 'storageKey', p.storage_key,
        'declaredBytes', p.declared_bytes)), '[]'::json)
-     from pending_uploads p where p.workspace_id = ${workspaceId}::uuid) as pending`);
+     from pending_uploads p where p.workspace_id = $1::uuid) as pending`,
+    [workspaceId],
+  );
 }
 
 function keys(emails: string[]): Promise<void> {
   if (!emails.every((email) => emailPattern.test(email))) throw new Error("Not an e2e account");
-  const list = sql.join(
-    emails.map((email) => sql`${email}`),
-    sql`, `,
+  const owned =
+    "select id from workspaces where created_by in (select id from users where email = any($1))";
+  return query(
+    `select storage_key as key from document_versions where workspace_id in (${owned})
+     union select storage_key from pending_uploads where workspace_id in (${owned})`,
+    [emails],
   );
-  return query(sql`
-    select storage_key as key from document_versions
-      where workspace_id in (select id from workspaces where created_by in (select id from users where email in (${list})))
-    union select storage_key from pending_uploads
-      where workspace_id in (select id from workspaces where created_by in (select id from users where email in (${list})))`);
 }
 
 function run(): Promise<void> {
