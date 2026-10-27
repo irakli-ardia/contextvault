@@ -11,7 +11,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTenantFixture, sqlState } from "./tenant-fixture";
 
-const fx = createTenantFixture();
+const fx = await createTenantFixture();
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
 
 // u1 owns A, u2 owns B, u3 belongs to both.
@@ -201,6 +201,6 @@ describe("database constraints", () => {
   ];
 
   it.each(violations)("rejects %s", async (_name, statement, values, code) => {
-    expect(await sqlState(fx.owner.query(statement, values()))).toBe(code);
+    expect(await sqlState(fx.fixture.query(statement, values()))).toBe(code);
   });
 });

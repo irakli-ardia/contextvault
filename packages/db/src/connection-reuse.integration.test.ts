@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createTenantFixture } from "./tenant-fixture";
 
 // Pool size 1: every transaction reuses the same physical connection.
-const fx = createTenantFixture(1);
+const fx = await createTenantFixture(1);
 afterAll(() => fx.close());
 
 describe("connection reuse", () => {
@@ -52,7 +52,7 @@ describe("unit of work", () => {
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
-    const left = await fx.owner.query("select 1 from workspaces where id = $1", [id]);
+    const left = await fx.fixture.query("select 1 from workspaces where id = $1", [id]);
     expect(left.rowCount).toBe(0);
     expect(await run({ userId: user }, (r) => r.workspaces.listForUser(user))).toEqual([]);
   });

@@ -8,7 +8,7 @@ import { provisionAccount } from "./provision-account";
 import { resetPassword } from "./reset-password";
 import { password, provisioningHarness } from "./test-harness";
 
-const h = provisioningHarness();
+const h = await provisioningHarness();
 afterAll(() => h.close());
 
 function capture(answers: string[]) {
@@ -107,7 +107,7 @@ describe("resuming with a different workspace name", () => {
     expect(again.lines).toEqual([
       `Created ${email} and kept its existing workspace "First" (--workspace-name "Second" was not applied) (completed an interrupted earlier run).`,
     ]);
-    const rows = await h.fx.owner.query("select name from workspaces where created_by = $1", [
+    const rows = await h.fx.fixture.query("select name from workspaces where created_by = $1", [
       await h.idOf(email),
     ]);
     expect(rows.rows).toEqual([{ name: "First" }]);

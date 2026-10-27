@@ -22,7 +22,7 @@ import {
   upload,
 } from "./upload-support";
 
-const fx = createTenantFixture(6);
+const fx = await createTenantFixture(6);
 let api: Api;
 let ada: { account: Account; workspaceId: string; token: string };
 let bea: { account: Account; workspaceId: string; token: string };
@@ -59,7 +59,7 @@ describe("a valid upload", () => {
       status: "uploaded",
     });
     const [row] = (
-      await fx.owner.query(
+      await fx.fixture.query(
         "select d.content_sha256, v.storage_key, v.status from documents d join document_versions v on v.document_id = d.id where d.id = $1",
         [res.json.id],
       )
@@ -92,7 +92,7 @@ describe("duplicates and isolation", () => {
     expect([a.status, b.status]).toEqual([201, 201]);
     expect(b.json.id).not.toBe(a.json.id);
     const [{ n }] = (
-      await fx.owner.query(
+      await fx.fixture.query(
         "select count(*)::int n from documents where content_sha256 = decode($1, 'hex')",
         [sha256(body)],
       )

@@ -24,7 +24,7 @@ interface Member {
   workspaceId: string;
   token: string;
 }
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 const apis: Api[] = [];
 let api: Api;
 let members: Member[];

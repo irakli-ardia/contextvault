@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { finalizeInput, newUpload, reserveInput, roomy, seedDocument } from "./document-fixture";
 import { createTenantFixture } from "./tenant-fixture";
 
-const fx = createTenantFixture(12);
+const fx = await createTenantFixture(12);
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
 
 let user: UserId;
@@ -78,7 +78,7 @@ describe("finalize", () => {
 
     expect(await run(inWs(w), (r) => r.documents.list(w, 50))).toEqual([]);
     expect(
-      (await fx.owner.query("select 1 from document_versions where workspace_id = $1", [w]))
+      (await fx.fixture.query("select 1 from document_versions where workspace_id = $1", [w]))
         .rowCount,
     ).toBe(0);
   });
@@ -117,7 +117,9 @@ describe("finalize", () => {
     const inB = await seedDocument(fx, b, user, "shared");
     expect(inB.documentId).not.toBe(inA.documentId);
 
-    await fx.owner.query("update documents set deleted_at = now() where id = $1", [inA.documentId]);
+    await fx.fixture.query("update documents set deleted_at = now() where id = $1", [
+      inA.documentId,
+    ]);
     expect(await run(inWs(a), (r) => r.documents.list(a, 50))).toEqual([]);
     expect(await run(inWs(a), (r) => r.documents.findById(a, inA.documentId))).toBeNull();
     const again = await seedDocument(fx, a, user, "shared");

@@ -13,7 +13,7 @@ import {
   webOrigin,
 } from "../test-support";
 
-type TenantFixture = ReturnType<typeof createTenantFixture>;
+type TenantFixture = Awaited<ReturnType<typeof createTenantFixture>>;
 
 /** `startApi` only initialises; the raw client needs a socket. */
 export const listen = (api: Api) => api.app.listen(0, "127.0.0.1");
@@ -123,8 +123,11 @@ export interface Rows {
 export async function rows(fx: TenantFixture, workspaceId: string): Promise<Rows> {
   const count = async (table: string) =>
     Number(
-      (await fx.owner.query(`select count(*) from ${table} where workspace_id = $1`, [workspaceId]))
-        .rows[0].count,
+      (
+        await fx.fixture.query(`select count(*) from ${table} where workspace_id = $1`, [
+          workspaceId,
+        ])
+      ).rows[0].count,
     );
   return {
     documents: await count("documents"),
@@ -136,7 +139,7 @@ export async function rows(fx: TenantFixture, workspaceId: string): Promise<Rows
 export const store = (api: Api): DocumentStore => api.app.get(DOCUMENT_STORE);
 
 export async function storedKeys(fx: TenantFixture, workspaceId: string): Promise<StorageKey[]> {
-  const found = await fx.owner.query(
+  const found = await fx.fixture.query(
     "select storage_key from document_versions where workspace_id = $1 union select storage_key from pending_uploads where workspace_id = $1",
     [workspaceId],
   );
@@ -160,9 +163,9 @@ export function captureLogs() {
 /** Removes a workspace's objects and document rows (test cleanup; the bucket is shared). */
 export async function purge(api: Api, fx: TenantFixture, workspaceId: string): Promise<void> {
   for (const key of await storedKeys(fx, workspaceId)) await store(api).delete(key);
-  await fx.owner.query("delete from pending_uploads where workspace_id = $1", [workspaceId]);
-  await fx.owner.query("delete from document_versions where workspace_id = $1", [workspaceId]);
-  await fx.owner.query("delete from documents where workspace_id = $1", [workspaceId]);
+  await fx.fixture.query("delete from pending_uploads where workspace_id = $1", [workspaceId]);
+  await fx.fixture.query("delete from document_versions where workspace_id = $1", [workspaceId]);
+  await fx.fixture.query("delete from documents where workspace_id = $1", [workspaceId]);
 }
 
 /** A value that must exist (indexed access under `noUncheckedIndexedAccess`). */

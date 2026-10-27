@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createTenantFixture, sqlState } from "./tenant-fixture";
 
-const fx = createTenantFixture(1);
+const fx = await createTenantFixture(1);
 afterAll(() => fx.close());
 
 describe("application role", () => {

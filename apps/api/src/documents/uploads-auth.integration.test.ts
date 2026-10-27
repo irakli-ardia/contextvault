@@ -8,7 +8,7 @@ import {
 } from "../test-support";
 import { listen, pdfBytes, purge, rows, signedIn, startUpload, upload } from "./upload-support";
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 let api: Api;
 let ada: { account: Account; workspaceId: string; token: string };
 let bea: { account: Account; workspaceId: string; token: string };
@@ -61,7 +61,7 @@ describe("upload authentication and authorization", () => {
       401,
       "auth.unauthenticated",
     );
-    await fx.owner.query("update sessions set revoked_at = now() where user_id = $1", [
+    await fx.fixture.query("update sessions set revoked_at = now() where user_id = $1", [
       bea.account.id,
     ]);
     refused(
@@ -96,13 +96,13 @@ describe("upload authentication and authorization", () => {
 
   it("stops a revoked member from uploading", async () => {
     const carl = await signedIn(api, fx, () => seedAccount(fx));
-    await fx.owner.query(
+    await fx.fixture.query(
       "insert into memberships (workspace_id, user_id, role) values ($1, $2, 'member')",
       [ada.workspaceId, carl.account.id],
     );
     const options = { token: carl.token, workspaceId: ada.workspaceId };
     expect((await upload(api, options, body)).status).toBe(201);
-    await fx.owner.query("delete from memberships where workspace_id = $1 and user_id = $2", [
+    await fx.fixture.query("delete from memberships where workspace_id = $1 and user_id = $2", [
       ada.workspaceId,
       carl.account.id,
     ]);
@@ -125,7 +125,7 @@ describe("upload authentication and authorization", () => {
     const res = await sending.result;
     expect(res.status).toBe(201);
     const [row] = (
-      await fx.owner.query(
+      await fx.fixture.query(
         "select d.created_by, v.storage_key from documents d join document_versions v on v.document_id = d.id where d.id = $1",
         [res.json.id],
       )

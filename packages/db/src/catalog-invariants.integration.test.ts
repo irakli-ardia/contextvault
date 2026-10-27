@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import type pg from "pg";
+import { loadBootstrapEnv, loadDatabaseEnv } from "@contextvault/config";
+import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
-import { createTenantFixture } from "./tenant-fixture";
 
 // Catalog-level security invariants, discovered from pg_catalog so a new table is checked without
 // editing this file. What it guarantees about the application role: not privileged, no memberships,
@@ -195,11 +195,15 @@ async function violations(db: Db, role: string): Promise<string[]> {
   return out;
 }
 
-const fx = createTenantFixture(1);
-afterAll(() => fx.close());
+// Privileged catalog reads and rolled-back role probes use the bootstrap connection only; the
+// application role under inspection is named by DATABASE_URL, never connected as here.
+const bootstrap = new pg.Pool({
+  connectionString: loadBootstrapEnv().DATABASE_BOOTSTRAP_URL,
+  max: 1,
+});
+afterAll(() => bootstrap.end());
 
-const appRole = async () =>
-  (await fx.queryAs<{ r: string }>(null, "select current_user as r"))[0]?.r;
+const appRole = decodeURIComponent(new URL(loadDatabaseEnv().DATABASE_URL).username);
 
 describe("catalog invariants", () => {
   it("runs against a database with every committed migration applied", async () => {
@@ -214,7 +218,7 @@ describe("catalog invariants", () => {
         ? journal.entries
         : undefined;
     if (!Array.isArray(committed)) throw new Error("unreadable migration journal");
-    const applied = await fx.owner.query<{ created_at: string }>(
+    const applied = await bootstrap.query<{ created_at: string }>(
       "select created_at from drizzle.__drizzle_migrations order by id",
     );
     const when = (e: unknown) =>
@@ -223,7 +227,7 @@ describe("catalog invariants", () => {
   });
 
   it("finds the application tables it is meant to protect (guards against an empty catalog query)", async () => {
-    const found = await fx.owner.query<{ rel: string }>(
+    const found = await bootstrap.query<{ rel: string }>(
       `select n.nspname || '.' || c.relname as rel from pg_class c
        join pg_namespace n on n.oid = c.relnamespace where c.relkind = 'r' and n.nspname = 'public'`,
     );
@@ -233,7 +237,7 @@ describe("catalog invariants", () => {
   });
 
   it("holds for the application role", async () => {
-    expect(await violations(fx.owner, (await appRole()) ?? "")).toEqual([]);
+    expect(await violations(bootstrap, appRole)).toEqual([]);
   });
 });
 
@@ -352,7 +356,7 @@ describe("catalog invariants detect violations", () => {
   ];
 
   it.each(probes)("fails on $name", async ({ setup, expect: expected }) => {
-    const client = await fx.owner.connect();
+    const client = await bootstrap.connect();
     try {
       await client.query("begin");
       // A throwaway role stands in for the application role: the real one is never altered.
@@ -370,7 +374,7 @@ describe("catalog invariants detect violations", () => {
   });
 
   it("leaves no probe object behind", async () => {
-    const left = await fx.owner.query(
+    const left = await bootstrap.query(
       "select 1 from pg_class where relname = 'probe' union all select 1 from pg_roles where rolname = 'probe_app_role'",
     );
     expect(left.rows).toHaveLength(0);

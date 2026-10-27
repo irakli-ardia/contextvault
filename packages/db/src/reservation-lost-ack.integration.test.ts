@@ -62,7 +62,7 @@ function startRelay(target: URL) {
   };
 }
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 const services: UploadServices = {
   newId: randomUUID,
   newSha256() {
@@ -115,7 +115,7 @@ describe("a reservation whose commit acknowledgement is lost", () => {
     expect(put).not.toHaveBeenCalled();
     expect(remove).not.toHaveBeenCalled();
     const rows = (
-      await fx.owner.query("select id from pending_uploads where workspace_id = $1", [ws])
+      await fx.fixture.query("select id from pending_uploads where workspace_id = $1", [ws])
     ).rows;
     expect(rows).toHaveLength(1);
     expect(onRetained).toHaveBeenCalledTimes(1);

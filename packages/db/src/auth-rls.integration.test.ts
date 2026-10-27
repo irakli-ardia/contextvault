@@ -4,7 +4,7 @@ import { createTenantFixture, sqlState } from "./tenant-fixture";
 
 // The thirteen probes from the M1.2 architecture spike, against the real application role.
 // P1-P13 name them; the tests after P13 are the extra properties the plan §11 asks for.
-const fx = createTenantFixture(1);
+const fx = await createTenantFixture(1);
 afterAll(() => fx.close());
 
 interface Account {
@@ -94,7 +94,7 @@ describe("login proof", () => {
     expect(await update(a.email, a.id)).toHaveLength(1);
     const {
       rows: [row],
-    } = await fx.owner.query<{ password_hash: string }>(
+    } = await fx.fixture.query<{ password_hash: string }>(
       "select password_hash from user_credentials where user_id = $1",
       [b.id],
     );
@@ -155,7 +155,7 @@ describe("session proof", () => {
       "update sessions set last_seen_at = now(), revoked_at = now() returning id",
     );
     expect(rows).toEqual([{ id: b.session.id }]);
-    await fx.owner.query("update sessions set revoked_at = null where id = $1", [b.session.id]);
+    await fx.fixture.query("update sessions set revoked_at = null where id = $1", [b.session.id]);
   });
 
   it("cannot read token_hash back, by name or by star", async () => {
@@ -189,7 +189,7 @@ describe("user context", () => {
     ).toHaveLength(0);
     const {
       rows: [row],
-    } = await fx.owner.query("select 1 from sessions where id = $1 and revoked_at is null", [
+    } = await fx.fixture.query("select 1 from sessions where id = $1 and revoked_at is null", [
       b.session.id,
     ]);
     expect(row).toBeDefined();
@@ -219,7 +219,7 @@ describe("user context", () => {
     expect(deleted.map((r) => r.id).toSorted()).toEqual([dead.id, expired.id].toSorted());
     const {
       rows: [row],
-    } = await fx.owner.query("select 1 from sessions where id = $1", [live]);
+    } = await fx.fixture.query("select 1 from sessions where id = $1", [live]);
     expect(row).toBeDefined();
   });
 });
@@ -287,7 +287,7 @@ describe("privileges and connection reuse", () => {
     }
     const {
       rows: [row],
-    } = await fx.owner.query<{ n: string }>(
+    } = await fx.fixture.query<{ n: string }>(
       `select count(*) as n from information_schema.table_privileges
        where table_name in ('sessions','user_credentials') and grantee = 'PUBLIC'`,
     );

@@ -49,7 +49,16 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 
 `api` and `worker` read their variables through `packages/config`, the only module that touches `process.env`.
 `.env.example` is the committed contract; `.env` (gitignored) is loaded by the dev scripts and by `test:integration`.
-Test-only credentials live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. Nothing requires it yet: copy it only when a command asks for it.
+Test-only credentials live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
+
+Until the dedicated fixture role exists (planned step A2d-3), point both at the `DATABASE_MIGRATION_URL` value from `.env`; this mapping is transitional and goes away then:
+
+```sh
+url=$(grep '^DATABASE_MIGRATION_URL=' .env | cut -d= -f2-)
+printf 'DATABASE_FIXTURE_URL=%s\nDATABASE_BOOTSTRAP_URL=%s\n' "$url" "$url" > .env.test
+```
+
+Never commit `.env.test` or put real credentials in `.env.test.example`; use the local Compose values only.
 
 | Variable | Read by | Rule |
 | --- | --- | --- |
@@ -88,7 +97,7 @@ pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
 pnpm run test               # unit, offline
 pnpm run db:check           # committed migrations match the Drizzle schema
-pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation (needs `infra:up`, `db:migrate`, `.env`)
+pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation (needs `infra:up`, `db:migrate`, `.env`, `.env.test`)
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine

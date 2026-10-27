@@ -77,6 +77,12 @@ jobs:
         run: pnpm run infra:up
       - name: Migrate database
         run: pnpm run db:migrate
+      # TRANSITIONAL (removed in A2d-3): the fixture and bootstrap URLs both map to the migration
+      # superuser, the only privileged role that exists until A2d-3 creates the fixture role.
+      - name: Test-tool credentials
+        run: |
+          url=$(grep '^DATABASE_MIGRATION_URL=' .env | cut -d= -f2-)
+          printf 'DATABASE_FIXTURE_URL=%s\nDATABASE_BOOTSTRAP_URL=%s\n' "$url" "$url" > .env.test
       - name: Integration tests
         run: pnpm run test:integration
       - name: Build web

@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newUpload, reserveInput, roomy } from "./document-fixture";
 import { createTenantFixture } from "./tenant-fixture";
 
-const fx = createTenantFixture(12);
+const fx = await createTenantFixture(12);
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
 const MiB = 1024 * 1024;
 
@@ -95,7 +95,7 @@ describe("quota", () => {
     const quota: UploadQuota = { maxDocuments: 1, maxBytes: 200 * MiB };
     const old = newUpload(w, user);
     await run(inWs(w), (r) => r.uploads.reserveUpload(reserveInput(old), quota));
-    await fx.owner.query(
+    await fx.fixture.query(
       "update pending_uploads set created_at = now() - interval '2 days' where id = $1",
       [old.versionId],
     );

@@ -11,7 +11,7 @@ import {
 import { afterAll, describe, expect, it } from "vitest";
 import { createTenantFixture } from "./tenant-fixture";
 
-const fx = createTenantFixture(2);
+const fx = await createTenantFixture(2);
 afterAll(() => fx.close());
 const { credentials, sessions } = fx.persistence.auth;
 const now = new Date();
@@ -74,7 +74,7 @@ describe("session store", () => {
   it("stores only the SHA-256 bytes, never anything token-shaped", async () => {
     const { user: u } = await user();
     const { hash } = await login(u);
-    const { rows } = await fx.owner.query<{ hex: string; len: number }>(
+    const { rows } = await fx.fixture.query<{ hex: string; len: number }>(
       "select encode(token_hash, 'hex') as hex, octet_length(token_hash) as len from sessions where user_id = $1",
       [u.id],
     );

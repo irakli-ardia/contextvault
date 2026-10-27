@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { finalizeInput, newUpload, reserveInput, roomy, seedDocument } from "./document-fixture";
 import { createTenantFixture } from "./tenant-fixture";
 
-const fx = createTenantFixture(12);
+const fx = await createTenantFixture(12);
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
 const MiB = 1024 * 1024;
 const quota25: UploadQuota = { maxDocuments: 50, maxBytes: 25 * MiB };
@@ -43,7 +43,7 @@ describe("byte and document accounting", () => {
     await seedDocument(fx, w, user, "finalized", 10 * MiB);
     const old = newUpload(w, user);
     await run(inWs(w), (r) => r.uploads.reserveUpload(reserveInput(old, 10 * MiB), quota25));
-    await fx.owner.query(
+    await fx.fixture.query(
       "update pending_uploads set created_at = now() - interval '9 days' where id = $1",
       [old.versionId],
     );
@@ -157,7 +157,7 @@ describe("duplicate finalization contract", () => {
       expect.objectContaining({ versionId: retry.versionId, storageKey: retry.storageKey }),
     ]);
     expect(
-      (await fx.owner.query("select 1 from document_versions where id = $1", [retry.versionId]))
+      (await fx.fixture.query("select 1 from document_versions where id = $1", [retry.versionId]))
         .rowCount,
     ).toBe(0);
 
@@ -187,12 +187,13 @@ describe("transaction-local workspace", () => {
       false,
     );
 
-    const owned = await fx.owner.query("select 1 from pending_uploads where id = $1", [
+    const owned = await fx.fixture.query("select 1 from pending_uploads where id = $1", [
       foreign.versionId,
     ]);
     expect(owned.rowCount).toBe(1);
     expect(
-      (await fx.owner.query("select 1 from documents where workspace_id = $1", [theirs])).rowCount,
+      (await fx.fixture.query("select 1 from documents where workspace_id = $1", [theirs]))
+        .rowCount,
     ).toBe(0);
   });
 });

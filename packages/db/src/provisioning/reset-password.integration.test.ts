@@ -11,7 +11,7 @@ import { provisionAccount } from "./provision-account";
 import { resetPassword } from "./reset-password";
 import { password, provisioningHarness } from "./test-harness";
 
-const h = provisioningHarness();
+const h = await provisioningHarness();
 afterAll(() => h.close());
 
 const next = "an entirely different phrase";
@@ -33,7 +33,7 @@ async function account() {
 }
 
 const revokedAt = async (sessionId: string) =>
-  (await h.fx.owner.query("select revoked_at from sessions where id = $1", [sessionId])).rows[0]
+  (await h.fx.fixture.query("select revoked_at from sessions where id = $1", [sessionId])).rows[0]
     ?.revoked_at;
 const passwordWorks = async (email: string, plain: string) => {
   const stored = await h.fx.persistence.auth.credentials.findByEmail(parseEmail(email));

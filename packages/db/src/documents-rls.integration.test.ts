@@ -11,7 +11,7 @@ import {
 } from "./document-fixture";
 import { createTenantFixture, sqlState } from "./tenant-fixture";
 
-const fx = createTenantFixture();
+const fx = await createTenantFixture();
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
 
 // u1 owns A, u2 owns B, u3 belongs to both. Each workspace holds one document and one reservation.
@@ -140,7 +140,7 @@ describe("fail closed", () => {
     const ws = await fx.createWorkspace(user, "Revocable");
     const doc = await seedDocument(fx, ws, user);
     expect(await run(as(user, ws), (r) => r.documents.findById(ws, doc.documentId))).not.toBeNull();
-    await fx.owner.query("delete from memberships where workspace_id = $1", [ws]);
+    await fx.fixture.query("delete from memberships where workspace_id = $1", [ws]);
     expect(await fx.queryAs(as(user, ws), "select 1 from documents")).toEqual([]);
     await expect(run(as(user, ws), async () => 1)).rejects.toBeInstanceOf(WorkspaceAccessDenied);
   });

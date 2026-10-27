@@ -19,8 +19,8 @@ export const password = "correct horse battery";
 
 // Real Postgres: owner connection for accounts, application role for everything else, cleanup of
 // the accounts the provisioning commands (not the fixture) created.
-export function provisioningHarness() {
-  const fx = createTenantFixture(2);
+export async function provisioningHarness() {
+  const fx = await createTenantFixture(2);
   const owner = createDatabase({
     connectionString: loadMigrationEnv().DATABASE_MIGRATION_URL,
     poolSize: 1,
@@ -73,18 +73,18 @@ export function provisioningHarness() {
     },
     async idOf(email: string) {
       const rows = (
-        await fx.owner.query<{ id: string }>("select id from users where email = $1", [email])
+        await fx.fixture.query<{ id: string }>("select id from users where email = $1", [email])
       ).rows;
       return parseUserId(rows[0]?.id ?? "");
     },
     async accountOf(email: string) {
       const [user] = (
-        await fx.owner.query<{ id: string }>("select id from users where email = $1", [email])
+        await fx.fixture.query<{ id: string }>("select id from users where email = $1", [email])
       ).rows;
       const count = async (table: string, column: string) =>
         Number(
           (
-            await fx.owner.query<{ n: string }>(
+            await fx.fixture.query<{ n: string }>(
               `select count(*) n from ${table} where ${column} = $1`,
               [user?.id],
             )
@@ -100,11 +100,13 @@ export function provisioningHarness() {
     },
     async close() {
       const ids = (
-        await fx.owner.query<{ id: string }>("select id from users where email = any($1)", [emails])
+        await fx.fixture.query<{ id: string }>("select id from users where email = any($1)", [
+          emails,
+        ])
       ).rows.map((r) => r.id);
-      await fx.owner.query("delete from workspaces where created_by = any($1)", [ids]);
-      await fx.owner.query("delete from memberships where user_id = any($1)", [ids]);
-      await fx.owner.query("delete from users where id = any($1)", [ids]);
+      await fx.fixture.query("delete from workspaces where created_by = any($1)", [ids]);
+      await fx.fixture.query("delete from memberships where user_id = any($1)", [ids]);
+      await fx.fixture.query("delete from users where id = any($1)", [ids]);
       await Promise.all([owner.close(), app.close()]);
       await fx.close();
     },

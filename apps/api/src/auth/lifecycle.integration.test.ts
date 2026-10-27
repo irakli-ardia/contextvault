@@ -11,7 +11,7 @@ import {
   webOrigin,
 } from "../test-support";
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 let api: Api;
 let ada: Account;
 

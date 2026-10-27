@@ -5,7 +5,7 @@ import { AccountExists } from "./errors";
 import { provisionAccount } from "./provision-account";
 import { password, provisioningHarness } from "./test-harness";
 
-const h = provisioningHarness();
+const h = await provisioningHarness();
 afterAll(() => h.close());
 
 const input = (email: string) => ({ email, password, confirmation: password });

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { createTenantFixture, sqlState } from "./tenant-fixture";
 
-const fx = createTenantFixture();
+const fx = await createTenantFixture();
 afterAll(() => fx.close());
 
 const insertWorkspace =
@@ -14,7 +14,7 @@ describe("workspace bootstrap window", () => {
     const user = await fx.seedUser();
     const id = randomUUID();
     await fx.queryAs({ userId: user }, insertWorkspace, [id, user, "2000-01-01T00:00:00Z"]);
-    const row = await fx.owner.query<{ fresh: boolean }>(
+    const row = await fx.fixture.query<{ fresh: boolean }>(
       "select created_at > now() - interval '1 minute' as fresh from workspaces where id = $1",
       [id],
     );

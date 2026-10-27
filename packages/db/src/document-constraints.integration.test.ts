@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedDocument, sha256, type Upload } from "./document-fixture";
 import { createTenantFixture, sqlState } from "./tenant-fixture";
 
-const fx = createTenantFixture(2);
+const fx = await createTenantFixture(2);
 let doc: Upload;
 
 beforeAll(async () => {
@@ -24,7 +24,7 @@ const insertDocument = (o: Record<string, unknown> = {}) => {
     created_by: doc.createdBy,
     ...o,
   };
-  return fx.owner.query(
+  return fx.fixture.query(
     `insert into documents (${Object.keys(row).join(",")}) values (${Object.keys(row)
       .map((_, i) => `$${i + 1}`)
       .join(",")})`,
@@ -42,7 +42,7 @@ const insertVersion = (o: Record<string, string | number> = {}) => {
   // The key follows the ids unless a case sets it, so the foreign key is what gets tested.
   const key = `ws/${base.workspace_id}/doc/${base.document_id}/v/${base.id}`;
   const row = { storage_key: key, ...base };
-  return fx.owner.query(
+  return fx.fixture.query(
     `insert into document_versions (${Object.keys(row).join(",")}) values (${Object.keys(row)
       .map((_, k) => `$${k + 1}`)
       .join(",")})`,
@@ -109,7 +109,7 @@ describe("pending uploads", () => {
       created_by: doc.createdBy,
       ...o,
     };
-    return fx.owner.query(
+    return fx.fixture.query(
       `insert into pending_uploads (${Object.keys(row).join(",")}) values (${Object.keys(row)
         .map((_, i) => `$${i + 1}`)
         .join(",")})`,

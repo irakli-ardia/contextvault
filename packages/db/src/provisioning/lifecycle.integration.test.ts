@@ -6,7 +6,7 @@ import { AccountExists } from "./errors";
 import { provisionAccount } from "./provision-account";
 import { password, provisioningHarness } from "./test-harness";
 
-const h = provisioningHarness();
+const h = await provisioningHarness();
 afterAll(() => h.close());
 
 const input = (email: string) => ({ email, password, confirmation: password });
@@ -30,7 +30,7 @@ describe("concurrent provisioning", () => {
 
   it("a bootstrap blocks on the per-user lock until it is released", async () => {
     const { email, id } = await userRow();
-    const holder = await h.fx.owner.connect();
+    const holder = await h.fx.fixture.connect();
     try {
       await holder.query("begin");
       await holder.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [
@@ -92,11 +92,11 @@ describe("account lifecycle safety", () => {
     expect(after?.passwordHash).toBe(before?.passwordHash);
     await expect(h.attemptLogin(email, other)).rejects.toThrow("Invalid email or password");
     expect(await h.attemptLogin(email, password)).toMatchObject({ user: { email } });
-    const names = await h.fx.owner.query("select name from workspaces where created_by = $1", [
+    const names = await h.fx.fixture.query("select name from workspaces where created_by = $1", [
       await h.idOf(email),
     ]);
     expect(names.rows).toEqual([{ name: "Original" }]);
-    const revoked = await h.fx.owner.query("select revoked_at from sessions where id = $1", [
+    const revoked = await h.fx.fixture.query("select revoked_at from sessions where id = $1", [
       session.id,
     ]);
     expect(revoked.rows[0]?.revoked_at).toBeNull();

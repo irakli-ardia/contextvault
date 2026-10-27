@@ -1,20 +1,21 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { loadDatabaseEnv, loadMigrationEnv } from "@contextvault/config";
+import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { parseUserId, parseWorkspaceId, type UserId, type WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
 import { createPersistence, type Persistence } from "./persistence";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
 
-// Real-Postgres fixture for integration tests. `owner` seeds users and cleans up (the migration
-// role bypasses RLS as a superuser); everything under test goes through the application role.
+// Real-Postgres fixture for integration tests. `fixture` seeds users and cleans up on the explicit
+// DATABASE_FIXTURE_URL (no fallback to any other URL); everything under test goes through the
+// application role.
 export interface TenantFixture {
-  readonly owner: pg.Pool;
+  readonly fixture: pg.Pool;
   readonly persistence: Persistence;
   seedUser(): Promise<UserId>;
   createWorkspace(userId: UserId, name?: string): Promise<WorkspaceId>;
-  /** Owner-seeded credential; returns the (fake) stored hash. */
+  /** Fixture-seeded credential; returns the (fake) stored hash. */
   seedCredential(userId: UserId, passwordHash?: string): Promise<string>;
-  /** Owner-seeded session; returns its id and token hash (hex). */
+  /** Fixture-seeded session; returns its id and token hash (hex). */
   seedSession(
     userId: UserId,
     options?: { expiresAt?: Date; revokedAt?: Date },
@@ -40,22 +41,33 @@ export function sqlState(work: Promise<unknown>): Promise<string | undefined> {
   );
 }
 
-export function createTenantFixture(poolSize = 4): TenantFixture {
+// Async so the role check completes before any caller holds the pool: a fixture that cannot see
+// every row would seed and clean up silently wrong, so it must be a superuser or BYPASSRLS. The
+// message is fixed (never echoes connection data) and a refused pool is closed before throwing.
+export async function createTenantFixture(poolSize = 4): Promise<TenantFixture> {
   const appUrl = loadDatabaseEnv().DATABASE_URL;
-  const owner = new pg.Pool({
-    connectionString: loadMigrationEnv().DATABASE_MIGRATION_URL,
-    max: 2,
-  });
+  const fixture = new pg.Pool({ connectionString: loadFixtureEnv().DATABASE_FIXTURE_URL, max: 2 });
+  try {
+    const { rows } = await fixture.query<{ ok: boolean }>(
+      "select rolsuper or rolbypassrls as ok from pg_roles where rolname = current_user",
+    );
+    if (rows[0]?.ok !== true) {
+      throw new Error("FIXTURE_ROLE_CANNOT_SEE_ALL: DATABASE_FIXTURE_URL needs a BYPASSRLS role");
+    }
+  } catch (error) {
+    await fixture.end();
+    throw error;
+  }
   const rawApp = new pg.Pool({ connectionString: appUrl, max: poolSize });
   const persistence = createPersistence({ connectionString: appUrl, poolSize });
   const users: string[] = [];
 
   return {
-    owner,
+    fixture,
     persistence,
     async seedUser() {
       const id = randomUUID();
-      await owner.query("insert into users (id, email) values ($1, $2)", [
+      await fixture.query("insert into users (id, email) values ($1, $2)", [
         id,
         `${id}@test.invalid`,
       ]);
@@ -72,7 +84,7 @@ export function createTenantFixture(poolSize = 4): TenantFixture {
     async seedCredential(userId, passwordHash) {
       const hash =
         passwordHash ?? `$argon2id$v=19$m=64,t=1,p=1$${randomBytes(16).toString("base64url")}$fake`;
-      await owner.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
+      await fixture.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
         userId,
         hash,
       ]);
@@ -82,7 +94,7 @@ export function createTenantFixture(poolSize = 4): TenantFixture {
       const id = randomUUID();
       const hash = randomBytes(32).toString("hex");
       // created_at is backdated so an already-expired session still satisfies expires_at > created_at.
-      await owner.query(
+      await fixture.query(
         `insert into sessions (id, user_id, token_hash, created_at, last_seen_at, expires_at, revoked_at)
          values ($1, $2, decode($3, 'hex'), now() - interval '30 days', now() - interval '30 days',
                  $4, $5)`,
@@ -123,10 +135,13 @@ export function createTenantFixture(poolSize = 4): TenantFixture {
       }
     },
     async close() {
-      await owner.query("delete from workspaces where created_by = any($1)", [users]);
-      await owner.query("delete from memberships where user_id = any($1)", [users]);
-      await owner.query("delete from users where id = any($1)", [users]);
-      await Promise.all([persistence.close(), rawApp.end(), owner.end()]);
+      try {
+        await fixture.query("delete from workspaces where created_by = any($1)", [users]);
+        await fixture.query("delete from memberships where user_id = any($1)", [users]);
+        await fixture.query("delete from users where id = any($1)", [users]);
+      } finally {
+        await Promise.all([persistence.close(), rawApp.end(), fixture.end()]);
+      }
     },
   };
 }

@@ -10,7 +10,7 @@ import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
 import { createTenantFixture } from "./tenant-fixture";
 import { applyTimeout } from "./unit-of-work";
 
-const fx = createTenantFixture(6);
+const fx = await createTenantFixture(6);
 const uow = fx.persistence.unitOfWork;
 // One connection: the next borrower is always the same session, so a leaked setting would show.
 const single = createDatabase({ connectionString: loadDatabaseEnv().DATABASE_URL, poolSize: 1 });
@@ -19,7 +19,7 @@ let user: UserId;
 let ws: WorkspaceId;
 const context = () => ({ userId: user, workspaceId: ws });
 const pendingIds = async () =>
-  (await fx.owner.query("select id from pending_uploads where workspace_id = $1", [ws])).rows.map(
+  (await fx.fixture.query("select id from pending_uploads where workspace_id = $1", [ws])).rows.map(
     (row: { id: string }) => row.id,
   );
 

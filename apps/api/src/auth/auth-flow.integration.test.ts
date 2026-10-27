@@ -12,7 +12,7 @@ import {
   webOrigin,
 } from "../test-support";
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 let api: Api;
 let ada: Account;
 
@@ -27,7 +27,7 @@ afterAll(async () => {
 
 const me = (token: string) => api.http.get("/auth/me").set("Cookie", `cv_session=${token}`);
 const age = (sql: string) =>
-  fx.owner.query(`update sessions set ${sql} where user_id = $1`, [ada.id]);
+  fx.fixture.query(`update sessions set ${sql} where user_id = $1`, [ada.id]);
 
 describe("POST /auth/login", () => {
   it("signs in, sets a hardened cookie, and returns only id and email", async () => {
@@ -125,7 +125,7 @@ describe("session resolution", () => {
   it("touches last_seen_at after the touch interval, not on every request", async () => {
     const { token } = await loginAs(api, ada);
     const seen = async (): Promise<Date> => {
-      const { rows } = await fx.owner.query<{ last_seen_at: Date }>(
+      const { rows } = await fx.fixture.query<{ last_seen_at: Date }>(
         "select last_seen_at from sessions where user_id = $1 and revoked_at is null",
         [ada.id],
       );

@@ -21,7 +21,7 @@ const hasher = (busy: boolean): PasswordHasher => ({
   needsRehash: () => false,
 });
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 afterAll(() => fx.close());
 
 let api: Api;

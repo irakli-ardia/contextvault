@@ -17,7 +17,7 @@ import { WorkspacesController } from "../workspaces/workspaces.controller";
 import { AuthController } from "./auth.controller";
 import { isPublicKey } from "./public.decorator";
 
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 let api: Api;
 let ada: Account;
 let adaToken: string;
@@ -178,7 +178,7 @@ describe("workspace guard", () => {
     const id = await fx.createWorkspace(member.id, "Short-lived");
     const { token } = await loginAs(api, member);
     expect((await get(id, token)).status).toBe(200);
-    await fx.owner.query("delete from memberships where user_id = $1", [member.id]);
+    await fx.fixture.query("delete from memberships where user_id = $1", [member.id]);
     expect((await get(id, token)).status).toBe(404);
   });
 });

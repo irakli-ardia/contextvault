@@ -13,7 +13,7 @@ import { UploadLimiter } from "./upload-limiter";
 import { captureLogs, listen, must, pdfBytes, purge, rows, store, upload } from "./upload-support";
 
 type Mode = "refuse" | "afterBody" | "hang" | "boom" | "conflict";
-const fx = createTenantFixture(4);
+const fx = await createTenantFixture(4);
 const apis: Api[] = [];
 let account: Account;
 let workspaceId: string;
@@ -112,9 +112,10 @@ describe("storage failures", () => {
     expect(calls).toEqual(["put", "head"]); // asked, never deleted
     expect(await rows(fx, workspaceId)).toEqual({ documents: 0, versions: 0, pending: 1 });
     const [pending] = (
-      await fx.owner.query("select id, storage_key from pending_uploads where workspace_id = $1", [
-        workspaceId,
-      ])
+      await fx.fixture.query(
+        "select id, storage_key from pending_uploads where workspace_id = $1",
+        [workspaceId],
+      )
     ).rows;
     const retained = logs.filter((l) => l.includes("upload.reservation_retained"));
     expect(retained).toHaveLength(1);

@@ -13,7 +13,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTenantFixture } from "./tenant-fixture";
 
-const fx = createTenantFixture(12);
+const fx = await createTenantFixture(12);
 const uow = fx.persistence.unitOfWork;
 
 const services: UploadServices = {
@@ -88,7 +88,7 @@ describe("uploadDocument against Postgres", () => {
       upload(data, actorIn(w)),
     );
     expect(result).toMatchObject({ outcome: "created", document: { sizeBytes: data.length } });
-    const [row] = await fx.owner
+    const [row] = await fx.fixture
       .query<{ h: string }>(
         "select encode(content_sha256, 'hex') as h from documents where workspace_id = $1",
         [w],
@@ -190,7 +190,7 @@ describe("uploadDocument against Postgres", () => {
       upload(pdf("ack lost"), actorIn(w)),
     );
     expect(result.outcome).toBe("created");
-    const versions = await fx.owner
+    const versions = await fx.fixture
       .query<{ storage_key: string; document_id: string }>(
         "select storage_key, document_id from document_versions where workspace_id = $1",
         [w],
