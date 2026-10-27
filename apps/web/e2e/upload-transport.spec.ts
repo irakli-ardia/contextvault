@@ -86,25 +86,36 @@ test.describe("size and framing", () => {
 });
 
 test.describe("streaming", () => {
-  test("a slow consumer paces the client; the body is not absorbed first", async () => {
-    // 10 MiB at 64 KiB per 15 ms is about 2.4 s for the consumer. A buffering proxy lets the
-    // client finish in milliseconds (measured: 37 ms of 13.5 s for a rewrite); a streaming one
-    // keeps it within the socket buffers of the consumer. 20 % leaves room for large kernel
-    // buffers on other platforms and still tells the two apart by two orders of magnitude.
+  test("delivers bytes upstream while the client is still sending", async () => {
+    // Store-and-forward would show nothing upstream until the client finishes; the client here
+    // cannot finish until it has seen the upstream receive part of the body. No clock involved.
+    const body = pattern(4 * MiB);
+    let proven = (): void => undefined;
+    const upstreamHasData = new Promise<void>((resolve) => {
+      proven = resolve;
+    });
+    const sending = send({ body, gate: { at: 2 * MiB, wait: upstreamHasData } });
+    await expect.poll(() => stub.seen[0]?.bytes ?? 0, { timeout: 10_000 }).toBeGreaterThan(MiB);
+    expect(stub.seen[0]?.finished).toBe(false);
+    proven();
+    const reply = await sending;
+    expect(reply.status).toBe(201);
+    expect(stub.seen[0]?.bytes).toBe(body.length);
+    expect(stub.seen[0]?.sha256).toBe(sha256(body));
+  });
+
+  test("a slow consumer receives every byte intact at its own pace", async () => {
+    // The consumer is paced by the stub (64 KiB per 15 ms, about 2.4 s for 10 MiB). Whether that
+    // pace reaches the client is not asserted here: loopback socket buffers hold anywhere from
+    // ~2 MiB (macOS) to the whole 10 MiB (Linux), so only the unit test can pin read-ahead.
     stub.control.mode = "slow";
     const body = pattern(MAX_UPLOAD_BYTES);
     const reply = await send({ body });
     expect(reply.status).toBe(201);
     const [seen] = stub.seen;
+    expect(seen?.bytes).toBe(MAX_UPLOAD_BYTES);
     expect(seen?.sha256).toBe(sha256(body));
-    const consumerMs = (seen?.endedAt ?? 0) - (seen?.startedAt ?? 0);
-    console.log(
-      `streaming: consumer ${consumerMs} ms, client finished writing at ${reply.wroteAllAfter} ms`,
-    );
-    expect(consumerMs).toBeGreaterThan(1500);
-    expect(reply.wroteAllAfter).toBeGreaterThan(consumerMs * 0.2);
-    // Streaming, not store-and-forward: the first byte arrived long before the client finished.
-    expect((seen?.firstByteAt ?? 0) - (seen?.startedAt ?? 0)).toBeLessThan(500);
+    expect((seen?.endedAt ?? 0) - (seen?.startedAt ?? 0)).toBeGreaterThan(1500);
   });
 
   test("cancelling mid-upload aborts the upstream request", async () => {

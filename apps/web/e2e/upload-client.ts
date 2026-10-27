@@ -19,8 +19,6 @@ export interface Reply {
   status: number;
   headers: http.IncomingHttpHeaders;
   body: string;
-  /** Milliseconds until the last request byte was handed to the socket. */
-  wroteAllAfter: number;
 }
 
 export interface Send {
@@ -31,6 +29,8 @@ export interface Send {
   body?: Buffer;
   /** When set, send only this many bytes and then destroy the connection. */
   abortAfter?: number;
+  /** Stop writing at `at` bytes (a multiple of 64 KiB) until `wait` settles, then send the rest. */
+  gate?: { at: number; wait: Promise<unknown> };
 }
 
 const baseHeaders = {
@@ -42,7 +42,6 @@ const baseHeaders = {
 export function send(options: Send = {}): Promise<Reply> {
   const body = options.body ?? pattern(1024);
   const headers = { ...baseHeaders, "content-length": String(body.length), ...options.headers };
-  const start = Date.now();
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -59,18 +58,22 @@ export function send(options: Send = {}): Promise<Reply> {
           text += d;
         });
         res.on("end", () =>
-          resolve({ status: res.statusCode ?? 0, headers: res.headers, body: text, wroteAllAfter }),
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, body: text }),
         );
       },
     );
-    let wroteAllAfter = 0;
     req.on("error", (error) =>
       options.abortAfter === undefined ? reject(error) : resolve(aborted),
     );
     const limit = options.abortAfter ?? body.length;
     let offset = 0;
+    let gated = options.gate === undefined;
     const step = () => {
       while (offset < limit) {
+        if (!gated && options.gate && offset === options.gate.at) {
+          gated = true;
+          return void options.gate.wait.then(step, reject);
+        }
         const end = Math.min(offset + 64 * 1024, limit);
         const ok = req.write(body.subarray(offset, end));
         offset = end;
@@ -80,14 +83,13 @@ export function send(options: Send = {}): Promise<Reply> {
         setTimeout(() => req.destroy(), 50);
         return;
       }
-      wroteAllAfter = Date.now() - start;
       req.end();
     };
     step();
   });
 }
 
-const aborted: Reply = { status: 0, headers: {}, body: "", wroteAllAfter: 0 };
+const aborted: Reply = { status: 0, headers: {}, body: "" };
 
 /** A hand-written request, for framing no HTTP client will produce. Returns the status line. */
 export function raw(text: string): Promise<{ status: number; head: string }> {
