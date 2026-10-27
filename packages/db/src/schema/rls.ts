@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { pgRole } from "drizzle-orm/pg-core";
+import { type SQL, sql } from "drizzle-orm";
+import { type AnyPgColumn, pgRole } from "drizzle-orm/pg-core";
 
 // Created by infra/postgres/init-roles.sh; migrations only grant to it.
 export const appRole = pgRole("contextvault_app").existing();
@@ -16,3 +16,10 @@ export const loginEmail = sql`nullif(current_setting('app.login_email', true), '
 export const sessionTokenHash = sql`case
   when current_setting('app.session_token_hash', true) ~ '^[0-9a-f]{64}$'
   then decode(current_setting('app.session_token_hash', true), 'hex') end`;
+
+// Document-side tables: the row's workspace must be the one in context (unset means no rows, unlike
+// the membership-driven tables above) and the asserted user must hold a membership in it.
+export const inContextWorkspace = (workspaceId: AnyPgColumn): SQL =>
+  sql`${workspaceId} = ${currentWorkspaceId} and exists (
+    select 1 from "memberships" m
+    where m.workspace_id = ${workspaceId} and m.user_id = ${currentUserId})`;

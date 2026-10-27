@@ -1,6 +1,32 @@
-export { StorageError, type StorageErrorCode } from "./documents/errors";
+export {
+  type DocumentMime,
+  type DocumentSummary,
+  documentMimes,
+  isDocumentMime,
+  isVersionStatus,
+  type UploadQuota,
+  uploadQuota,
+  type VersionStatus,
+  versionStatuses,
+} from "./documents/document";
+export {
+  StorageError,
+  type StorageErrorCode,
+  UploadConflict,
+  UploadReservationMissing,
+} from "./documents/errors";
 export type { DocumentStore, StoredObject } from "./documents/ports";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
+export type {
+  DocumentRepository,
+  FinalizeResult,
+  FinalizeUploadInput,
+  PendingUpload,
+  QuotaRefusal,
+  ReserveResult,
+  ReserveUploadInput,
+  UploadRepository,
+} from "./documents/upload-ports";
 export { type Email, parseEmail } from "./identity/email";
 export { HashingBusy, InvalidCredentials, Unauthenticated } from "./identity/errors";
 export { type LoginDeps, type LoginInput, login } from "./identity/login";

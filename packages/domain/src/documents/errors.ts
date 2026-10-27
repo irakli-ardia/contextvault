@@ -18,3 +18,17 @@ export class StorageError extends DomainError {
     super(code, "Object storage operation failed");
   }
 }
+
+/** The reservation a finalize relied on is gone (released or swept); the caller must roll back. */
+export class UploadReservationMissing extends DomainError {
+  constructor() {
+    super("upload.reservation_missing", "Upload reservation not found");
+  }
+}
+
+/** An id or storage key was already used; ids are server-generated, so this is a bug or a replay. */
+export class UploadConflict extends DomainError {
+  constructor(options?: ErrorOptions) {
+    super("upload.conflict", "Upload id already in use", options);
+  }
+}
