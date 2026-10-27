@@ -85,12 +85,15 @@ export function createS3DocumentStore(
       );
     },
 
-    async put(rawKey, body, length) {
+    async put(rawKey, body, length, putOptions) {
       const Key = parseStorageKey(rawKey);
       if (!Number.isSafeInteger(length) || length < 1 || length > options.maxBytes) {
         throw new StorageError("storage.invalid_length", false);
       }
       const stop = new AbortController();
+      // The caller's deadline aborts the request like a failing body; the outcome is then unknown.
+      putOptions?.signal?.addEventListener("abort", () => stop.abort(), { once: true });
+      if (putOptions?.signal?.aborted) stop.abort();
       const guarded = new PassThrough();
       // A failing body must abort the request: the SDK neither settles nor cleans up by itself.
       let bodyError: unknown;

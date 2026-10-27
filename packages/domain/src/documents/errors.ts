@@ -41,6 +41,9 @@ export type UploadRejectionCode =
   | "upload.too_large"
   | "upload.content_mismatch"
   | "upload.incomplete"
+  | "upload.client_disconnected"
+  | "upload.idle_timeout"
+  | "upload.deadline_exceeded"
   | "upload.quota_documents"
   | "upload.quota_bytes"
   | "storage.unavailable";
@@ -58,5 +61,17 @@ export class UploadRejected extends DomainError {
     options?: ErrorOptions,
   ) {
     super(code, "Upload rejected", options);
+  }
+}
+
+export type InterruptionReason = "client_disconnected" | "idle_timeout" | "deadline_exceeded";
+
+/** The request body source gave up for a reason other than the bytes themselves. */
+export class UploadInterrupted extends DomainError {
+  override readonly code: `upload.${InterruptionReason}`;
+
+  constructor(readonly reason: InterruptionReason) {
+    super(`upload.${reason}`, "Upload interrupted");
+    this.code = `upload.${reason}`;
   }
 }

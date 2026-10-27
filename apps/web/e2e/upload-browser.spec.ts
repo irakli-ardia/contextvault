@@ -101,34 +101,6 @@ test.describe("the browser", () => {
 });
 
 test.describe("the real API behind the same origin", () => {
-  test("an upload to the real stack is answered by NestJS, through the unchanged proxy", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const reply = await page.evaluate(async (path) => {
-      const res = await fetch(path, {
-        method: "POST",
-        headers: { "content-type": "text/plain", "x-filename": "a.txt" },
-        body: new Blob(["hello"], { type: "text/plain" }),
-      });
-      return {
-        status: res.status,
-        requestId: res.headers.get("x-request-id"),
-        text: await res.text(),
-      };
-    }, path);
-    // TEMPORARY (M1.3e replaces this): no upload endpoint exists yet, so NestJS answers with its own
-    // not-found shape and request id. This is the real Next -> NestJS hop, not the stub. When the
-    // endpoint lands, this test becomes a successful authenticated upload (see the M1.3 plan).
-    expect(reply.status).toBe(404);
-    expect(reply.requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(JSON.parse(reply.text).error).toMatchObject({
-      code: "not_found",
-      requestId: reply.requestId,
-    });
-    expect(reply.text).not.toMatch(/3001|127\.0\.0\.1/);
-  });
-
   test("the rewrite still proxies the rest of /api (moved to the fallback phase)", async ({
     request,
   }) => {

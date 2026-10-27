@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { type APIResponse, test as base, expect, type Page } from "@playwright/test";
+import { deleteObject } from "./s3-state";
 
 export interface Account {
   readonly email: string;
@@ -36,6 +37,9 @@ export const test = base.extend<object, { accounts: [Account, Account] }>({
       try {
         await use([a, b]);
       } finally {
+        // Objects first: once the rows are gone nothing says which keys were ours.
+        const keys: { key: string }[] = JSON.parse(seeder(["keys", a.email, b.email]));
+        for (const { key } of keys) deleteObject(key);
         seeder(["remove", a.email, b.email]);
       }
     },

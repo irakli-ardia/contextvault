@@ -12,6 +12,25 @@ export interface Compensation {
   readonly workspaceId: WorkspaceId;
   readonly versionId: DocumentVersionId;
   readonly storageKey: StorageKey;
+  /** Reports that the reservation outlives this call. Idempotent per upload; never throws. */
+  readonly retained: () => void;
+}
+
+/** Wraps the caller's hook so it fires at most once and can never alter the upload's outcome. */
+export function retainedNotifier(
+  hook: ((event: { workspaceId: WorkspaceId; versionId: DocumentVersionId }) => void) | undefined,
+  event: { workspaceId: WorkspaceId; versionId: DocumentVersionId },
+): () => void {
+  let sent = false;
+  return () => {
+    if (sent) return;
+    sent = true;
+    try {
+      hook?.(event);
+    } catch {
+      // Observability must not change compensation or the result.
+    }
+  };
 }
 
 const attempt = (work: () => Promise<unknown>): Promise<boolean> =>
@@ -33,9 +52,12 @@ export async function discardObject(
   c: Compensation,
 ): Promise<{ deleted: boolean; reservation: ReservationState }> {
   if (!(await attempt(() => c.store.delete(c.storageKey)))) {
+    c.retained();
     return { deleted: false, reservation: "retained" };
   }
-  return { deleted: true, reservation: (await releaseReservation(c)) ? "released" : "retained" };
+  if (await releaseReservation(c)) return { deleted: true, reservation: "released" };
+  c.retained();
+  return { deleted: true, reservation: "retained" };
 }
 
 export const unavailable = (reservation: ReservationState, cause?: unknown): UploadRejected =>

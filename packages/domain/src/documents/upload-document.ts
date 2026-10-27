@@ -1,5 +1,10 @@
-import { DomainError } from "../kernel/errors";
-import { type DocumentId, parseDocumentId, parseDocumentVersionId } from "../kernel/ids";
+import { TransactionOutcomeUnknown } from "../kernel/errors";
+import {
+  type DocumentVersionId,
+  parseDocumentId,
+  parseDocumentVersionId,
+  type WorkspaceId,
+} from "../kernel/ids";
 import type { UnitOfWork } from "../kernel/unit-of-work";
 import { type Actor, assertCan } from "../workspaces/permissions";
 import {
@@ -9,17 +14,23 @@ import {
   type UploadQuota,
   uploadQuota,
 } from "./document";
-import { StorageError, UploadConflict, UploadRejected } from "./errors";
+import { UploadRejected } from "./errors";
 import { sanitizeFileName } from "./filename";
-import type { DocumentStore } from "./ports";
+import type { DeadlineSignal, DocumentStore } from "./ports";
 import { documentObjectKey } from "./storage-key";
-import { type Compensation, discardObject, unavailable } from "./upload-compensation";
+import {
+  type Compensation,
+  discardObject,
+  retainedNotifier,
+  unavailable,
+} from "./upload-compensation";
 import type {
   DocumentRepository,
   QuotaRefusal,
   UploadRepository,
   UploadServices,
 } from "./upload-ports";
+import { settleFailedFinalize, settleFailedPut } from "./upload-settle";
 import { type Verification, verifiedBody } from "./verified-body";
 
 export interface UploadDocumentCommand {
@@ -33,6 +44,11 @@ export interface UploadDocumentCommand {
   readonly declaredBytes: number;
   /** The request body; it fails (or ends) when the client goes away. */
   readonly body: AsyncIterable<Uint8Array>;
+  /**
+   * The deadline for the whole operation. The caller's body source must fail on it; the store's
+   * `put` is aborted by it. Reservation, finalization and cleanup are never cancelled.
+   */
+  readonly signal?: DeadlineSignal;
 }
 
 export interface UploadDocumentDeps {
@@ -40,12 +56,21 @@ export interface UploadDocumentDeps {
   readonly store: DocumentStore;
   readonly services: UploadServices;
   readonly quota?: UploadQuota;
+  /** Statement and lock-wait bound of each of this use case's transactions. Default 10 s. */
+  readonly transactionTimeoutMs?: number;
+  /**
+   * Called once when a reservation outlives the call (object possibly present, M1.4 reconciles).
+   * Observability only: it receives no content and a throwing hook changes nothing.
+   */
+  readonly onRetained?: (event: { workspaceId: WorkspaceId; versionId: DocumentVersionId }) => void;
 }
 
 export interface UploadDocumentResult {
   readonly outcome: "created" | "duplicate";
   readonly document: DocumentSummary;
 }
+
+const defaultTransactionTimeoutMs = 10_000;
 
 const quotaRejection = (refusal: QuotaRefusal, reservation: "none" | "released" | "retained") =>
   new UploadRejected(
@@ -79,8 +104,15 @@ export async function uploadDocument(
   const { actor } = command;
   assertCan(actor, "document.upload");
   const { name, mime } = validate(command);
-  const { uow, store, services } = deps;
+  if (command.signal?.aborted) throw new UploadRejected("upload.deadline_exceeded");
+  const { store, services } = deps;
   const quota = deps.quota ?? uploadQuota;
+  // Every transaction here, compensation included, is bounded so a stuck database call cannot
+  // outlive the caller's deadline by more than a few statements. A timeout is a rollback.
+  const timeoutMs = deps.transactionTimeoutMs ?? defaultTransactionTimeoutMs;
+  const uow: UploadDocumentDeps["uow"] = {
+    run: (context, work, options) => deps.uow.run(context, work, { timeoutMs, ...options }),
+  };
 
   const documentId = parseDocumentId(services.newId());
   const versionId = parseDocumentVersionId(services.newId());
@@ -93,20 +125,29 @@ export async function uploadDocument(
     workspaceId: actor.workspaceId,
     versionId,
     storageKey,
+    retained: retainedNotifier(deps.onRetained, { workspaceId: actor.workspaceId, versionId }),
   };
 
-  const reserved = await uow.run(context, (r) =>
-    r.uploads.reserveUpload(
-      {
-        workspaceId: actor.workspaceId,
-        versionId,
-        storageKey,
-        declaredBytes: command.declaredBytes,
-        createdBy: actor.userId,
-      },
-      quota,
-    ),
-  );
+  let reserved: Awaited<ReturnType<UploadRepository["reserveUpload"]>>;
+  try {
+    reserved = await uow.run(context, (r) =>
+      r.uploads.reserveUpload(
+        {
+          workspaceId: actor.workspaceId,
+          versionId,
+          storageKey,
+          declaredBytes: command.declaredBytes,
+          createdBy: actor.userId,
+        },
+        quota,
+      ),
+    );
+  } catch (error) {
+    // Nothing is written to storage on any failure here. Only a lost COMMIT acknowledgement leaves
+    // the row possibly durable; it stays (no object exists to clean) and is reported for M1.4.
+    if (error instanceof TransactionOutcomeUnknown) comp.retained();
+    throw error;
+  }
   if (reserved.outcome === "quota") throw quotaRejection(reserved, "none");
 
   const verification: Verification = {};
@@ -118,9 +159,14 @@ export async function uploadDocument(
     verification,
   );
   try {
-    await store.put(storageKey, body, command.declaredBytes);
+    await store.put(
+      storageKey,
+      body,
+      command.declaredBytes,
+      command.signal === undefined ? {} : { signal: command.signal },
+    );
   } catch (error) {
-    await settleFailedPut(comp, verification, command.declaredBytes, error);
+    await settleFailedPut(comp, verification, command.declaredBytes, error, command.signal);
   }
   const verified = verification.result;
   if (verified === undefined) throw new Error("Stored body was never verified");
@@ -153,52 +199,4 @@ export async function uploadDocument(
   if (finalized.outcome === "quota") throw quotaRejection(finalized, discarded.reservation);
   if (!discarded.deleted) throw unavailable("retained");
   return finalized;
-}
-
-// Returns only when the object provably landed (storage failed after the last byte but `head`
-// shows it); otherwise throws. The last declared byte reaches storage only after the whole body
-// passed, so while `result` is unset the PUT is incomplete and no object should exist. That rests
-// on the provider discarding incomplete bodies, so it is not trusted: the key is deleted
-// (idempotent) and the reservation released only once the store confirms the delete.
-async function settleFailedPut(
-  comp: Compensation,
-  verification: Verification,
-  declared: number,
-  error: unknown,
-): Promise<void> {
-  // The key is random, so an existing object is not this upload's: never delete or hide it.
-  if (error instanceof StorageError && error.code === "storage.conflict") throw error;
-  if (verification.result === undefined) {
-    const { reservation } = await discardObject(comp);
-    if (error instanceof UploadRejected) {
-      throw new UploadRejected(error.code, reservation, { cause: error });
-    }
-    throw unavailable(reservation, error);
-  }
-  // The outcome of the write is unknown (timeout, lost response) and it may still complete later:
-  // ask the store, and never release the reservation on a negative answer.
-  const stored = await comp.store.head(comp.storageKey).catch(() => undefined);
-  if (stored?.length !== declared) throw unavailable("retained", error);
-}
-
-async function settleFailedFinalize(
-  deps: UploadDocumentDeps,
-  comp: Compensation,
-  documentId: DocumentId,
-  error: unknown,
-): Promise<UploadDocumentResult> {
-  // Ids or key already used: the object under this key may belong to someone else.
-  if (error instanceof UploadConflict) throw error;
-  // A failed commit can still have committed. The document id is this upload's alone, and the
-  // document and its version are written in one transaction, so finding the id means ours committed.
-  const committed = await deps.uow
-    .run(comp.context, (r) => r.documents.findById(comp.workspaceId, documentId))
-    .catch(() => undefined);
-  if (committed === undefined) throw error; // unknown: keep object and reservation
-  if (committed !== null) return { outcome: "created", document: committed };
-  // Not found is proof of a rollback only when the repository reported one (a DomainError). After
-  // a lost connection or timeout a commit may still be in flight, invisible to this read; deleting
-  // then could orphan a committed document, so object and reservation stay for reconciliation.
-  if (error instanceof DomainError) await discardObject(comp);
-  throw error;
 }

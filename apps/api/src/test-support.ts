@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { createPasswordHasher } from "@contextvault/auth";
 import { loadDatabaseEnv, loadS3Env, parseApiEnv } from "@contextvault/config";
 import { createTenantFixture, type TenantFixture } from "@contextvault/db/testing";
-import { type PasswordHasher, parsePassword, type UserId } from "@contextvault/domain";
+import { parsePassword, type UserId } from "@contextvault/domain";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
@@ -19,7 +19,7 @@ export const password = "correct horse battery staple";
 
 export async function startApi(
   overrides: Record<string, string> = {},
-  options: { hasher?: PasswordHasher } = {},
+  options: Parameters<typeof AppModule.register>[1] = {},
 ) {
   const env = parseApiEnv({
     NODE_ENV: "test",

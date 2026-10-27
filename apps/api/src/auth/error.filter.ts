@@ -13,6 +13,7 @@ import {
   HttpException,
   Logger,
 } from "@nestjs/common";
+import { isInterruption, uploadStatusOf } from "../documents/upload-errors";
 import { ApiError } from "./api-error";
 import type { HttpRequest } from "./http-types";
 import { requestIdOf } from "./request-state";
@@ -52,6 +53,8 @@ function classify(error: unknown): {
   if (error instanceof HashingBusy) {
     return { status: 429, code: "auth.throttled", headers: { "Retry-After": "1" } };
   }
+  const upload = uploadStatusOf(error);
+  if (upload) return { ...upload, headers: {} };
   // Storage unreachable or refusing us is an operational failure, not a client error.
   if (
     error instanceof StorageError &&
@@ -74,6 +77,8 @@ export class ErrorFilter implements ExceptionFilter {
     const requestId = requestIdOf(http.getRequest<HttpRequest>());
     const { status, code, headers } = classify(error);
     if (status >= 500) this.logger.error(JSON.stringify({ code, requestId }));
+    // The client sees `upload.incomplete`; operators see which interruption it was.
+    if (isInterruption(error)) this.logger.warn(JSON.stringify({ code: error.code, requestId }));
     const reply = http.getResponse<Reply>();
     for (const [name, value] of Object.entries(headers)) reply.setHeader(name, value);
     reply.status(status).json({ error: { code, requestId } });

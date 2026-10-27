@@ -11,16 +11,18 @@ export {
   versionStatuses,
 } from "./documents/document";
 export {
+  type InterruptionReason,
   type ReservationState,
   StorageError,
   type StorageErrorCode,
   UploadConflict,
+  UploadInterrupted,
   UploadRejected,
   type UploadRejectionCode,
   UploadReservationMissing,
 } from "./documents/errors";
 export { sanitizeFileName } from "./documents/filename";
-export type { DocumentStore, StoredObject } from "./documents/ports";
+export type { DeadlineSignal, DocumentStore, PutOptions, StoredObject } from "./documents/ports";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
 export {
   type UploadDocumentCommand,
@@ -71,7 +73,7 @@ export {
   type SessionTokenHash,
   type SessionTokens,
 } from "./identity/tokens";
-export { DomainError } from "./kernel/errors";
+export { DomainError, TransactionOutcomeUnknown } from "./kernel/errors";
 export {
   type DocumentId,
   type DocumentVersionId,
@@ -84,7 +86,7 @@ export {
   type UserId,
   type WorkspaceId,
 } from "./kernel/ids";
-export type { TenantContext, UnitOfWork } from "./kernel/unit-of-work";
+export type { TenantContext, UnitOfWork, UnitOfWorkOptions } from "./kernel/unit-of-work";
 export { AlreadyMember, UnknownUser, WorkspaceAccessDenied } from "./workspaces/errors";
 export {
   type Action,

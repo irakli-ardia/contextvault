@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import http, { type IncomingHttpHeaders } from "node:http";
 
-// Test-only stand-in for the API's upload endpoint, which does not exist yet. It records exactly
+// Test-only stand-in for the API's upload endpoint (the real one is covered by upload-api.spec.ts). It records exactly
 // what the web transport delivered and misbehaves on demand. It is never part of the product.
 
 type StubMode =

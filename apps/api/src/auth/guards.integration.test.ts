@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { UploadsController } from "../documents/uploads.controller";
 import { HealthController } from "../health/health.controller";
 import {
   type Account,
@@ -39,7 +40,12 @@ describe("route inventory", () => {
   it("every route is on an exact public allowlist or default-deny (401 without a cookie)", () => {
     const isRoute = (fn: unknown): fn is () => unknown =>
       typeof fn === "function" && Reflect.getMetadata("path", fn) !== undefined;
-    const publicRoutes = [HealthController, AuthController, WorkspacesController].flatMap((c) =>
+    const publicRoutes = [
+      HealthController,
+      AuthController,
+      WorkspacesController,
+      UploadsController,
+    ].flatMap((c) =>
       Object.getOwnPropertyNames(c.prototype)
         .map(
           (name) =>

@@ -1,6 +1,6 @@
 import { createContentVerifier } from "./content-verifier";
 import type { DocumentMime } from "./document";
-import { UploadRejected } from "./errors";
+import { UploadInterrupted, UploadRejected } from "./errors";
 import type { Sha256 } from "./upload-ports";
 
 export interface Verification {
@@ -39,9 +39,10 @@ export async function* verifiedBody(
     if (total !== declared || held === undefined) throw new UploadRejected("upload.incomplete");
     verifier.finish();
   } catch (error) {
-    throw error instanceof UploadRejected
-      ? error
-      : new UploadRejected("upload.incomplete", "none", { cause: error });
+    if (error instanceof UploadRejected) throw error;
+    // Distinct internal classes; the HTTP layer decides what a client may see.
+    const code = error instanceof UploadInterrupted ? error.code : "upload.incomplete";
+    throw new UploadRejected(code, "none", { cause: error });
   }
   state.result = { sha256: sha.digest() };
   yield held;
