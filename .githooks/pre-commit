@@ -1,0 +1,3 @@
+#!/bin/sh
+# Runs on the commit you make: the index is what gets committed.
+exec node scripts/checks/tracked-files.mjs

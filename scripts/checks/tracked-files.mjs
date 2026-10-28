@@ -8,14 +8,16 @@
 // Reads `git ls-files`, so it sees exactly what a clone would contain. No dependencies.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 const FORBIDDEN_PATH =
-  /^context\/|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.agents\/)|(^|\/)\.env(?!\.(test\.)?example$)[^/]*$|\.(pem|key)$/;
+  /^(context|docs\/archive|scripts\/skills)\/|^docs\/README\.md$|^scripts\/checks\/agent-stop\.mjs$|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.agents\/|\.project-setup\/|session-logs\/)|\.session\.log$|(^|\/)\.env(?!\.(test\.)?example$)[^/]*$|\.(pem|key)$/;
 const LOCAL_REFERENCE = /(^|[^\w./-])(context\/|AGENTS\.md|CLAUDE\.md|PLAN\.md|memory\.md)/;
-// This file names the patterns it enforces.
-const REFERENCE_ALLOWLIST = new Set(["scripts/checks/tracked-files.mjs"]);
+// These files name the patterns they enforce.
+const REFERENCE_ALLOWLIST = new Set([
+  "scripts/checks/tracked-files.mjs",
+  "scripts/checks/tracked-files.unit.test.mjs",
+]);
 
 const rootFlag = process.argv.indexOf("--root");
 const root = resolve(rootFlag === -1 ? process.cwd() : (process.argv[rootFlag + 1] ?? "."));
@@ -29,9 +31,13 @@ for (const file of tracked) {
   if (REFERENCE_ALLOWLIST.has(file)) continue;
   let text;
   try {
-    text = readFileSync(join(root, file), "utf8");
+    // The staged blob, not the working tree: a commit contains the index.
+    text = execFileSync("git", ["-C", root, "show", `:${file}`], {
+      encoding: "utf8",
+      maxBuffer: 1 << 28,
+    });
   } catch {
-    continue; // tracked but deleted in the working tree
+    continue; // not a readable blob (for example a submodule)
   }
   if (text.includes("\0")) continue;
   const lines = text.split("\n");

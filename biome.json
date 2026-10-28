@@ -45,7 +45,13 @@
     },
     {
       "includes": ["**/*.test.ts"],
-      "linter": { "rules": { "style": { "noExcessiveLinesPerFile": "off" } } }
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": { "level": "error", "options": { "maxLines": 400 } }
+          }
+        }
+      }
     },
     {
       "includes": ["apps/**"],

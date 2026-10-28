@@ -34,6 +34,6 @@ Environment variables are listed in `.env.example` and described in [local setup
 
 ## Documentation
 
-[Local setup](docs/local-setup.md) · [Threat model](docs/threat-model.md) · [ADRs](docs/adr/README.md) · [Security policy](SECURITY.md) · [License](LICENSE) (MIT)
+[Local setup](docs/local-setup.md) · [Engineering standards](docs/engineering-standards.md) · [Threat model](docs/threat-model.md) · [ADRs](docs/adr/README.md) · [Security policy](SECURITY.md) · [License](LICENSE) (MIT)
 
 Branch, commit, and PR-title conventions are enforced by `scripts/git/conventions.mjs` through the git hooks in `.githooks/` and CI.
