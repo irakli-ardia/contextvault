@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import pg from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -46,17 +47,31 @@ describe("fixture connection", () => {
   it("refuses the application role before returning a fixture, and closes its pool", async () => {
     const probe = new pg.Pool({ connectionString: fixtureUrl(), max: 1 });
     try {
+      // A unique application_name scopes the count to this test's own connections; other test
+      // files open application-role pools concurrently, so counting the whole role is racy.
+      const name = `fixture-probe-${randomUUID()}`;
       const app = new URL(loadDatabaseEnv().DATABASE_URL);
-      const open = async () =>
+      app.searchParams.set("application_name", name);
+      const open = async (applicationName: string) =>
         Number(
           (
             await probe.query<{ n: string }>(
-              "select count(*) as n from pg_stat_activity where usename = $1",
-              [decodeURIComponent(app.username)],
+              "select count(*) as n from pg_stat_activity where application_name = $1",
+              [applicationName],
             )
           ).rows[0]?.n,
         );
-      const before = await open();
+      // Control: a live connection with a unique name must be visible, so a count of 0 below is not
+      // vacuous (for example, application_name silently ignored).
+      const controlUrl = new URL(app);
+      controlUrl.searchParams.set("application_name", `${name}-control`);
+      const control = new pg.Client({ connectionString: controlUrl.toString() });
+      await control.connect();
+      try {
+        expect(await open(`${name}-control`)).toBe(1);
+      } finally {
+        await control.end();
+      }
       vi.stubEnv("DATABASE_FIXTURE_URL", app.toString());
       const error = await createTenantFixture(1).then(
         () => undefined,
@@ -64,7 +79,7 @@ describe("fixture connection", () => {
       );
       expect(String(error)).toContain("FIXTURE_ROLE_CANNOT_SEE_ALL");
       expect(String(error)).not.toContain(app.password);
-      await vi.waitFor(async () => expect(await open()).toBe(before));
+      expect(await open(name)).toBe(0);
     } finally {
       await probe.end();
     }
