@@ -7,8 +7,8 @@ import { afterAll, describe, expect, it } from "vitest";
 // editing this file. What it guarantees about the application role: not privileged, no memberships,
 // owns nothing, cannot create objects, holds exactly the reviewed grants (table AND column level,
 // PUBLIC included via the effective-privilege functions), and every app table has RLS on and
-// forced. What it does not: policy predicates (behavioural RLS tests own that), the owner role
-// (a superuser bypasses RLS even under FORCE), extension-owned functions, or live data.
+// forced. What it does not: policy predicates (behavioural RLS tests own that), the owner and
+// fixture roles (role-model tests own those), extension-owned functions, or live data.
 
 // Not RLS-checked; the application role must hold nothing on it (asserted by the grant list).
 const RLS_EXEMPT = ["drizzle.__drizzle_migrations"]; // migrator bookkeeping, no tenant data

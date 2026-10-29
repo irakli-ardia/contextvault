@@ -6,9 +6,18 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3100;
 const baseURL = `http://127.0.0.1:${port}`;
 
-// Servers inherit the runner's environment; blank test-tool credentials so a shell that exports
-// them can never hand them to an app (an empty value also beats --env-file).
-const noTestCredentials = { DATABASE_FIXTURE_URL: "", DATABASE_BOOTSTRAP_URL: "" };
+// Servers inherit the runner's environment and the API loads .env; blank every credential above the
+// application role (test tooling, the schema owner, the bootstrap superuser and the Compose-only
+// passwords) so none reaches a server. An empty process value beats --env-file.
+const noPrivilegedCredentials = {
+  DATABASE_FIXTURE_URL: "",
+  DATABASE_BOOTSTRAP_URL: "",
+  DATABASE_MIGRATION_URL: "",
+  POSTGRES_PASSWORD: "",
+  POSTGRES_APP_PASSWORD: "",
+  POSTGRES_OWNER_PASSWORD: "",
+  POSTGRES_FIXTURE_PASSWORD: "",
+};
 
 export default defineConfig({
   testDir: "apps/web/e2e",
@@ -29,7 +38,7 @@ export default defineConfig({
         "mkdir -p playwright-report && node --env-file-if-exists=.env apps/api/dist/main.mjs > playwright-report/api.log 2>&1",
       cwd: ".",
       env: {
-        ...noTestCredentials,
+        ...noPrivilegedCredentials,
         NODE_ENV: "development",
         API_PORT: "3001",
         API_HOST: "127.0.0.1",
@@ -46,7 +55,7 @@ export default defineConfig({
       // The binary, not `pnpm exec`: a wrapper reports its own SIGTERM as a failure and can outlive the run.
       command: `./node_modules/.bin/next start --hostname 127.0.0.1 --port ${port} > ../../playwright-report/web.log 2>&1`,
       cwd: "apps/web",
-      env: noTestCredentials,
+      env: noPrivilegedCredentials,
       url: baseURL,
       reuseExistingServer: false,
       timeout: 60_000,
@@ -59,7 +68,7 @@ export default defineConfig({
       command:
         "./node_modules/.bin/next start --hostname 127.0.0.1 --port 3101 > ../../playwright-report/web-upload.log 2>&1",
       cwd: "apps/web",
-      env: { ...noTestCredentials, API_INTERNAL_URL: "http://127.0.0.1:3199" },
+      env: { ...noPrivilegedCredentials, API_INTERNAL_URL: "http://127.0.0.1:3199" },
       url: "http://127.0.0.1:3101",
       reuseExistingServer: false,
       timeout: 60_000,

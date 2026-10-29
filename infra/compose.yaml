@@ -10,6 +10,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set in .env}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set in .env}
+      # `:-` not `:?`: Compose interpolates the whole file on every command, so a required variable
+      # would break `ps`/`down`/`logs` for an .env written before these existed. roles.sql refuses
+      # to run with either empty, which stops initialisation of a new volume with a clear message.
+      POSTGRES_OWNER_PASSWORD: ${POSTGRES_OWNER_PASSWORD:-}
+      POSTGRES_FIXTURE_PASSWORD: ${POSTGRES_FIXTURE_PASSWORD:-}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -17,6 +22,7 @@ services:
       - postgres-data:/var/lib/postgresql
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
       - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/20-init-roles.sh:ro
+      - ./postgres/roles.sql:/docker-entrypoint-initdb.d/30-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

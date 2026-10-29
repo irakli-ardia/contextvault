@@ -119,10 +119,25 @@ describe("loading boundaries", () => {
     }
   });
 
-  it("blanks both test URLs for every Playwright web server", () => {
+  it("blanks every privileged credential for every Playwright server", () => {
     const config = readFileSync(join(root, "playwright.config.ts"), "utf8");
-    const servers = config.split("webServer:")[1] ?? "";
-    expect((servers.match(/noTestCredentials/g) ?? []).length).toBe(3);
+    const [head = "", servers = ""] = config.split("webServer:");
+    const blanked = [
+      ...((head.split("noPrivilegedCredentials = {")[1] ?? "")
+        .split("};")[0]
+        ?.matchAll(/(\w+): ""/g) ?? []),
+    ].map((m) => m[1] ?? "");
+    // Everything above the application role: test tooling, owner, bootstrap, Compose-only passwords.
+    expect(blanked.toSorted((a, b) => a.localeCompare(b))).toEqual([
+      "DATABASE_BOOTSTRAP_URL",
+      "DATABASE_FIXTURE_URL",
+      "DATABASE_MIGRATION_URL",
+      "POSTGRES_APP_PASSWORD",
+      "POSTGRES_FIXTURE_PASSWORD",
+      "POSTGRES_OWNER_PASSWORD",
+      "POSTGRES_PASSWORD",
+    ]);
+    expect((servers.match(/noPrivilegedCredentials/g) ?? []).length).toBe(3);
   });
 
   it("git ignores .env.test and tracks .env.test.example", () => {

@@ -25,6 +25,8 @@
     "infra:ps": "docker compose --env-file .env -f infra/compose.yaml ps",
     "infra:logs": "docker compose --env-file .env -f infra/compose.yaml logs --tail 100",
     "infra:reset": "docker compose --env-file .env -f infra/compose.yaml down --volumes",
+    "infra:roles": "node scripts/infra-roles.mjs",
+    "infra:roles:rollback": "node scripts/infra-roles.mjs rollback",
     "infra:smoke": "node scripts/checks/infra-smoke.mjs",
     "db:generate": "pnpm --filter @contextvault/db exec drizzle-kit generate",
     "db:migrate": "pnpm --filter @contextvault/db run migrate",

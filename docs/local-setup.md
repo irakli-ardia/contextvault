@@ -51,12 +51,7 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 `.env.example` is the committed contract; `.env` (gitignored) is loaded by the dev scripts and by `test:integration`.
 Test-only credentials live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
 
-Until the dedicated fixture role exists (planned step A2d-3), point both at the `DATABASE_MIGRATION_URL` value from `.env`; this mapping is transitional and goes away then:
-
-```sh
-url=$(grep '^DATABASE_MIGRATION_URL=' .env | cut -d= -f2-)
-printf 'DATABASE_FIXTURE_URL=%s\nDATABASE_BOOTSTRAP_URL=%s\n' "$url" "$url" > .env.test
-```
+Copy it once: `cp .env.test.example .env.test`. The values are the same development-only placeholders as `.env.example`, matching the Compose stack.
 
 Never commit `.env.test` or put real credentials in `.env.test.example`; use the local Compose values only.
 
@@ -69,9 +64,9 @@ Never commit `.env.test` or put real credentials in `.env.test.example`; use the
 | `API_INTERNAL_URL` | web (build **and** run time) | bare origin of the API; optional, defaults to `http://127.0.0.1:3001`. The `/api/*` rewrite takes it at `next build` (changing it needs a rebuild); the upload Route Handler reads it from the running server's environment (a restart is enough). Set the same value for both, see below |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
-| `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; the schema owner. Never given to a running app |
-| `DATABASE_FIXTURE_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; seeds and cleanup. Refused when `NODE_ENV=production`; never falls back to `DATABASE_URL` |
-| `DATABASE_BOOTSTRAP_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; superuser for catalog probes only. Same rules as above |
+| `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; `contextvault_owner`: owns the schema, not a superuser, bound by row-level security on forced tables. Never given to a running app |
+| `DATABASE_FIXTURE_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; `contextvault_fixture` (BYPASSRLS, data changes only): seeds and cleanup. Refused when `NODE_ENV=production`; never falls back to `DATABASE_URL` |
+| `DATABASE_BOOTSTRAP_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; the bootstrap superuser (`POSTGRES_USER`), for catalog probes only. Same rules as above |
 | `S3_ENDPOINT` | api | bare `http://` or `https://` origin (no path, query, or credentials); `https` in production |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | api | non-empty |
 | `S3_REGION` | api | optional, defaults to `us-east-1` |
@@ -124,7 +119,7 @@ pnpm run infra:smoke       # pgvector, Redis, S3 round trip, worker connect and 
 | `s3` | `chrislusf/seaweedfs:4.51` (single process, S3 gateway) | `127.0.0.1:8333` | `s3-data` | master `/dir/assign` and S3 `/status` |
 
 - Every port binds to loopback only. Credentials come from `.env`; Compose refuses to start when one is missing.
-- `infra/postgres/init.sql` enables the `vector` extension, and `infra/postgres/init-roles.sh` creates the application role `contextvault_app`, on first initialisation of an empty volume. **A volume created before this change has no application role: run `pnpm run infra:reset` (deletes local data), then `infra:up` and `db:migrate`.**
+- `infra/postgres/init.sql` enables the `vector` extension, `init-roles.sh` creates the application role `contextvault_app`, and `roles.sql` creates `contextvault_owner` and `contextvault_fixture` and makes the owner own the database objects, all on first initialisation of an empty volume. `POSTGRES_OWNER_PASSWORD` and `POSTGRES_FIXTURE_PASSWORD` must be set in `.env` before that first start (initialisation stops with a message naming them otherwise). A volume created before these roles existed keeps its old roles: see [Moving an existing volume](#moving-an-existing-volume-to-the-role-model).
 - The S3 bucket (`S3_BUCKET`) is created by `pnpm run infra:up` (`scripts/infra-bucket.mjs`, idempotent) and nowhere else. The API checks once at start that the bucket exists and is accessible (`HeadBucket`) and refuses to start otherwise, logging `STORAGE_MISCONFIGURED` (missing bucket or refused credentials) or `STORAGE_UNAVAILABLE` (provider unreachable or failing), never the bucket name. It never creates a bucket or changes permissions: in production, create a private bucket first. SeaweedFS creates a missing bucket on an authenticated `PutObject` by default (spike S5), so Compose starts it with `-s3.autoCreateBucket=false`: a put to a missing bucket now fails with `NoSuchBucket` (`storage.rejected`), whether the bucket was mistyped or disappeared while the API runs. `infra-bucket.mjs` only issues a bucket PUT, refuses any non-loopback `S3_ENDPOINT`, and passes credentials to curl on stdin so they never appear in the process list or in an error. After pulling this change, `pnpm run infra:up` recreates the `s3` container (data and the bucket are kept).
 - `infra:up` can take about 30 seconds on a restart with existing data: SeaweedFS waits for its topology to load before accepting writes.
 - Ports 5432, 6379, and 8333 must be free; stop a local Postgres or Redis first.
@@ -132,10 +127,16 @@ pnpm run infra:smoke       # pgvector, Redis, S3 round trip, worker connect and 
 
 ## Database
 
-PostgreSQL has two roles. `POSTGRES_USER` owns the schema and is used only by `pnpm run db:migrate`
-(`DATABASE_MIGRATION_URL`). Applications connect as `contextvault_app` (`DATABASE_URL`): it is not a superuser,
-owns no table, has no `BYPASSRLS`, cannot run DDL, and is limited to `SELECT` and `INSERT`. Row-level security
-policies scope every row to the user and workspace set for the current transaction.
+PostgreSQL has four roles. Only the application role is used at run time.
+
+| Role | Attributes | Used by | Variable |
+| --- | --- | --- | --- |
+| `POSTGRES_USER` (bootstrap) | superuser | volume initialisation, `infra:roles`, catalog probes in tests | `DATABASE_BOOTSTRAP_URL` (`.env.test`) |
+| `contextvault_owner` | NOSUPERUSER, NOBYPASSRLS; owns the database objects | `db:migrate`, `user:create` | `DATABASE_MIGRATION_URL` |
+| `contextvault_fixture` | NOSUPERUSER, BYPASSRLS; data changes on `public` tables only, no DDL, owns nothing | test seeds, cleanup, e2e account tooling | `DATABASE_FIXTURE_URL` (`.env.test`) |
+| `contextvault_app` | NOSUPERUSER, NOBYPASSRLS; `SELECT`/`INSERT` plus the reviewed grants | api, worker | `DATABASE_URL` |
+
+The application role owns no table, has no `BYPASSRLS`, and cannot run DDL. Row-level security policies scope every row to the user and workspace set for the current transaction. The owner is bound by `FORCE ROW LEVEL SECURITY` too (it sees no rows of a forced table), but it can still change policies and grants, so its credential belongs to `db:migrate` and `user:create` only. New tables created by the owner give the fixture role data access automatically and the application role nothing; new functions are not executable by `PUBLIC` until a migration grants it.
 
 ```bash
 pnpm run db:generate   # after editing packages/db/src/schema: writes SQL to infra/migrations; review it
@@ -145,6 +146,60 @@ pnpm run db:check      # fails if the schema and the migrations disagree
 
 Migrations never run at API or worker startup. `DATABASE_MIGRATION_URL` belongs to the `db:migrate` command only: lint rejects reading it from `apps/*`, and a deployment should not provide it to the API or worker. Hand-written statements that Drizzle cannot generate
 (`FORCE ROW LEVEL SECURITY`, grants) go in a migration created with `drizzle-kit generate --custom`.
+
+### Backing up and restoring the local database
+
+Take a backup before any role change, and prove it restores before relying on it. Keep the files outside the repository: the globals file holds password hashes, and the dump holds your data.
+
+```bash
+mkdir -p ~/contextvault-backups
+docker compose --env-file .env -f infra/compose.yaml exec -T postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -C' > ~/contextvault-backups/contextvault.dump
+docker compose --env-file .env -f infra/compose.yaml exec -T postgres \
+  sh -c 'pg_dumpall -U "$POSTGRES_USER" --globals-only' > ~/contextvault-backups/globals.sql   # roles; optional
+```
+
+Prove it in a separate, disposable Compose project (its own name, volume and ports: copy the stack to a scratch directory or pass an override file for the ports; never reuse the `contextvault` project). Start only `postgres` there so the roles are created by the same init scripts, then:
+
+```bash
+docker compose -p restore-check ... exec -T postgres \
+  sh -c 'pg_restore -U "$POSTGRES_USER" -d postgres --clean --if-exists --create --exit-on-error' < ~/contextvault-backups/contextvault.dump
+```
+
+- **Prerequisites.** The target needs the roles the dump refers to (`contextvault_app`, and `contextvault_owner` and `contextvault_fixture` for a dump taken after the role transition); a volume initialised from this repository's Compose file has them with the `.env` passwords, so the globals file is only for a cluster that was not. Restore as `POSTGRES_USER`.
+- **`--clean --create` drops and recreates the database.** Use it on a disposable target only.
+- **Compare.** Row counts per table, the migration journal count, and a content hash per table (`md5` of the ordered rows) against the source. Restoring a dump taken before the transition into a new-model instance works too; ownership then still belongs to `POSTGRES_USER` until `infra:roles` runs there.
+
+Checked on synthetic data, both directions (before and after the transition): row counts, content hashes of all nine tables and the migration journal were identical, and so was the catalog (owners, grants, policies, `FORCE` flags, roles).
+
+### Moving an existing volume to the role model
+
+Roles are created only on a new volume. To bring an existing one (data kept) to the role model, with the stack running and a verified backup in hand:
+
+```bash
+# 1. add POSTGRES_OWNER_PASSWORD and POSTGRES_FIXTURE_PASSWORD to .env (see .env.example)
+pnpm run infra:roles --project=contextvault                       # changes nothing: prints the target and a token
+pnpm run infra:roles --project=contextvault --confirm=<token>     # copy the token by hand, after reading the target
+# 2. in .env set DATABASE_MIGRATION_URL to the contextvault_owner URL; in .env.test set
+#    DATABASE_FIXTURE_URL to the contextvault_fixture URL (values: .env.example, .env.test.example)
+pnpm run db:migrate             # a no-op
+```
+
+`--project` is required on every call and is passed to Docker as `-p`, so no environment variable can redirect the command; say which project you mean before looking at the token. It refuses (before any SQL is sent) unless the project's postgres container is running and was started from this checkout's `infra/compose.yaml`, `.env` names the same database and user as the container, `NODE_ENV` is not `production`, the server is a superuser connection, and the token matches the server (`<project>/<database>@<server id>`); the server id is checked again inside the transaction. The change is one transaction: a failure leaves the database as it was.
+
+Until step 2, the old URLs keep working, but the role-model tests fail: they require each URL to authenticate as its own role. To undo (ownership back to `POSTGRES_USER`, both roles dropped, data untouched), then point the URLs back at `POSTGRES_USER`:
+
+```bash
+pnpm run infra:roles:rollback --project=contextvault              # same two steps: dry run, then --confirm=...
+```
+
+Rollback refuses if either role is missing, and, changing nothing, if the owner still owns an object it did not move. It does not give `PUBLIC` back `EXECUTE` on the trigger function (the transition removes it so an existing database matches a fresh one). Reverting a Git commit does not change a database: use these commands.
+
+Passwords reach the script through its input, never a command line. Every run sets both role passwords from `.env`, so changing a value there and re-running `infra:roles` rotates that password; a run that fails changes nothing, so the database keeps the old password until a run succeeds. `POSTGRES_APP_PASSWORD` is used only when the volume is first created.
+
+### Known gap: privileged variables in the local runtime environment
+
+The dev scripts and the built API load the whole `.env`, so `POSTGRES_PASSWORD` (bootstrap), `POSTGRES_OWNER_PASSWORD`, `POSTGRES_FIXTURE_PASSWORD` and `DATABASE_MIGRATION_URL` are present in the environment of a locally started api or worker even though no code reads them. Playwright blanks them for the servers it starts; the local dev loop does not yet. Separating runtime and admin variables is planned (A2d-3c).
 
 ## User accounts
 

@@ -14,7 +14,7 @@ export default defineConfig({
         test: {
           ...shared,
           name: "unit",
-          include: ["{apps,packages}/*/src/**/*.unit.test.ts"],
+          include: ["{apps,packages}/*/src/**/*.unit.test.ts", "scripts/**/*.unit.test.mjs"],
         },
       },
       {

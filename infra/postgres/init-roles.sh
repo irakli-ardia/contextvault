@@ -1,7 +1,8 @@
 #!/bin/sh
-# Runs once, on first initialisation of the data volume. POSTGRES_USER owns the schema (migrations
-# only). contextvault_app is what the apps connect as: it must never own a table, bypass row-level
-# security, or run DDL. Table grants and policies live in the migrations, not here.
+# Runs once, on first initialisation of the data volume, before 30-roles.sql (owner and fixture
+# roles, ownership). POSTGRES_USER is the bootstrap superuser. contextvault_app is what the apps
+# connect as: it must never own a table, bypass row-level security, or run DDL. Table grants and
+# policies live in the migrations, not here.
 set -eu
 
 psql -v ON_ERROR_STOP=1 -v app_password="$POSTGRES_APP_PASSWORD" -v db="$POSTGRES_DB" \
