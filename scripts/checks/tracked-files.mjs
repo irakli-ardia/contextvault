@@ -11,7 +11,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
 const FORBIDDEN_PATH =
-  /^(context|docs\/archive|scripts\/skills)\/|^docs\/README\.md$|^scripts\/checks\/agent-stop\.mjs$|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.agents\/|\.project-setup\/|session-logs\/)|\.session\.log$|(^|\/)\.env(?!\.(test\.)?example$)[^/]*$|\.(pem|key)$/;
+  /^(context|docs\/archive|scripts\/skills)\/|^docs\/README\.md$|^scripts\/checks\/agent-stop\.mjs$|(^|\/)(AGENTS\.md|CLAUDE\.md|memory\.md|PLAN\.md|\.claude\/|\.codex\/|\.agents\/|\.project-setup\/|session-logs\/)|\.session\.log$|(^|\/)\.env(?!\.(test\.)?example$)[^/]*$|\.(pem|key)$/;
 const LOCAL_REFERENCE = /(^|[^\w./-])(context\/|AGENTS\.md|CLAUDE\.md|PLAN\.md|memory\.md)/;
 // These files name the patterns they enforce.
 const REFERENCE_ALLOWLIST = new Set([

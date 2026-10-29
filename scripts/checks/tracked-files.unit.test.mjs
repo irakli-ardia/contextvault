@@ -35,6 +35,7 @@ describe("tracked-files", () => {
     "AGENTS.md",
     "apps/web/AGENTS.md",
     ".claude/settings.json",
+    ".codex/hooks.json",
     ".agents/README.md",
     "context/plan.md",
     "docs/archive/brief.md",
