@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Smoke test for the local Compose stack (`pnpm run infra:up` first): pgvector is installed, Redis
 // answers, S3 round-trips an object with signed requests, and the built worker connects and
-// shuts down cleanly. Needs `.env` and a worker build. No SDKs, no network beyond loopback.
+// shuts down cleanly (started through run-with-env.mjs, so with only its allowlisted variables).
+// Needs `.env` and a worker build. No SDKs, no network beyond loopback.
 
 import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -77,9 +78,13 @@ step("s3 round trip and access control", () => {
 });
 
 await new Promise((resolve, reject) => {
-  const worker = spawn("node", ["--env-file=.env", "apps/worker/dist/main.mjs"], {
-    stdio: ["ignore", "pipe", "inherit"],
-  });
+  const worker = spawn(
+    "node",
+    ["scripts/run-with-env.mjs", "worker", "apps/worker/dist/main.mjs"],
+    {
+      stdio: ["ignore", "pipe", "inherit"],
+    },
+  );
   const timer = setTimeout(() => {
     worker.kill("SIGKILL");
     reject(new Error("worker did not become ready in 10s"));

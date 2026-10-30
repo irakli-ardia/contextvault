@@ -48,8 +48,20 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 ## Environment
 
 `api` and `worker` read their variables through `packages/config`, the only module that touches `process.env`.
-`.env.example` is the committed contract; `.env` (gitignored) is loaded by the dev scripts and by `test:integration`.
-Test-only credentials live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
+`.env.example` is the committed contract. `.env` (gitignored) is read by `scripts/run-with-env.mjs` for api and worker, and separately by administrative and test tooling (`infra:*`, `db:migrate`, `user:create`, `test:integration`, among others), which is outside the launcher.
+
+**Launcher.** The api and worker dev loops (`dev.mjs`) and the servers Playwright starts (api and both Next.js servers) run through the launcher, which replaces itself with `node <entry>` (`process.execve`).
+
+- The entry receives only the variables on that app's allowlist, plus `PATH` and `TMPDIR`; `scripts/run-with-env.mjs` is the source of truth for the lists.
+- For api and worker, each value comes from the parent environment if set (an empty string counts) and otherwise from the root `.env`.
+- Web mode never reads `.env`: its values come only from the parent environment.
+- Every other inherited variable (including `NODE_OPTIONS`, `AWS_*` and `HOME`) and the rest of `.env` are not forwarded, so the bootstrap, owner, fixture and migration credentials never reach launcher-started processes. Allowlisted runtime credentials such as `DATABASE_URL`, `S3_*` and `REDIS_URL` are passed.
+- Processes started any other way, such as `apps/web`'s `dev` script, are not covered.
+- Unit tests check the allowlists against `.env.example` and that no privileged name is allowlisted; they do not compare them with the `packages/config` schemas.
+
+`process.execve` is experimental in Node 24 and does not exist on Windows or IBM i, so this workflow requires Node 24.22.1 on macOS or Linux. The launcher is not available elsewhere, and if the exec itself fails Node aborts the process.
+
+**Test credentials.** They live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
 
 Copy it once: `cp .env.test.example .env.test`. The values are the same development-only placeholders as `.env.example`, matching the Compose stack.
 
@@ -96,7 +108,7 @@ pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isola
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
-pnpm run test:e2e           # needs `build`, `infra:up`, `db:migrate`, `.env`; serves web on 127.0.0.1:3100 and the built API on 3001
+pnpm run test:e2e           # needs `build`, `infra:up`, `db:migrate`, `.env`; serves web on 127.0.0.1:3100 and the built API on 3001, each through the launcher
 node scripts/checks/docs-check.mjs
 node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
 ```
@@ -197,9 +209,11 @@ Rollback refuses if either role is missing, and, changing nothing, if the owner 
 
 Passwords reach the script through its input, never a command line. Every run sets both role passwords from `.env`, so changing a value there and re-running `infra:roles` rotates that password; a run that fails changes nothing, so the database keeps the old password until a run succeeds. `POSTGRES_APP_PASSWORD` is used only when the volume is first created.
 
-### Known gap: privileged variables in the local runtime environment
+### Privileged variables and the local runtime environment
 
-The dev scripts and the built API load the whole `.env`, so `POSTGRES_PASSWORD` (bootstrap), `POSTGRES_OWNER_PASSWORD`, `POSTGRES_FIXTURE_PASSWORD` and `DATABASE_MIGRATION_URL` are present in the environment of a locally started api or worker even though no code reads them. Playwright blanks them for the servers it starts; the local dev loop does not yet. Separating runtime and admin variables is planned (A2d-3c).
+`POSTGRES_PASSWORD` (bootstrap), `POSTGRES_OWNER_PASSWORD`, `POSTGRES_FIXTURE_PASSWORD` and `DATABASE_MIGRATION_URL` are not forwarded by the launcher, so a process started through it (api and worker dev loops, Playwright servers) does not receive them; a process started another way is not covered (see [Environment](#environment)). Playwright starts its API and both Next.js servers (ports 3100 and 3101) through the launcher. This covers the servers only: the Playwright runner, the e2e account seeder and `test:integration` run with their own, wider environment (including `.env.test` credentials such as `DATABASE_FIXTURE_URL`).
+
+**Verified 2026-10-30** on Node 24.22.1 in the isolated `cv-test` environment: `pnpm run build` passed and Playwright E2E passed 42/42, with the API and Next.js servers started through the launcher. The worker runtime was not verified. Linux CI remains unverified.
 
 ## User accounts
 

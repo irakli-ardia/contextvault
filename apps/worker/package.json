@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ../../scripts/dev.mjs",
+    "dev": "node ../../scripts/dev.mjs worker",
     "build": "tsdown",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

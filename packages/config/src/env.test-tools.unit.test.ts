@@ -85,7 +85,7 @@ describe("loading boundaries", () => {
     expect(probe(["--env-file-if-exists=.env.missing"])).toBe("absent");
   });
 
-  it("an empty process value beats the file, as the Playwright servers rely on", () => {
+  it("an empty process value beats an --env-file-if-exists value", () => {
     writeFileSync(join(dir, ".env.test"), "DATABASE_FIXTURE_URL=from-file\n");
     const out = execFileSync(
       process.execPath,
@@ -117,27 +117,6 @@ describe("loading boundaries", () => {
     for (const file of ["apps/web/e2e/support.ts", "apps/web/e2e/upload-api-support.ts"]) {
       expect(read(file)).toContain("--env-file-if-exists=.env.test");
     }
-  });
-
-  it("blanks every privileged credential for every Playwright server", () => {
-    const config = readFileSync(join(root, "playwright.config.ts"), "utf8");
-    const [head = "", servers = ""] = config.split("webServer:");
-    const blanked = [
-      ...((head.split("noPrivilegedCredentials = {")[1] ?? "")
-        .split("};")[0]
-        ?.matchAll(/(\w+): ""/g) ?? []),
-    ].map((m) => m[1] ?? "");
-    // Everything above the application role: test tooling, owner, bootstrap, Compose-only passwords.
-    expect(blanked.toSorted((a, b) => a.localeCompare(b))).toEqual([
-      "DATABASE_BOOTSTRAP_URL",
-      "DATABASE_FIXTURE_URL",
-      "DATABASE_MIGRATION_URL",
-      "POSTGRES_APP_PASSWORD",
-      "POSTGRES_FIXTURE_PASSWORD",
-      "POSTGRES_OWNER_PASSWORD",
-      "POSTGRES_PASSWORD",
-    ]);
-    expect((servers.match(/noPrivilegedCredentials/g) ?? []).length).toBe(3);
   });
 
   it("git ignores .env.test and tracks .env.test.example", () => {
