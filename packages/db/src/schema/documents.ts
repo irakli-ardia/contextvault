@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { appRole, currentUserId, inContextWorkspace } from "./rls";
+import { appRole, currentUserId, inContextWorkspace, inWorkerWorkspace, workerRole } from "./rls";
 import { users } from "./users";
 import { workspaces } from "./workspaces";
 
@@ -69,6 +69,12 @@ export const documents = pgTable(
       for: "insert",
       to: appRole,
       withCheck: sql`${inContextWorkspace(table.workspaceId)} and ${table.createdBy} = ${currentUserId}`,
+    }),
+    // Read-only recheck of `deleted_at` inside the job's workspace (column grant, migration 0008).
+    pgPolicy("documents_worker_select", {
+      for: "select",
+      to: workerRole,
+      using: inWorkerWorkspace(table.workspaceId),
     }),
   ],
 ).enableRLS();

@@ -3,22 +3,25 @@ import {
   loadDatabaseEnv,
   loadFixtureEnv,
   loadMigrationEnv,
+  loadWorkerDatabaseEnv,
 } from "@contextvault/config";
 import pg from "pg";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
 
-// Role-model tests connect as each role of the four-role model; the URLs come from the same
+// Role-model tests connect as each role of the five-role model; the URLs come from the same
 // loaders the tooling uses, so a test can only reach a role through its documented variable.
 export const ROLES = {
   owner: "contextvault_owner",
   fixture: "contextvault_fixture",
   app: "contextvault_app",
+  worker: "contextvault_worker",
 } as const;
 
 export interface RolePools {
   readonly owner: pg.Pool;
   readonly fixture: pg.Pool;
   readonly app: pg.Pool;
+  readonly worker: pg.Pool;
   readonly bootstrap: pg.Pool;
   close(): Promise<void>;
 }
@@ -33,6 +36,7 @@ export function openRolePools(): RolePools {
     owner: make(loadMigrationEnv().DATABASE_MIGRATION_URL),
     fixture: make(loadFixtureEnv().DATABASE_FIXTURE_URL),
     app: make(loadDatabaseEnv().DATABASE_URL),
+    worker: make(loadWorkerDatabaseEnv().DATABASE_WORKER_URL),
     bootstrap: make(loadBootstrapEnv().DATABASE_BOOTSTRAP_URL),
   };
   return {

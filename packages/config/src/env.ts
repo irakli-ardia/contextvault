@@ -11,6 +11,11 @@ export type BaseEnv = z.infer<typeof baseEnvSchema>;
 const databaseEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
+// Ingestion-worker role (NOBYPASSRLS, DML only through reviewed grants): its own URL, never
+// DATABASE_URL, so a worker cannot run with the application role's reach or the reverse.
+const workerDatabaseEnvSchema = baseEnvSchema.extend({
+  DATABASE_WORKER_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+});
 // Owner-role connection, read only by the explicit migration command, never by an app.
 // Pure-annotated so an app bundle that never calls the migration loaders drops it.
 const migrationEnvSchema = /* @__PURE__ */ baseEnvSchema.extend({
@@ -116,6 +121,7 @@ export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
+export type WorkerDatabaseEnv = z.infer<typeof workerDatabaseEnvSchema>;
 export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
 export type FixtureEnv = z.infer<typeof fixtureEnvSchema>;
 export type BootstrapEnv = z.infer<typeof bootstrapEnvSchema>;
@@ -142,6 +148,8 @@ export const parseWorkerEnv = (source: Source): WorkerEnv => parseWith(workerEnv
 
 export const parseDatabaseEnv = (source: Source): DatabaseEnv =>
   parseWith(databaseEnvSchema, source);
+export const parseWorkerDatabaseEnv = (source: Source): WorkerDatabaseEnv =>
+  parseWith(workerDatabaseEnvSchema, source);
 export const parseMigrationEnv = (source: Source): MigrationEnv =>
   parseWith(migrationEnvSchema, source);
 export const parseFixtureEnv = (source: Source): FixtureEnv => parseWith(fixtureEnvSchema, source);
@@ -154,6 +162,7 @@ export const loadApiEnv = (): ApiEnv => parseApiEnv(process.env);
 export const loadWebEnv = (): WebEnv => parseWebEnv(process.env);
 export const loadWorkerEnv = (): WorkerEnv => parseWorkerEnv(process.env);
 export const loadDatabaseEnv = (): DatabaseEnv => parseDatabaseEnv(process.env);
+export const loadWorkerDatabaseEnv = (): WorkerDatabaseEnv => parseWorkerDatabaseEnv(process.env);
 export const loadMigrationEnv = (): MigrationEnv => parseMigrationEnv(process.env);
 export const loadS3Env = (): S3Env => parseS3Env(process.env);
 export const loadFixtureEnv = (): FixtureEnv => parseFixtureEnv(process.env);

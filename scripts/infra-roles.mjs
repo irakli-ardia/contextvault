@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Applies infra/postgres/roles.sql to the RUNNING Compose Postgres of a NAMED project: the owner
-// and fixture roles, object ownership, grants. Idempotent; for a volume created before these roles
+// and fixture roles, object ownership, grants, and the ingestion worker role (created only if
+// missing: an existing worker keeps its credential). Idempotent; for a volume created before these roles
 // existed (a fresh volume gets the same file from the entrypoint). `rollback` reverses it
 // (ownership back to POSTGRES_USER, roles dropped). The file runs as one transaction (see its header).
 //
@@ -20,7 +21,11 @@ import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
 const USAGE = "Usage: infra-roles.mjs [rollback] --project=<compose project> [--confirm=<token>]";
-const PASSWORDS = ["POSTGRES_OWNER_PASSWORD", "POSTGRES_FIXTURE_PASSWORD"];
+const PASSWORDS = [
+  "POSTGRES_OWNER_PASSWORD",
+  "POSTGRES_FIXTURE_PASSWORD",
+  "POSTGRES_WORKER_PASSWORD",
+];
 // Read-only. The 8 fields: database, superuser?, version, system id, transition roles, tables.
 const PROBE_SQL =
   "select current_database() || '|' || current_setting('is_superuser') || '|' || current_setting('server_version') || '|' || (select system_identifier from pg_control_system()) || '|' || (select count(*) from pg_roles where rolname in ('contextvault_owner', 'contextvault_fixture')) || '|' || (select count(*) from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r')";

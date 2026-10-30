@@ -50,6 +50,20 @@
       "when": 1793077616672,
       "tag": "0006_document_rls_force_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793342222907,
+      "tag": "0007_worker_outbox_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793342230656,
+      "tag": "0008_worker_force_and_grants",
+      "breakpoints": true
     }
   ]
 }

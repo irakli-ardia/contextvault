@@ -13,12 +13,15 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { documents } from "./documents";
-import { appRole, inContextWorkspace } from "./rls";
+import { appRole, inContextWorkspace, inWorkerWorkspace, workerRole } from "./rls";
 
 // Tenant-owned and immutable for the application role (SELECT and INSERT only): the composite
 // foreign key makes a version of another workspace's document impossible, and the key check ties
-// the storage key to the three ids. Lifecycle columns start at their defaults; the ingestion
-// state machine (M1.4) is what will be granted UPDATE on them.
+// the storage key to the three ids. Lifecycle columns start at their defaults; the worker role
+// alone may update them (migration 0008), and may read only non-sensitive columns across
+// workspaces. `processed` is a temporary, non-searchable end state until M1.6 activates `ready`,
+// which the worker's UPDATE policy refuses to write. M1.6 must change the status CHECK, that
+// policy and the pinned policy tests (worker-rls, catalog-invariants) together.
 export const documentVersions = pgTable(
   "document_versions",
   {
@@ -43,11 +46,12 @@ export const documentVersions = pgTable(
       foreignColumns: [documents.workspaceId, documents.id],
     }).onDelete("cascade"),
     unique("document_versions_document_id_version_no_unique").on(table.documentId, table.versionNo),
+    unique("document_versions_workspace_id_id_unique").on(table.workspaceId, table.id),
     index("document_versions_workspace_document_idx").on(table.workspaceId, table.documentId),
     check("document_versions_version_no", sql`${table.versionNo} >= 1`),
     check(
       "document_versions_status",
-      sql`${table.status} in ('uploaded', 'queued', 'parsing', 'chunking', 'ready', 'failed')`,
+      sql`${table.status} in ('uploaded', 'queued', 'parsing', 'chunking', 'processed', 'ready', 'failed')`,
     ),
     check(
       "document_versions_counters",
@@ -66,6 +70,18 @@ export const documentVersions = pgTable(
       for: "insert",
       to: appRole,
       withCheck: inContextWorkspace(table.workspaceId),
+    }),
+    // Discovery: every workspace's lifecycle metadata, nothing else (column grant, migration 0008).
+    pgPolicy("document_versions_worker_discover", {
+      for: "select",
+      to: workerRole,
+      using: sql`true`,
+    }),
+    pgPolicy("document_versions_worker_update", {
+      for: "update",
+      to: workerRole,
+      using: inWorkerWorkspace(table.workspaceId),
+      withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.status} <> 'ready'`,
     }),
   ],
 ).enableRLS();

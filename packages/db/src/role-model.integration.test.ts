@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { openRolePools, ROLES, scalar } from "./role-test-support";
 
-// The four-role model as the catalog reports it (infra/postgres/roles.sql): attributes, ownership,
+// The five-role model as the catalog reports it (infra/postgres/roles.sql): attributes, ownership,
 // grants and default privileges. Behaviour (what each role can and cannot do) is in
 // role-boundaries.integration.test.ts. Needs a database initialised or transitioned by roles.sql.
 const pools = openRolePools();
@@ -16,11 +16,12 @@ describe("each connection authenticates as its documented role", () => {
     ["DATABASE_MIGRATION_URL", "owner", ROLES.owner],
     ["DATABASE_FIXTURE_URL", "fixture", ROLES.fixture],
     ["DATABASE_URL", "app", ROLES.app],
+    ["DATABASE_WORKER_URL", "worker", ROLES.worker],
   ] as const)("%s is %s", async (_variable, pool, role) => {
     expect(await scalar(pools[pool], "select current_user as v")).toBe(role);
   });
 
-  it("DATABASE_BOOTSTRAP_URL is a superuser that is none of the three", async () => {
+  it("DATABASE_BOOTSTRAP_URL is a superuser that is none of the four", async () => {
     const [name, superuser] = [
       await scalar<string>(pools.bootstrap, "select current_user as v"),
       await scalar<boolean>(
@@ -51,6 +52,25 @@ describe("role attributes", () => {
       { rolname: ROLES.app, rolbypassrls: false, ...base },
       { rolname: ROLES.fixture, rolbypassrls: true, ...base },
       { rolname: ROLES.owner, rolbypassrls: false, ...base },
+      { rolname: ROLES.worker, rolbypassrls: false, ...base },
+    ]);
+  });
+
+  it("bound the application and worker roles by role-level timeouts", async () => {
+    const { rows } = await pools.bootstrap.query(
+      `select r.rolname, s.setconfig from pg_db_role_setting s join pg_roles r on r.oid = s.setrole
+       where s.setdatabase = 0 and r.rolname = any($1) order by 1`,
+      [[ROLES.app, ROLES.worker]],
+    );
+    const setconfig = ["idle_in_transaction_session_timeout=30s", "statement_timeout=15s"];
+    expect(
+      rows.map((r) => ({
+        ...r,
+        setconfig: [...r.setconfig].sort((a: string, b: string) => a.localeCompare(b)),
+      })),
+    ).toEqual([
+      { rolname: ROLES.app, setconfig },
+      { rolname: ROLES.worker, setconfig },
     ]);
   });
 
@@ -95,12 +115,12 @@ describe("ownership", () => {
     expect(functions.filter((f) => f.owner !== ROLES.owner)).toEqual([]);
   });
 
-  it("the fixture and app roles own nothing, here or in a shared object", async () => {
+  it("the fixture, app and worker roles own nothing, here or in a shared object", async () => {
     const owned = await scalar<number>(
       pools.bootstrap,
       `select count(*)::int as v from pg_shdepend s join pg_roles r on r.oid = s.refobjid
        where s.refclassid = 'pg_authid'::regclass and s.deptype = 'o' and r.rolname = any($1)`,
-      [[ROLES.fixture, ROLES.app]],
+      [[ROLES.fixture, ROLES.app, ROLES.worker]],
     );
     expect(owned).toBe(0);
   });
@@ -110,7 +130,7 @@ describe("ownership", () => {
       pools.bootstrap,
       "select pg_get_userbyid(extowner) as v from pg_extension where extname = 'vector'",
     );
-    expect([ROLES.owner, ROLES.fixture, ROLES.app]).not.toContain(owner);
+    expect([ROLES.owner, ROLES.fixture, ROLES.app, ROLES.worker]).not.toContain(owner);
   });
 });
 
@@ -156,6 +176,35 @@ describe("fixture privileges (effective, PUBLIC included)", () => {
          and case when c.relkind = 'S' then has_sequence_privilege(${fixture}, c.oid, 'USAGE,SELECT,UPDATE') end`,
     );
     expect(granted).toBe(0);
+  });
+});
+
+describe("worker privileges (effective, PUBLIC included)", () => {
+  const has = (sql: string) => scalar<boolean>(pools.bootstrap, `select ${sql} as v`);
+  const worker = `'${ROLES.worker}'`;
+
+  it("can connect and use the public schema, and can create nothing anywhere", async () => {
+    expect(await has(`has_database_privilege(${worker}, current_database(), 'CONNECT')`)).toBe(
+      true,
+    );
+    expect(
+      await has(`has_database_privilege(${worker}, current_database(), 'CREATE,TEMPORARY')`),
+    ).toBe(false);
+    expect(await has(`has_schema_privilege(${worker}, 'public', 'USAGE')`)).toBe(true);
+    expect(await has(`has_schema_privilege(${worker}, 'public', 'CREATE')`)).toBe(false);
+    expect(await has(`has_schema_privilege(${worker}, 'drizzle', 'USAGE,CREATE')`)).toBe(false);
+  });
+
+  it("holds no sequence privilege and no table-level privilege beyond the outbox's", async () => {
+    const { rows } = await pools.bootstrap.query<{ rel: string }>(
+      `select c.relname as rel from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname in ${APP_SCHEMAS} and c.relkind in ('r', 'p', 'S')
+         and case when c.relkind = 'S'
+           then has_sequence_privilege(${worker}, c.oid, 'USAGE,SELECT,UPDATE')
+           else has_table_privilege(${worker}, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN') end
+       order by 1`,
+    );
+    expect(rows.map((r) => r.rel)).toEqual(["outbox"]);
   });
 });
 

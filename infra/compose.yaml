@@ -10,6 +10,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set in .env}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set in .env}
+      # `:-` for the same reason as the owner and fixture passwords below; init-roles.sh refuses empty.
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:-}
       # `:-` not `:?`: Compose interpolates the whole file on every command, so a required variable
       # would break `ps`/`down`/`logs` for an .env written before these existed. roles.sql refuses
       # to run with either empty, which stops initialisation of a new volume with a clear message.

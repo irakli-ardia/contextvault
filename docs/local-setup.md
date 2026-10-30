@@ -76,6 +76,7 @@ Never commit `.env.test` or put real credentials in `.env.test.example`; use the
 | `API_INTERNAL_URL` | web (build **and** run time) | bare origin of the API; optional, defaults to `http://127.0.0.1:3001`. The `/api/*` rewrite takes it at `next build` (changing it needs a rebuild); the upload Route Handler reads it from the running server's environment (a restart is enough). Set the same value for both, see below |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
+| `DATABASE_WORKER_URL` | worker, `test:integration` | `postgres://` or `postgresql://` URL; the ingestion-worker role `contextvault_worker` |
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; `contextvault_owner`: owns the schema, not a superuser, bound by row-level security on forced tables. Never given to a running app |
 | `DATABASE_FIXTURE_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; `contextvault_fixture` (BYPASSRLS, data changes only): seeds and cleanup. Refused when `NODE_ENV=production`; never falls back to `DATABASE_URL` |
 | `DATABASE_BOOTSTRAP_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; the bootstrap superuser (`POSTGRES_USER`), for catalog probes only. Same rules as above |
@@ -139,14 +140,21 @@ pnpm run infra:smoke       # pgvector, Redis, S3 round trip, worker connect and 
 
 ## Database
 
-PostgreSQL has four roles. Only the application role is used at run time.
+PostgreSQL has five roles. The application role and the ingestion-worker role are used at run time.
 
 | Role | Attributes | Used by | Variable |
 | --- | --- | --- | --- |
 | `POSTGRES_USER` (bootstrap) | superuser | volume initialisation, `infra:roles`, catalog probes in tests | `DATABASE_BOOTSTRAP_URL` (`.env.test`) |
 | `contextvault_owner` | NOSUPERUSER, NOBYPASSRLS; owns the database objects | `db:migrate`, `user:create` | `DATABASE_MIGRATION_URL` |
 | `contextvault_fixture` | NOSUPERUSER, BYPASSRLS; data changes on `public` tables only, no DDL, owns nothing | test seeds, cleanup, e2e account tooling | `DATABASE_FIXTURE_URL` (`.env.test`) |
-| `contextvault_app` | NOSUPERUSER, NOBYPASSRLS; `SELECT`/`INSERT` plus the reviewed grants | api, worker | `DATABASE_URL` |
+| `contextvault_app` | NOSUPERUSER, NOBYPASSRLS; `SELECT`/`INSERT` plus the reviewed grants | api | `DATABASE_URL` |
+| `contextvault_worker` | NOSUPERUSER, NOBYPASSRLS; reads lifecycle metadata across workspaces, writes only inside the workspace it asserts (migration 0008) | worker (from the dispatcher increment) | `DATABASE_WORKER_URL` |
+
+`contextvault_worker` is created by `init-roles.sh` on a fresh volume, from `POSTGRES_WORKER_PASSWORD`. A volume that predates it gets it from `pnpm run infra:roles` (run it before `db:migrate`; migration 0007 fails without the role): the role is created only if missing, so an existing worker keeps its credential, and only its attributes, timeouts and `CONNECT`/`USAGE` are brought back to the documented state. `infra:roles` needs `POSTGRES_WORKER_PASSWORD` in `.env`; `infra:roles:rollback` leaves the worker alone.
+
+The worker's `app.workspace_id` is asserted by the worker process, not proved to the database. It stops bugs and forged job payloads from crossing workspaces; it does not protect against someone who holds the worker credential, who can assert any workspace and write there. Guard `DATABASE_WORKER_URL` like the application role's, and see the [threat model](threat-model.md).
+
+`processed` is a temporary, non-searchable end state: the worker's update policy refuses `ready` until M1.6 activates versions. M1.6 must change the status `CHECK`, that policy and the pinned policy tests together.
 
 The application role owns no table, has no `BYPASSRLS`, and cannot run DDL. Row-level security policies scope every row to the user and workspace set for the current transaction. The owner is bound by `FORCE ROW LEVEL SECURITY` too (it sees no rows of a forced table), but it can still change policies and grants, so its credential belongs to `db:migrate` and `user:create` only. New tables created by the owner give the fixture role data access automatically and the application role nothing; new functions are not executable by `PUBLIC` until a migration grants it.
 

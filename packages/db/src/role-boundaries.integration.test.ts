@@ -147,6 +147,30 @@ describe("application role", () => {
   });
 });
 
+describe("worker role", () => {
+  it.each([ROLES.owner, ROLES.fixture, ROLES.app, bootstrapRole])(
+    "cannot assume %s",
+    async (role) => {
+      expect(await attempt(pools.worker, `set role ${role}`)).toBe(DENIED);
+    },
+  );
+
+  it.each([
+    ["create a table", "create table intruder (x int)"],
+    ["create a temp table", "create temp table intruder (x int)"],
+    ["create a schema", "create schema intruder"],
+    ["create a role", "create role intruder"],
+    ["alter a role", "alter role contextvault_worker bypassrls"],
+    ["alter a table", "alter table outbox add column x int"],
+    ["disable RLS", "alter table outbox disable row level security"],
+    ["truncate the outbox", "truncate outbox"],
+    ["read the migration journal", "select * from drizzle.__drizzle_migrations"],
+    ["read password hashes", "select rolpassword from pg_authid"],
+  ])("cannot %s", async (_name, statement) => {
+    expect(await attempt(pools.worker, statement)).toBe(DENIED);
+  });
+});
+
 describe("assertLeastPrivilege refuses every role above the application role", () => {
   const check = async (connectionString: string) => {
     const handle = createDatabase({ connectionString, poolSize: 1 });

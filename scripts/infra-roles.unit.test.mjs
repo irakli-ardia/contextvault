@@ -7,13 +7,16 @@ import { infraRoles } from "./infra-roles.mjs";
 const SQL = "-- the roles.sql text\nselect 1;\n";
 const OWNER_PW = "owner-secret-1";
 const FIXTURE_PW = "fixture-secret-2";
+const WORKER_PW = "worker-secret-3";
 const ENV = [
   "NODE_ENV=development",
   "POSTGRES_USER=boot",
   "POSTGRES_DB=appdb",
   `POSTGRES_OWNER_PASSWORD=${OWNER_PW}`,
   `POSTGRES_FIXTURE_PASSWORD=${FIXTURE_PW}`,
+  `POSTGRES_WORKER_PASSWORD=${WORKER_PW}`,
 ].join("\n");
+const PASSWORD_NAMES = ["OWNER", "FIXTURE", "WORKER"].map((r) => `POSTGRES_${r}_PASSWORD`);
 const SYSID = "7311111111111111111";
 const TOKEN = `proj/appdb@${SYSID}`;
 
@@ -44,7 +47,7 @@ function run(argv, over = {}) {
     return {
       status: world.applyStatus,
       stdout: `applied ${OWNER_PW}\n`,
-      stderr: `${FIXTURE_PW}\n`,
+      stderr: `${FIXTURE_PW}\n${WORKER_PW}\n`,
     };
   };
   const result = infraRoles({
@@ -90,10 +93,9 @@ describe("refusals before any Docker call", () => {
     expect(r.calls).toEqual([]);
   });
 
-  it.each(["POSTGRES_OWNER_PASSWORD", "POSTGRES_FIXTURE_PASSWORD"])("apply without %s", (name) => {
+  it.each(PASSWORD_NAMES)("apply without %s", (name) => {
     const r = run(confirmed, { dotenv: ENV.replace(new RegExp(`${name}=.*`), `${name}=`) });
-    expect(r.code).toBe(1);
-    expect(r.stderr).toContain(name);
+    expect([r.code, r.stderr]).toEqual([1, expect.stringContaining(name)]);
     expect(r.calls).toEqual([]);
   });
 });
@@ -208,7 +210,7 @@ describe("a confirmed request", () => {
     expect(args.join(" ")).toContain(`expect_system_identifier=${SYSID}`);
     expect(args.join(" ")).not.toContain("rollback=1");
     expect(args.join(" ")).not.toMatch(/secret/);
-    expect(input).toBe(`${OWNER_PW}\n${FIXTURE_PW}\n${SQL}`);
+    expect(input).toBe(`${OWNER_PW}\n${FIXTURE_PW}\n${WORKER_PW}\n${SQL}`);
     expect(r.stdout + r.stderr).not.toMatch(/secret/);
     expect(r.stdout).toContain("roles up to date");
   });

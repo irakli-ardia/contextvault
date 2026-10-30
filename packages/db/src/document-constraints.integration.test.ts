@@ -130,7 +130,7 @@ describe("pending uploads", () => {
 });
 
 describe("row security survives privileged migrations", () => {
-  it("is enabled and forced on all three tables, bound to the application role only", async () => {
+  it("is enabled and forced on all three tables, bound to the application role (the worker's are pinned in catalog-invariants)", async () => {
     const tables = ["document_versions", "documents", "pending_uploads"];
     const flags = await fx.queryAs<{ relname: string; on: boolean; forced: boolean }>(
       null,
@@ -140,7 +140,7 @@ describe("row security survives privileged migrations", () => {
     expect(flags).toEqual(tables.map((relname) => ({ relname, on: true, forced: true })));
     const policies = await fx.queryAs<{ tablename: string; cmd: string; roles: string }>(
       null,
-      "select tablename, cmd, roles::text from pg_policies where tablename = any($1) order by tablename, cmd",
+      "select tablename, cmd, roles::text from pg_policies where tablename = any($1) and roles <> array['contextvault_worker']::name[] order by tablename, cmd",
       [tables],
     );
     expect(policies.map((p) => `${p.tablename}:${p.cmd}`)).toEqual([

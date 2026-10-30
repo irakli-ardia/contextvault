@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { loadBootstrapEnv, loadDatabaseEnv } from "@contextvault/config";
+import { loadBootstrapEnv, loadDatabaseEnv, loadWorkerDatabaseEnv } from "@contextvault/config";
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -39,6 +39,36 @@ const EXPECTED_GRANTS: Record<string, readonly string[]> = {
   "public.documents": ["SELECT", "INSERT"],
   "public.document_versions": ["SELECT", "INSERT"],
   "public.pending_uploads": ["SELECT", "INSERT", "DELETE"],
+  // Nothing yet: the upload increment grants the application role INSERT.
+  "public.outbox": [],
+};
+
+// The ingestion worker (migration 0008): lifecycle metadata of document_versions only (no storage
+// key, no error text), the deleted flag of documents, and the outbox. Same fail-closed rule: a
+// table missing here must have no grants for the worker.
+const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
+  "public.document_versions": [
+    ...[
+      "id",
+      "workspace_id",
+      "document_id",
+      "status",
+      "lease_generation",
+      "attempt",
+      "updated_at",
+    ].map((c) => `SELECT(${c})`),
+    ...[
+      "status",
+      "lease_generation",
+      "attempt",
+      "error_stage",
+      "error_code",
+      "error_retryable",
+      "updated_at",
+    ].map((c) => `UPDATE(${c})`),
+  ],
+  "public.documents": ["id", "workspace_id", "deleted_at"].map((c) => `SELECT(${c})`),
+  "public.outbox": ["SELECT", "INSERT", "UPDATE(dispatched_at)"],
 };
 
 const TABLE_PRIVS = [
@@ -53,17 +83,22 @@ const TABLE_PRIVS = [
 ];
 const COLUMN_PRIVS = ["SELECT", "INSERT", "UPDATE", "REFERENCES"];
 const APP_SCHEMAS = `n.nspname <> 'information_schema' and n.nspname not like 'pg\\_%'`;
-const expectedGrants = Object.entries(EXPECTED_GRANTS).flatMap(([rel, grants]) =>
-  grants.map((g) => `${rel} ${g}`),
-);
+const flatten = (grants: Record<string, readonly string[]>) =>
+  Object.entries(grants).flatMap(([rel, list]) => list.map((g) => `${rel} ${g}`));
 
 type Db = Pick<pg.ClientBase, "query">;
 const rows = async <T extends pg.QueryResultRow>(db: Db, text: string, values: unknown[]) =>
   (await db.query<T>(text, values)).rows;
 
 /** Every violation of the policy for `role`, as one readable line each. Empty means compliant. */
-async function violations(db: Db, role: string): Promise<string[]> {
+async function violations(
+  db: Db,
+  role: string,
+  grants: Record<string, readonly string[]>,
+  otherRole: string,
+): Promise<string[]> {
   const out: string[] = [];
+  const expectedGrants = flatten(grants);
 
   const [attrs] = await rows<Record<string, boolean>>(
     db,
@@ -177,10 +212,11 @@ async function violations(db: Db, role: string): Promise<string[]> {
   const policies = await rows<{ p: string }>(
     db,
     `select schemaname || '.' || tablename || ' ' || policyname as p from pg_policies
-     where roles <> array[$1]::name[]`,
-    [role],
+     where roles <> array[$1]::name[] and roles <> array[$2]::name[]`,
+    [role, otherRole],
   );
-  for (const { p } of policies) out.push(`policy ${p} is not limited to TO ${role}`);
+  for (const { p } of policies)
+    out.push(`policy ${p} is not limited to TO ${role} or ${otherRole}`);
 
   const definers = await rows<{ f: string }>(
     db,
@@ -203,7 +239,9 @@ const bootstrap = new pg.Pool({
 });
 afterAll(() => bootstrap.end());
 
-const appRole = decodeURIComponent(new URL(loadDatabaseEnv().DATABASE_URL).username);
+const roleOf = (url: string) => decodeURIComponent(new URL(url).username);
+const appRole = roleOf(loadDatabaseEnv().DATABASE_URL);
+const workerRole = roleOf(loadWorkerDatabaseEnv().DATABASE_WORKER_URL);
 
 describe("catalog invariants", () => {
   it("runs against a database with every committed migration applied", async () => {
@@ -237,7 +275,27 @@ describe("catalog invariants", () => {
   });
 
   it("holds for the application role", async () => {
-    expect(await violations(bootstrap, appRole)).toEqual([]);
+    expect(await violations(bootstrap, appRole, EXPECTED_GRANTS, workerRole)).toEqual([]);
+  });
+
+  it("holds for the worker role", async () => {
+    expect(await violations(bootstrap, workerRole, WORKER_EXPECTED_GRANTS, appRole)).toEqual([]);
+  });
+
+  it("pins the worker role's policies to exactly the reviewed list", async () => {
+    const { rows } = await bootstrap.query<{ p: string }>(
+      `select tablename || '.' || policyname as p from pg_policies
+       where roles = array[$1]::name[] order by 1`,
+      [workerRole],
+    );
+    expect(rows.map((r) => r.p)).toEqual([
+      "document_versions.document_versions_worker_discover",
+      "document_versions.document_versions_worker_update",
+      "documents.documents_worker_select",
+      "outbox.outbox_worker_discover",
+      "outbox.outbox_worker_insert",
+      "outbox.outbox_worker_mark",
+    ]);
   });
 });
 
@@ -363,7 +421,7 @@ describe("catalog invariants detect violations", () => {
       const probeRole = "probe_app_role";
       await client.query(`create role ${probeRole} nologin`);
       for (const sql of setup) await client.query(sql.replaceAll("ROLE", probeRole));
-      const found = await violations(client, probeRole);
+      const found = await violations(client, probeRole, EXPECTED_GRANTS, "contextvault_worker");
       expect(
         found.some((v) => v.includes(expected)),
         found.join("\n"),

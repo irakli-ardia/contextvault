@@ -11,12 +11,16 @@ import {
   parseMigrationEnv,
   parseS3Env,
   parseWebEnv,
+  parseWorkerDatabaseEnv,
   parseWorkerEnv,
 } from "./env";
 
 const SECRET = "s3cr3t-value-must-not-leak";
 
 const DATABASE = { DATABASE_URL: `postgres://app:${SECRET}@127.0.0.1:5432/db` };
+const WORKER_DATABASE = {
+  DATABASE_WORKER_URL: `postgres://worker:${SECRET}@127.0.0.1:5432/db`,
+};
 const MIGRATION = { DATABASE_MIGRATION_URL: `postgres://owner:${SECRET}@127.0.0.1:5432/db` };
 const S3 = {
   S3_ENDPOINT: "http://127.0.0.1:8333",
@@ -227,6 +231,12 @@ describe.each([
     parseMigrationEnv,
     { NODE_ENV: "test", ...MIGRATION },
     Object.keys(MIGRATION),
+  ],
+  [
+    "parseWorkerDatabaseEnv",
+    parseWorkerDatabaseEnv,
+    { NODE_ENV: "test", ...WORKER_DATABASE },
+    Object.keys(WORKER_DATABASE),
   ],
   ["parseS3Env", parseS3Env, { NODE_ENV: "test", ...S3 }, Object.keys(S3)],
 ] as const)("%s", (_name, parse, valid, required) => {
