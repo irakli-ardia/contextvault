@@ -16,24 +16,23 @@ export interface SettleFailureInput {
   /** The generation this worker claimed; a newer claim makes this call a no-op. */
   readonly leaseGeneration: number;
   readonly failure: IngestionFailure;
-  readonly now: Date;
 }
 
 export type SettleFailureResult =
-  | { readonly outcome: "retry"; readonly availableAt: Date }
+  | { readonly outcome: "retry"; readonly delayMs: number }
   | { readonly outcome: "failed" }
   /** Not running, or claimed again since: another worker owns the version, nothing was written. */
   | { readonly outcome: "stale" };
 
 /**
  * Applies the retry policy in one transaction: either the version returns to `queued` together
- * with a new outbox row due after the backoff, or it ends `failed` with the failure recorded.
+ * with a new outbox row due after the backoff (counted on the database clock), or it ends `failed` with the failure recorded.
  */
 export function settleFailure(
   deps: SettleFailureDeps,
   input: SettleFailureInput,
 ): Promise<SettleFailureResult> {
-  const { versionId, leaseGeneration, failure, now } = input;
+  const { versionId, leaseGeneration, failure } = input;
   return deps.uow.run(
     { workspaceId: input.workspaceId },
     async ({ ingestion }): Promise<SettleFailureResult> => {
@@ -49,14 +48,13 @@ export function settleFailure(
       }
       const moved = await ingestion.transition({ versionId, leaseGeneration, from, to: "queued" });
       if (!moved) return { outcome: "stale" };
-      const availableAt = new Date(now.getTime() + decision.delayMs);
       await ingestion.insertOutbox({
         id: parseOutboxId(deps.newId()),
         workspaceId: input.workspaceId,
         versionId,
-        availableAt,
+        delayMs: decision.delayMs,
       });
-      return { outcome: "retry", availableAt };
+      return { outcome: "retry", delayMs: decision.delayMs };
     },
     { timeoutMs: deps.transactionTimeoutMs ?? 10_000 },
   );

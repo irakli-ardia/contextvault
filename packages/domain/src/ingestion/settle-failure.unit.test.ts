@@ -4,7 +4,6 @@ import { fakeIngestion, versionId, workspaceId } from "./fakes";
 import type { IngestionFailure } from "./lifecycle";
 import { settleFailure } from "./settle-failure";
 
-const now = new Date("2026-10-30T12:00:00Z");
 const transient: IngestionFailure = {
   stage: "parsing",
   code: "storage.unavailable",
@@ -19,7 +18,7 @@ const setup = () => {
   ) =>
     settleFailure(
       { uow: f.uow, newId: f.newId },
-      { workspaceId, versionId: id, leaseGeneration: 1, failure: transient, now, ...over },
+      { workspaceId, versionId: id, leaseGeneration: 1, failure: transient, ...over },
     );
   return { f, settle };
 };
@@ -32,8 +31,8 @@ describe("settleFailure", () => {
     const { f, settle } = setup();
     const id = f.addVersion(1, "parsing", { leaseGeneration: 1, attempt });
 
-    const availableAt = new Date(now.getTime() + delayMs);
-    expect(await settle(id)).toEqual({ outcome: "retry", availableAt });
+    const availableAt = new Date(f.clock.now.getTime() + delayMs);
+    expect(await settle(id)).toEqual({ outcome: "retry", delayMs });
     expect(f.versions.get(id)?.status).toBe("queued");
     expect([...f.outbox.values()].map((r) => [r.entry.versionId, r.entry.availableAt])).toEqual([
       [id, availableAt],
@@ -117,12 +116,14 @@ describe("settleFailure", () => {
     await settle(id);
     const deps = { source: f.source, queue: f.queue, uow: f.uow };
 
-    expect(await dispatchOutbox(deps, new Date(now.getTime() + 4_999), 10)).toEqual({
+    f.advance(4_999);
+    expect(await dispatchOutbox(deps, 10)).toEqual({
       dispatched: 0,
       alreadyDispatched: 0,
       failures: [],
     });
-    expect(await dispatchOutbox(deps, new Date(now.getTime() + 5_000), 10)).toEqual({
+    f.advance(1);
+    expect(await dispatchOutbox(deps, 10)).toEqual({
       dispatched: 1,
       alreadyDispatched: 0,
       failures: [],

@@ -90,10 +90,12 @@ export {
   maxAttempts,
 } from "./ingestion/lifecycle";
 export type {
+  ClaimedVersion,
   IngestionRepository,
   IngestionUnitOfWork,
   IngestionVersion,
   JobQueue,
+  NewOutboxEntry,
   OutboxEntry,
   OutboxSource,
   WorkerContext,

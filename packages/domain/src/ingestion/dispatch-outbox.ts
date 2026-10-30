@@ -29,6 +29,9 @@ export interface DispatchOutboxResult {
   readonly failures: readonly DispatchFailure[];
 }
 
+// A failing entry yields to newer work for this long (a poison row would otherwise fill the batch).
+const deferralMs = 30_000;
+
 // BullMQ rejects ':' in custom ids.
 export const outboxJobId = (id: OutboxId): string => `outbox-${id}`;
 
@@ -39,41 +42,63 @@ export const outboxJobId = (id: OutboxId): string => `outbox-${id}`;
  */
 export async function dispatchOutbox(
   deps: DispatchOutboxDeps,
-  now: Date,
   limit: number,
 ): Promise<DispatchOutboxResult> {
   let dispatched = 0;
   let alreadyDispatched = 0;
   const failures: DispatchFailure[] = [];
-  for (const entry of await deps.source.listDue(now, limit)) {
+  for (const entry of await deps.source.listDue(limit)) {
     try {
       await deps.queue.enqueue({
         jobId: outboxJobId(entry.id),
         workspaceId: entry.workspaceId,
         versionId: entry.versionId,
       });
+    } catch (error) {
+      failures.push({ outboxId: entry.id, error });
+      await deferEntry(deps, entry, failures);
+      continue;
+    }
+    // Never deferred from here on: the job may already be delivered, and a claim refused for a
+    // future `available_at` would complete it, so the re-add (a no-op on a retained id) would
+    // leave the version queued with no job. The next poll repeats the add and the mark instead.
+    try {
       const won = await deps.uow.run(
         { workspaceId: entry.workspaceId },
-        ({ ingestion }) => markAndQueue(ingestion, entry, now),
+        ({ ingestion }) => markAndQueue(ingestion, entry),
         { timeoutMs: deps.transactionTimeoutMs ?? 10_000 },
       );
       if (won) dispatched += 1;
       else alreadyDispatched += 1;
     } catch (error) {
+      // After an unknown commit the mark may have landed; the next poll finds out.
       failures.push({ outboxId: entry.id, error });
     }
   }
   return { dispatched, alreadyDispatched, failures };
 }
 
-/** `false` when another dispatcher already marked the entry. */
-async function markAndQueue(
-  repo: IngestionRepository,
+/** Only for an entry whose enqueue failed, so no job exists. A failed deferral is reported too. */
+async function deferEntry(
+  deps: DispatchOutboxDeps,
   entry: OutboxEntry,
-  now: Date,
-): Promise<boolean> {
+  failures: DispatchFailure[],
+): Promise<void> {
+  try {
+    await deps.uow.run(
+      { workspaceId: entry.workspaceId },
+      ({ ingestion }) => ingestion.deferOutbox(entry.id, deferralMs),
+      { timeoutMs: deps.transactionTimeoutMs ?? 10_000 },
+    );
+  } catch (error) {
+    failures.push({ outboxId: entry.id, error });
+  }
+}
+
+/** `false` when another dispatcher already marked the entry. */
+async function markAndQueue(repo: IngestionRepository, entry: OutboxEntry): Promise<boolean> {
   // The winner's transaction did the transition too.
-  if (!(await repo.markDispatched(entry.id, now))) return false;
+  if (!(await repo.markDispatched(entry.id))) return false;
   const version = await repo.findVersion(entry.versionId);
   if (version?.status === "uploaded") {
     await repo.transition({

@@ -6,7 +6,7 @@ import {
   parseOutboxId,
   parseWorkspaceId,
 } from "../kernel/ids";
-import { canTransition, type IngestionFailure } from "./lifecycle";
+import { canTransition, type IngestionFailure, isRunning, maxAttempts } from "./lifecycle";
 import type {
   IngestionRepository,
   IngestionUnitOfWork,
@@ -30,8 +30,11 @@ interface VersionRow extends IngestionVersion {
 }
 
 // In-memory ports for ingestion tests. The unit of work rolls state back when the work throws, the
-// queue holds one job per id like BullMQ, and the queue refuses calls made inside a transaction.
+// queue holds one job per id for good like BullMQ's default retention of finished jobs (an add of a
+// held id is a silent no-op), and the queue refuses calls made inside a transaction. `clock` stands
+// in for the database clock: every schedule is relative to it and only `advance` moves it.
 export function fakeIngestion() {
+  const clock = { now: new Date("2026-10-30T12:00:00Z") };
   const versions = new Map<string, VersionRow>();
   const outbox = new Map<string, OutboxRow>();
   const jobs = new Map<string, { workspaceId: string; versionId: string }>();
@@ -40,6 +43,7 @@ export function fakeIngestion() {
     transition: false,
     listDispatched: false,
     insertOutbox: false,
+    deferOutbox: false,
     /** Another worker claims the version between the read and the write. */
     claimedMeanwhile: false,
     /** The commit succeeds but the acknowledgement is lost. */
@@ -49,9 +53,11 @@ export function fakeIngestion() {
   let open = false;
 
   const source: OutboxSource = {
-    listDue: async (now, limit) =>
+    listDue: async (limit) =>
       [...outbox.values()]
-        .filter((r) => (faults.listDispatched || !r.dispatchedAt) && r.entry.availableAt <= now)
+        .filter(
+          (r) => (faults.listDispatched || !r.dispatchedAt) && r.entry.availableAt <= clock.now,
+        )
         .map((r) => r.entry)
         .slice(0, limit),
   };
@@ -71,6 +77,32 @@ export function fakeIngestion() {
   };
   const ingestion: IngestionRepository = {
     findVersion: async (id) => versions.get(id) ?? null,
+    claim: async ({ versionId: id }) => {
+      const row = versions.get(id);
+      const scheduled = [...outbox.values()].some(
+        (r) => r.entry.versionId === id && !r.dispatchedAt && r.entry.availableAt > clock.now,
+      );
+      if (!row || scheduled || row.attempt >= maxAttempts) return null;
+      if (row.status !== "uploaded" && row.status !== "queued") return null;
+      const claimed = { leaseGeneration: row.leaseGeneration + 1, attempt: row.attempt + 1 };
+      versions.set(id, { ...row, ...claimed, status: "parsing" });
+      for (const r of outbox.values()) {
+        if (r.entry.versionId === id && !r.dispatchedAt) r.dispatchedAt = clock.now;
+      }
+      return claimed;
+    },
+    heartbeat: async ({ versionId: id, leaseGeneration }) => {
+      const row = versions.get(id);
+      return row?.leaseGeneration === leaseGeneration && isRunning(row.status);
+    },
+    deferOutbox: async (id, delayMs) => {
+      if (faults.deferOutbox) throw new Error("connection lost");
+      const row = outbox.get(id);
+      if (!row || row.dispatchedAt) return false;
+      const availableAt = new Date(clock.now.getTime() + delayMs);
+      outbox.set(id, { ...row, entry: { ...row.entry, availableAt } });
+      return true;
+    },
     transition: async ({ versionId: id, leaseGeneration, from, to }) => {
       if (faults.transition) throw new Error("connection lost");
       claimMeanwhile(id);
@@ -90,12 +122,18 @@ export function fakeIngestion() {
     },
     insertOutbox: async (entry) => {
       if (faults.insertOutbox) throw new Error("connection lost");
-      outbox.set(entry.id, { entry, dispatchedAt: null });
+      const live = [...outbox.values()].some(
+        (r) => r.entry.versionId === entry.versionId && !r.dispatchedAt,
+      );
+      if (live) return;
+      const { delayMs, ...rest } = entry;
+      const availableAt = new Date(clock.now.getTime() + delayMs);
+      outbox.set(entry.id, { entry: { ...rest, availableAt }, dispatchedAt: null });
     },
-    markDispatched: async (id, now) => {
+    markDispatched: async (id) => {
       const row = outbox.get(id);
       if (!row || row.dispatchedAt) return false;
-      row.dispatchedAt = now;
+      row.dispatchedAt = clock.now;
       return true;
     },
   };
@@ -130,6 +168,10 @@ export function fakeIngestion() {
     queue,
     uow,
     faults,
+    clock,
+    advance: (ms: number) => {
+      clock.now = new Date(clock.now.getTime() + ms);
+    },
     jobs,
     log,
     versions,
@@ -140,12 +182,12 @@ export function fakeIngestion() {
       versions.set(id, { id, status, leaseGeneration: 0, attempt: 0, ...over });
       return id;
     },
-    addOutbox(n: number, id: DocumentVersionId, availableAt: Date): OutboxEntry {
+    addOutbox(n: number, id: DocumentVersionId, delayMs = 0): OutboxEntry {
       const entry = {
         id: parseOutboxId(uuid(2000 + n)),
         workspaceId,
         versionId: id,
-        availableAt,
+        availableAt: new Date(clock.now.getTime() + delayMs),
       };
       outbox.set(entry.id, { entry, dispatchedAt: null });
       return entry;

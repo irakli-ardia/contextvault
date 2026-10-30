@@ -190,11 +190,11 @@ describe("outbox", () => {
     expect(await sqlState(asWorker(null, (q) => q(forB)))).toBe(DENIED);
   });
 
-  it("can change only dispatched_at and cannot delete", async () => {
+  it("can change only dispatched_at and available_at, and cannot delete", async () => {
     const id = randomUUID();
     const seed = (q: Query) => q(insert(id, wsA, docA.versionId));
     for (const statement of [
-      "update outbox set available_at = now()",
+      "update outbox set created_at = now()",
       "update outbox set workspace_id = workspace_id",
       "delete from outbox",
     ]) {

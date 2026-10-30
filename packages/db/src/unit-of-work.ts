@@ -17,24 +17,37 @@ export async function applyTimeout(tx: Executor, timeoutMs: number): Promise<voi
 // One transaction per command; context is established before any repository runs. An error that
 // reaches the caller after `work` succeeded came from COMMIT: with a SQLSTATE the server refused
 // it, without one the connection was lost and the commit may still have happened.
+export async function runTransaction<T>(
+  db: Database,
+  timeoutMs: number | undefined,
+  establish: (tx: Executor) => Promise<void>,
+  work: (tx: Executor) => Promise<T>,
+): Promise<T> {
+  let worked = false;
+  try {
+    return await db.transaction(async (tx) => {
+      if (timeoutMs !== undefined) await applyTimeout(tx, timeoutMs);
+      await establish(tx);
+      const result = await work(tx);
+      worked = true;
+      return result;
+    });
+  } catch (error) {
+    if (worked && postgresErrorCode(error) === undefined) {
+      throw new TransactionOutcomeUnknown({ cause: error });
+    }
+    throw error;
+  }
+}
+
 export function createUnitOfWork(db: Database): UnitOfWork<Repositories> {
   return {
-    run: async (context, work, options) => {
-      let worked = false;
-      try {
-        return await db.transaction(async (tx) => {
-          if (options?.timeoutMs !== undefined) await applyTimeout(tx, options.timeoutMs);
-          await establishContext(tx, context);
-          const result = await work(createRepositories(tx));
-          worked = true;
-          return result;
-        });
-      } catch (error) {
-        if (worked && postgresErrorCode(error) === undefined) {
-          throw new TransactionOutcomeUnknown({ cause: error });
-        }
-        throw error;
-      }
-    },
+    run: (context, work, options) =>
+      runTransaction(
+        db,
+        options?.timeoutMs,
+        (tx) => establishContext(tx, context),
+        (tx) => work(createRepositories(tx)),
+      ),
   };
 }

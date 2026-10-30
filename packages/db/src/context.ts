@@ -1,4 +1,4 @@
-import type { TenantContext } from "@contextvault/domain";
+import type { TenantContext, WorkerContext } from "@contextvault/domain";
 import { WorkspaceAccessDenied } from "@contextvault/domain";
 import { eq, sql } from "drizzle-orm";
 import type { Executor } from "./client";
@@ -21,4 +21,10 @@ export async function establishContext(tx: Executor, context: TenantContext): Pr
     .where(eq(memberships.workspaceId, context.workspaceId))
     .limit(1);
   if (proof === undefined) throw new WorkspaceAccessDenied();
+}
+
+// The worker acts for no user and holds no membership grant, so there is nothing to prove: the
+// asserted workspace is the only setting, and the worker policies bind every write to it.
+export async function establishWorkerContext(tx: Executor, context: WorkerContext): Promise<void> {
+  await tx.execute(sql`select set_config('app.workspace_id', ${context.workspaceId}, true)`);
 }
