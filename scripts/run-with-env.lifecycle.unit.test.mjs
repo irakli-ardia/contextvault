@@ -93,6 +93,11 @@ const alive = (pid) => {
     return false;
   }
 };
+// An orphaned entry's pipe closes when it exits, but it stays a zombie until init reaps it.
+const waitGone = async (pid) => {
+  for (let i = 0; i < 250 && alive(pid); i++) await new Promise((r) => setTimeout(r, 20));
+  expectGone(pid);
+};
 const count = (text, word) => text.split(word).length - 1;
 // A process can exit between a liveness check and the kill; only that case (ESRCH) is ignored.
 const kill = (pid, signal) => {
@@ -185,7 +190,7 @@ describe("launcher", () => {
       expect(await exited).toEqual({ code: 0, sig: null });
       expect(count(output(), "closing")).toBe(1);
       expect(output()).toContain("exited 0");
-      expectGone(pid);
+      await waitGone(pid);
     }));
 
   // infra-smoke SIGKILLs the pid it spawned when the worker is not ready in time: with no wrapper
@@ -213,17 +218,13 @@ describe("launcher", () => {
       await exited;
       expect(count(output(), "closing")).toBe(1);
       expect(output()).toContain("exited 0");
-      expectGone(pid);
+      await waitGone(pid);
     });
   });
 });
 
 describe("dev loop", () => {
   const dev = (app) => [join(root, "dev/scripts/dev.mjs"), app];
-  const waitGone = async (pid) => {
-    for (let i = 0; i < 250 && alive(pid); i++) await new Promise((r) => setTimeout(r, 20));
-    expectGone(pid);
-  };
 
   it("runs the entry through the launcher and stops it gracefully, once, on SIGTERM", async () => {
     const loop = spawn(process.execPath, dev("api"), {
