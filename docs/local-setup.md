@@ -148,7 +148,7 @@ PostgreSQL has five roles. The application role and the ingestion-worker role ar
 | `contextvault_owner` | NOSUPERUSER, NOBYPASSRLS; owns the database objects | `db:migrate`, `user:create` | `DATABASE_MIGRATION_URL` |
 | `contextvault_fixture` | NOSUPERUSER, BYPASSRLS; data changes on `public` tables only, no DDL, owns nothing | test seeds, cleanup, e2e account tooling | `DATABASE_FIXTURE_URL` (`.env.test`) |
 | `contextvault_app` | NOSUPERUSER, NOBYPASSRLS; `SELECT`/`INSERT` plus the reviewed grants | api | `DATABASE_URL` |
-| `contextvault_worker` | NOSUPERUSER, NOBYPASSRLS; reads lifecycle metadata across workspaces, writes only inside the workspace it asserts (migration 0008) | worker (from the dispatcher increment) | `DATABASE_WORKER_URL` |
+| `contextvault_worker` | NOSUPERUSER, NOBYPASSRLS; reads lifecycle metadata across workspaces, writes only inside the workspace it asserts (migration 0008) | worker (outbox dispatcher) | `DATABASE_WORKER_URL` |
 
 `contextvault_worker` is created by `init-roles.sh` on a fresh volume, from `POSTGRES_WORKER_PASSWORD`. A volume that predates it gets it from `pnpm run infra:roles` (run it before `db:migrate`; migration 0007 fails without the role): the role is created only if missing, so an existing worker keeps its credential, and only its attributes, timeouts and `CONNECT`/`USAGE` are brought back to the documented state. `infra:roles` needs `POSTGRES_WORKER_PASSWORD` in `.env`; `infra:roles:rollback` leaves the worker alone.
 

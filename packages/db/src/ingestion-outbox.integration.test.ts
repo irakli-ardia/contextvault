@@ -56,7 +56,7 @@ describe("insertOutbox", () => {
   });
 });
 
-describe("markDispatched and deferOutbox", () => {
+describe("markDispatched", () => {
   it("marks once, and only inside the asserted workspace", async () => {
     const id = await h.seed(wsA);
     const [row] = await h.outboxRows(id);
@@ -66,19 +66,6 @@ describe("markDispatched and deferOutbox", () => {
       Array.from({ length: 5 }, () => run(wsA, (r) => r.markDispatched(outboxId))),
     );
     expect(wins.filter(Boolean)).toHaveLength(1);
-  });
-
-  it("defers an undispatched entry, not a dispatched or foreign one", async () => {
-    const id = await h.seed(wsA);
-    const [row] = await h.outboxRows(id);
-    const outboxId = parseOutboxId(row?.id ?? "");
-    expect(await run(wsB, (r) => r.deferOutbox(outboxId, 30_000))).toBe(false);
-    expect(await run(wsA, (r) => r.deferOutbox(outboxId, 30_000))).toBe(true);
-    const [deferred] = await h.outboxRows(id);
-    expect(deferred?.available_at.getTime()).toBeGreaterThan(Date.now() + 25_000);
-    expect(deferred?.available_at.getTime()).toBeLessThan(Date.now() + 35_000);
-    await run(wsA, (r) => r.markDispatched(outboxId));
-    expect(await run(wsA, (r) => r.deferOutbox(outboxId, 0))).toBe(false);
   });
 });
 
@@ -108,13 +95,55 @@ describe("listDue", () => {
   });
 });
 
-describe("starvation", () => {
-  it("a failing batch is deferred, so newer healthy work dispatches on the next poll", async () => {
+describe("keyset cursor", () => {
+  const at = (versionId: string, ts: string) =>
+    h.fx.fixture.query("update outbox set available_at = $2 where version_id = $1", [
+      versionId,
+      ts,
+    ]);
+  const mine = async (ids: string[], after?: string) =>
+    (await worker.source.listDue(1_000, after)).filter((e) => ids.includes(e.versionId));
+
+  it("pages in (available_at, id) order without repeating or skipping entries", async () => {
+    const ids = [await h.seed(wsA), await h.seed(wsA), await h.seed(wsA), await h.seed(wsA)];
+    // Two entries share one instant, so the id must break the tie.
+    const tie = "2020-01-01 00:00:00.5+00";
+    await at(ids[0] ?? "", tie);
+    await at(ids[1] ?? "", tie);
+    await at(ids[2] ?? "", "2020-01-01 00:00:00.4+00");
+    await at(ids[3] ?? "", "2020-01-01 00:00:01+00");
+
+    const all = await mine(ids);
+    expect(all.map((e) => e.versionId)[0]).toBe(ids[2]);
+    expect(all.map((e) => e.versionId).at(-1)).toBe(ids[3]);
+    const walked: string[] = [];
+    let after: string | undefined;
+    for (;;) {
+      const [entry] = await worker.source.listDue(1, after);
+      if (entry === undefined) break;
+      if (ids.includes(entry.versionId)) walked.push(entry.versionId);
+      after = entry.cursor;
+    }
+    expect(walked).toEqual(all.map((e) => e.versionId));
+  });
+
+  it("keeps microsecond precision, so an entry is never returned after its own cursor", async () => {
+    const a = await h.seed(wsA);
+    const b = await h.seed(wsA);
+    await at(a, "2020-02-01 00:00:00.123456+00");
+    await at(b, "2020-02-01 00:00:00.123789+00");
+    const [first] = await mine([a, b]);
+    expect(first?.versionId).toBe(a);
+    // A millisecond Date would have been 123 µs earlier than the row: it would come back.
+    const rest = await mine([a, b], first?.cursor);
+    expect(rest.map((e) => e.versionId)).toEqual([b]);
+  });
+
+  it("a failing head cannot starve later entries, and newer ones are reached", async () => {
     await h.drainOutbox();
     const poison = new Set<string>();
     for (let n = 0; n < 3; n += 1) poison.add(await h.seed(wsA));
     const healthy = await h.seed(wsA);
-    // Oldest first: the poison rows head the queue, the healthy one waits behind them.
     for (const id of poison) await h.makeDue(id);
     const jobs: string[] = [];
     const queue: JobQueue = {
@@ -123,31 +152,29 @@ describe("starvation", () => {
         jobs.push(job.versionId);
       },
     };
-    const deps = { source: h.ownSource, queue, uow: worker.unitOfWork };
+    const deps = { source: h.ownSource, queue, uow: worker.unitOfWork, maxConsecutiveFailures: 10 };
 
     const first = await dispatchOutbox(deps, 3);
-    expect(first.dispatched).toBe(0);
+    expect(first).toMatchObject({ dispatched: 0, aborted: false });
     expect(first.failures).toHaveLength(3);
-    const deferred = await h.ownSource.listDue(100);
-    expect(deferred.some((e) => poison.has(e.versionId))).toBe(false);
-
-    const second = await dispatchOutbox(deps, 3);
-    expect(second).toMatchObject({ dispatched: 1, failures: [] });
+    const second = await dispatchOutbox(deps, 3, first.next);
+    expect(second).toMatchObject({ dispatched: 1, failures: [], next: null });
     expect(jobs).toEqual([healthy]);
 
-    for (const id of poison) await h.makeDue(id);
-    expect((await dispatchOutbox(deps, 3)).failures).toHaveLength(3);
+    // Wrapped: the poison entries are tried again, unchanged, and nothing was ever deferred.
+    const third = await dispatchOutbox(deps, 3, second.next);
+    expect(third.failures).toHaveLength(3);
+    for (const id of poison) expect((await h.outboxRows(id))[0]?.dispatched_at).toBeNull();
   });
 
-  it("does not defer an entry whose enqueue succeeded but whose mark failed", async () => {
+  it("does not change an entry whose enqueue succeeded but whose mark failed", async () => {
     await h.drainOutbox();
     const id = await h.seed(wsA);
     const queue: JobQueue = { enqueue: async () => undefined };
     const uow = { run: () => Promise.reject(new Error("connection lost")) };
+    const before = await h.outboxRows(id);
     const result = await dispatchOutbox({ source: h.ownSource, queue, uow }, 10);
     expect(result.failures).toHaveLength(1);
-    const [row] = await h.outboxRows(id);
-    expect(row?.delay_ms).toBe(0);
-    expect(row?.available_at.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(await h.outboxRows(id)).toEqual(before);
   });
 });

@@ -99,7 +99,7 @@ describe("ingestion flow", () => {
       },
     };
 
-    // The job is enqueued, then the marking transaction fails: no deferral follows.
+    // The job is enqueued, then the marking transaction fails: the entry stays unchanged.
     const lost = await dispatchOutbox({ ...dispatchDeps, uow }, 100);
     expect(lost.failures).toHaveLength(1);
     expect(held.has(firstJob)).toBe(true);
@@ -128,7 +128,7 @@ describe("ingestion flow", () => {
     const id = await h.seed(wsA);
     expect(await claim(id)).not.toBeNull();
     // The claim consumed the entry, so the dispatcher no longer sees it and leaves the version be.
-    expect(await dispatch()).toEqual({ dispatched: 0, alreadyDispatched: 0, failures: [] });
+    expect(await dispatch()).toMatchObject({ dispatched: 0, alreadyDispatched: 0, failures: [] });
     expect(await h.row(id)).toMatchObject({ status: "parsing", lease_generation: 1, attempt: 1 });
     expect((await h.outboxRows(id))[0]?.dispatched_at).not.toBeNull();
   });

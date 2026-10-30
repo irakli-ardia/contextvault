@@ -68,7 +68,7 @@ const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
     ].map((c) => `UPDATE(${c})`),
   ],
   "public.documents": ["id", "workspace_id", "deleted_at"].map((c) => `SELECT(${c})`),
-  "public.outbox": ["SELECT", "INSERT", "UPDATE(available_at)", "UPDATE(dispatched_at)"],
+  "public.outbox": ["SELECT", "INSERT", "UPDATE(dispatched_at)"],
 };
 
 const TABLE_PRIVS = [

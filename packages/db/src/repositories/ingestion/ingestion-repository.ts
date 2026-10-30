@@ -169,20 +169,5 @@ export function createIngestionRepository(
         .returning({ id: outbox.id });
       return rows.length === 1;
     },
-
-    async deferOutbox(outboxId, delayMs) {
-      const rows = await executor
-        .update(outbox)
-        .set({ availableAt: delayed(delayMs) })
-        .where(
-          and(
-            eq(outbox.id, outboxId),
-            eq(outbox.workspaceId, workspaceId),
-            isNull(outbox.dispatchedAt),
-          ),
-        )
-        .returning({ id: outbox.id });
-      return rows.length === 1;
-    },
   };
 }

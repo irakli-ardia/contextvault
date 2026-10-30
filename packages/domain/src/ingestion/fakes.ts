@@ -12,6 +12,7 @@ import type {
   IngestionUnitOfWork,
   IngestionVersion,
   JobQueue,
+  OutboxCursor,
   OutboxEntry,
   OutboxSource,
 } from "./ports";
@@ -20,6 +21,10 @@ import type {
 const uuid = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 export const workspaceId = parseWorkspaceId(uuid(1));
 export const versionId = (n: number): DocumentVersionId => parseDocumentVersionId(uuid(1000 + n));
+
+// Fixed-width time first, so string order is the `(available_at, id)` order of the real source.
+const cursorOf = (availableAt: Date, id: string): OutboxCursor =>
+  `${availableAt.getTime().toString().padStart(15, "0")}|${id}`;
 
 interface OutboxRow {
   readonly entry: OutboxEntry;
@@ -40,32 +45,39 @@ export function fakeIngestion() {
   const jobs = new Map<string, { workspaceId: string; versionId: string }>();
   const faults = {
     enqueue: false,
+    listDue: false,
     transition: false,
     listDispatched: false,
     insertOutbox: false,
-    deferOutbox: false,
     /** Another worker claims the version between the read and the write. */
     claimedMeanwhile: false,
     /** The commit succeeds but the acknowledgement is lost. */
     lostAck: false,
   };
+  /** Versions whose enqueue always fails, while the queue works for the rest. */
+  const poisoned = new Set<string>();
   const log: string[] = [];
   let open = false;
 
   const source: OutboxSource = {
-    listDue: async (limit) =>
-      [...outbox.values()]
+    listDue: async (limit, after) => {
+      if (faults.listDue) throw new Error("database unavailable");
+      return [...outbox.values()]
         .filter(
           (r) => (faults.listDispatched || !r.dispatchedAt) && r.entry.availableAt <= clock.now,
         )
         .map((r) => r.entry)
-        .slice(0, limit),
+        .filter((e) => after === undefined || e.cursor > after)
+        .sort((a, b) => (a.cursor < b.cursor ? -1 : 1))
+        .slice(0, limit);
+    },
   };
   const queue: JobQueue = {
     enqueue: async (job) => {
       if (open) throw new Error("enqueue called inside a transaction");
       log.push("enqueue");
       if (faults.enqueue) throw new Error("redis unavailable");
+      if (poisoned.has(job.versionId)) throw new Error("poison");
       if (!jobs.has(job.jobId)) jobs.set(job.jobId, job);
     },
   };
@@ -95,14 +107,6 @@ export function fakeIngestion() {
       const row = versions.get(id);
       return row?.leaseGeneration === leaseGeneration && isRunning(row.status);
     },
-    deferOutbox: async (id, delayMs) => {
-      if (faults.deferOutbox) throw new Error("connection lost");
-      const row = outbox.get(id);
-      if (!row || row.dispatchedAt) return false;
-      const availableAt = new Date(clock.now.getTime() + delayMs);
-      outbox.set(id, { ...row, entry: { ...row.entry, availableAt } });
-      return true;
-    },
     transition: async ({ versionId: id, leaseGeneration, from, to }) => {
       if (faults.transition) throw new Error("connection lost");
       claimMeanwhile(id);
@@ -128,7 +132,8 @@ export function fakeIngestion() {
       if (live) return;
       const { delayMs, ...rest } = entry;
       const availableAt = new Date(clock.now.getTime() + delayMs);
-      outbox.set(entry.id, { entry: { ...rest, availableAt }, dispatchedAt: null });
+      const cursor = cursorOf(availableAt, entry.id);
+      outbox.set(entry.id, { entry: { ...rest, availableAt, cursor }, dispatchedAt: null });
     },
     markDispatched: async (id) => {
       const row = outbox.get(id);
@@ -168,6 +173,7 @@ export function fakeIngestion() {
     queue,
     uow,
     faults,
+    poisoned,
     clock,
     advance: (ms: number) => {
       clock.now = new Date(clock.now.getTime() + ms);
@@ -183,11 +189,14 @@ export function fakeIngestion() {
       return id;
     },
     addOutbox(n: number, id: DocumentVersionId, delayMs = 0): OutboxEntry {
+      const outboxId = parseOutboxId(uuid(2000 + n));
+      const availableAt = new Date(clock.now.getTime() + delayMs);
       const entry = {
-        id: parseOutboxId(uuid(2000 + n)),
+        id: outboxId,
         workspaceId,
         versionId: id,
-        availableAt: new Date(clock.now.getTime() + delayMs),
+        availableAt,
+        cursor: cursorOf(availableAt, outboxId),
       };
       outbox.set(entry.id, { entry, dispatchedAt: null });
       return entry;

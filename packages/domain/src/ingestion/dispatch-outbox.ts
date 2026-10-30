@@ -3,6 +3,7 @@ import type {
   IngestionRepository,
   IngestionUnitOfWork,
   JobQueue,
+  OutboxCursor,
   OutboxEntry,
   OutboxSource,
 } from "./ports";
@@ -13,6 +14,8 @@ export interface DispatchOutboxDeps {
   readonly uow: IngestionUnitOfWork;
   /** Statement and lock-wait bound of the marking transaction. Default 10 s. */
   readonly transactionTimeoutMs?: number;
+  /** Failures in a row (enqueue or mark) after which a scan stops. Default 3. */
+  readonly maxConsecutiveFailures?: number;
 }
 
 export interface DispatchFailure {
@@ -25,44 +28,47 @@ export interface DispatchOutboxResult {
   readonly dispatched: number;
   /** Enqueued, but another dispatcher had already marked them. */
   readonly alreadyDispatched: number;
-  /** Left undispatched, or with an unknown outcome; the next poll retries them. Never thrown, so the caller must read it. */
+  /** Left unchanged, or with an unknown outcome; a later scan retries them. Never thrown, so the caller must read it. */
   readonly failures: readonly DispatchFailure[];
+  /** Where the next scan resumes; `null` once the end was reached, so the next starts from the oldest entry. */
+  readonly next: OutboxCursor | null;
+  /** The scan stopped early on consecutive failures: a dependency is probably down, so back off. */
+  readonly aborted: boolean;
 }
-
-// A failing entry yields to newer work for this long (a poison row would otherwise fill the batch).
-const deferralMs = 30_000;
 
 // BullMQ rejects ':' in custom ids.
 export const outboxJobId = (id: OutboxId): string => `outbox-${id}`;
 
 /**
  * Enqueue, then mark. The enqueue happens outside any transaction and is idempotent by job id, so
- * a crash or lost acknowledgement between the two steps only repeats a no-op add. Marking the row
- * and moving `uploaded` to `queued` share one transaction; a retry's version is already `queued`.
+ * a crash, timeout or lost acknowledgement between the two steps only repeats a no-op add. A failed
+ * or ambiguous enqueue changes nothing in PostgreSQL: the job may exist, so the entry is neither
+ * deferred nor marked and the next scan retries the same job id. Marking the row and moving
+ * `uploaded` to `queued` share one transaction; a retry's version is already `queued`.
+ *
+ * A scan resumes `after` a cursor and moves it past every entry it attempted, so a failing entry
+ * cannot keep newer ones from being tried; the caller starts over when `next` is `null`.
  */
 export async function dispatchOutbox(
   deps: DispatchOutboxDeps,
   limit: number,
+  after?: OutboxCursor | null,
 ): Promise<DispatchOutboxResult> {
+  const maxFailures = deps.maxConsecutiveFailures ?? 3;
+  const entries = await deps.source.listDue(limit, after ?? undefined);
   let dispatched = 0;
   let alreadyDispatched = 0;
+  let consecutive = 0;
   const failures: DispatchFailure[] = [];
-  for (const entry of await deps.source.listDue(limit)) {
+  let last: OutboxEntry | undefined;
+  for (const entry of entries) {
+    last = entry;
     try {
       await deps.queue.enqueue({
         jobId: outboxJobId(entry.id),
         workspaceId: entry.workspaceId,
         versionId: entry.versionId,
       });
-    } catch (error) {
-      failures.push({ outboxId: entry.id, error });
-      await deferEntry(deps, entry, failures);
-      continue;
-    }
-    // Never deferred from here on: the job may already be delivered, and a claim refused for a
-    // future `available_at` would complete it, so the re-add (a no-op on a retained id) would
-    // leave the version queued with no job. The next poll repeats the add and the mark instead.
-    try {
       const won = await deps.uow.run(
         { workspaceId: entry.workspaceId },
         ({ ingestion }) => markAndQueue(ingestion, entry),
@@ -70,29 +76,19 @@ export async function dispatchOutbox(
       );
       if (won) dispatched += 1;
       else alreadyDispatched += 1;
+      consecutive = 0;
     } catch (error) {
-      // After an unknown commit the mark may have landed; the next poll finds out.
+      // After an unknown commit the mark may have landed; a later scan finds out.
       failures.push({ outboxId: entry.id, error });
+      consecutive += 1;
+      if (consecutive >= maxFailures) {
+        return { dispatched, alreadyDispatched, failures, next: last.cursor, aborted: true };
+      }
     }
   }
-  return { dispatched, alreadyDispatched, failures };
-}
-
-/** Only for an entry whose enqueue failed, so no job exists. A failed deferral is reported too. */
-async function deferEntry(
-  deps: DispatchOutboxDeps,
-  entry: OutboxEntry,
-  failures: DispatchFailure[],
-): Promise<void> {
-  try {
-    await deps.uow.run(
-      { workspaceId: entry.workspaceId },
-      ({ ingestion }) => ingestion.deferOutbox(entry.id, deferralMs),
-      { timeoutMs: deps.transactionTimeoutMs ?? 10_000 },
-    );
-  } catch (error) {
-    failures.push({ outboxId: entry.id, error });
-  }
+  const exhausted = entries.length < limit;
+  const next = exhausted || last === undefined ? null : last.cursor;
+  return { dispatched, alreadyDispatched, failures, next, aborted: false };
 }
 
 /** `false` when another dispatcher already marked the entry. */

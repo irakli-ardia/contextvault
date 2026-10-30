@@ -36,7 +36,7 @@ const API = {
   ...DATABASE,
   ...S3,
 };
-const WORKER = { NODE_ENV: "test", REDIS_URL: "redis://localhost:6379" };
+const WORKER = { NODE_ENV: "test", REDIS_URL: "redis://localhost:6379", ...WORKER_DATABASE };
 
 function messageOf(source: Record<string, string | undefined>): string {
   try {

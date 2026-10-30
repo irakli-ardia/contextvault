@@ -96,6 +96,7 @@ export type {
   IngestionVersion,
   JobQueue,
   NewOutboxEntry,
+  OutboxCursor,
   OutboxEntry,
   OutboxSource,
   WorkerContext,

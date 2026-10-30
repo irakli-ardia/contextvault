@@ -57,11 +57,13 @@ export async function createIngestionHarness() {
 
   /**
    * The real source, narrowed to this harness's workspaces: other test files share the database,
-   * and a dispatcher must never mark or defer their entries. It over-fetches, then cuts to `limit`.
+   * and a dispatcher must never mark their entries. It over-fetches, then cuts to `limit`.
    */
   const ownSource: OutboxSource = {
-    listDue: async (limit) =>
-      (await worker.source.listDue(1_000)).filter((e) => owners.has(e.workspaceId)).slice(0, limit),
+    listDue: async (limit, after) =>
+      (await worker.source.listDue(1_000, after))
+        .filter((e) => owners.has(e.workspaceId))
+        .slice(0, limit),
   };
 
   return {

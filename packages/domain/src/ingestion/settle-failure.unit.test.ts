@@ -117,13 +117,13 @@ describe("settleFailure", () => {
     const deps = { source: f.source, queue: f.queue, uow: f.uow };
 
     f.advance(4_999);
-    expect(await dispatchOutbox(deps, 10)).toEqual({
+    expect(await dispatchOutbox(deps, 10)).toMatchObject({
       dispatched: 0,
       alreadyDispatched: 0,
       failures: [],
     });
     f.advance(1);
-    expect(await dispatchOutbox(deps, 10)).toEqual({
+    expect(await dispatchOutbox(deps, 10)).toMatchObject({
       dispatched: 1,
       alreadyDispatched: 0,
       failures: [],

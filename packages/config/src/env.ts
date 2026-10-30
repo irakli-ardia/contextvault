@@ -113,7 +113,7 @@ const webEnvSchema = z.object({
     .refine((url) => URL.canParse(url) && new URL(url).origin === url, "Must be a bare origin")
     .default("http://127.0.0.1:3001"),
 });
-const workerEnvSchema = baseEnvSchema.extend({
+const workerEnvSchema = workerDatabaseEnvSchema.extend({
   REDIS_URL: z.url({ protocol: /^rediss?$/ }),
 });
 

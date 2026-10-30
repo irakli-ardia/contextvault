@@ -17,12 +17,17 @@ export interface WorkerUnitOfWork<Repos> {
   ): Promise<T>;
 }
 
+/** Position in the `(available_at, id)` order. Opaque: only the source that issued it reads it. */
+export type OutboxCursor = string;
+
 /** Ids only; never document data. */
 export interface OutboxEntry {
   readonly id: OutboxId;
   readonly workspaceId: WorkspaceId;
   readonly versionId: DocumentVersionId;
   readonly availableAt: Date;
+  /** The position of this entry, to resume a scan after it. */
+  readonly cursor: OutboxCursor;
 }
 
 /** What a writer asks for: PostgreSQL stamps `available_at` as its own `now()` plus the delay. */
@@ -49,8 +54,11 @@ export interface IngestionVersion {
 
 /** Discovery across workspaces, outside any transaction. */
 export interface OutboxSource {
-  /** Undispatched entries due by the database clock, oldest first. */
-  listDue(limit: number): Promise<readonly OutboxEntry[]>;
+  /**
+   * Undispatched entries due by the database clock, oldest first. With `after`, only entries
+   * strictly later in `(available_at, id)` order, so a scan can pass a failing entry.
+   */
+  listDue(limit: number, after?: OutboxCursor): Promise<readonly OutboxEntry[]>;
 }
 
 /** Delivery only: the queue never retries and never decides state. */
@@ -96,8 +104,6 @@ export interface IngestionRepository {
   }): Promise<boolean>;
   /** A live entry for the same version already schedules it, so a second one is not inserted. */
   insertOutbox(entry: NewOutboxEntry): Promise<void>;
-  /** Pushes an undispatched entry back so a failing one yields to newer work. `false` when it was dispatched. */
-  deferOutbox(outboxId: OutboxId, delayMs: number): Promise<boolean>;
   /** `false` when the entry was already dispatched, so only one caller wins. */
   markDispatched(outboxId: OutboxId): Promise<boolean>;
 }

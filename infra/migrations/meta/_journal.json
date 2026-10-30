@@ -78,6 +78,13 @@
       "when": 1793378583385,
       "tag": "0010_app_outbox_insert",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793380179613,
+      "tag": "0011_worker_outbox_revoke_defer",
+      "breakpoints": true
     }
   ]
 }
