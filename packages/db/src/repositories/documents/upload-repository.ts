@@ -7,7 +7,7 @@ import {
   UploadReservationMissing,
   WorkspaceAccessDenied,
 } from "@contextvault/domain";
-import { and, asc, eq, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, sql } from "drizzle-orm";
 import type { Executor } from "../../client";
 import { documents, documentVersions, pendingUploads } from "../../schema/index";
 import { postgresErrorCode } from "../workspaces/postgres-error";
@@ -109,6 +109,13 @@ export function createUploadRepository(executor: Executor): UploadRepository {
           versionNo: 1,
           storageKey: input.storageKey,
         });
+        // Raw SQL naming four columns: the application role is granted only those, and the query
+        // builder lists every column (as DEFAULT), which PostgreSQL still checks. No RETURNING (the
+        // role cannot read outbox); available_at defaults to now, so the dispatcher picks it up.
+        await executor.execute(
+          sql`insert into outbox (id, workspace_id, version_id, kind)
+            values (${input.outboxId}, ${input.workspaceId}, ${input.versionId}, 'process_version')`,
+        );
         // The reservation must still be there: a swept or foreign one never yields a document.
         const removed = await executor
           .delete(pendingUploads)

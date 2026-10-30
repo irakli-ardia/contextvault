@@ -28,7 +28,8 @@ beforeAll(async () => {
   wsB = await fx.createWorkspace(u2, "B");
   docA = await seedDocument(fx, wsA, u1);
   docB = await seedDocument(fx, wsB, u2);
-  // The application role cannot write the outbox yet, so the fixture seeds B's row.
+  // Uploads write an outbox entry; these tests need B's row with a known id and nobody else's.
+  await fx.fixture.query("delete from outbox where workspace_id = any($1::uuid[])", [[wsA, wsB]]);
   await fx.fixture.query(insert(outboxB, wsB, docB.versionId));
 });
 afterAll(async () => {

@@ -71,6 +71,13 @@
       "when": 1793375825697,
       "tag": "0009_worker_outbox_defer",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793378583385,
+      "tag": "0010_app_outbox_insert",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import {
   type DocumentVersionId,
   parseDocumentId,
   parseDocumentVersionId,
+  parseOutboxId,
   type WorkspaceId,
 } from "../kernel/ids";
 import type { UnitOfWork } from "../kernel/unit-of-work";
@@ -116,6 +117,7 @@ export async function uploadDocument(
 
   const documentId = parseDocumentId(services.newId());
   const versionId = parseDocumentVersionId(services.newId());
+  const outboxId = parseOutboxId(services.newId());
   const storageKey = documentObjectKey(actor.workspaceId, documentId, versionId);
   const context = { userId: actor.userId, workspaceId: actor.workspaceId };
   const comp: Compensation = {
@@ -179,6 +181,7 @@ export async function uploadDocument(
           workspaceId: actor.workspaceId,
           documentId,
           versionId,
+          outboxId,
           storageKey,
           displayName: name,
           mime,

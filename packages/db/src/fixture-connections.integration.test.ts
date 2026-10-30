@@ -79,7 +79,12 @@ describe("fixture connection", () => {
       );
       expect(String(error)).toContain("FIXTURE_ROLE_CANNOT_SEE_ALL");
       expect(String(error)).not.toContain(app.password);
-      expect(await open(name)).toBe(0);
+      // The pool is already ended, but the server backend can outlive the client socket briefly:
+      // poll for it to go, and fail if it never does (a real leak).
+      await vi.waitFor(async () => expect(await open(name)).toBe(0), {
+        timeout: 5_000,
+        interval: 100,
+      });
     } finally {
       await probe.end();
     }

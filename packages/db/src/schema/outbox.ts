@@ -11,10 +11,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { documentVersions } from "./document-versions";
-import { inWorkerWorkspace, workerRole } from "./rls";
+import { appRole, inContextWorkspace, inWorkerWorkspace, workerRole } from "./rls";
 
 // Transactional outbox: ids only, no document data. The upload transaction inserts the first row
-// (a later increment grants that to the application role); the worker dispatches rows to BullMQ
+// (the application role may only insert, never read or change one); the worker dispatches rows to BullMQ
 // and marks them. `available_at` carries retry backoff, so PostgreSQL owns the schedule. At most
 // one undispatched row per version keeps recovery idempotent. The worker may read every workspace's
 // rows to find work (ids are not sensitive) but insert and mark only inside the workspace its
@@ -43,6 +43,16 @@ export const outbox = pgTable(
       .on(table.availableAt)
       .where(sql`${table.dispatchedAt} is null`),
     check("outbox_kind", sql`${table.kind} in ('process_version')`),
+    // The row must belong to the workspace in context, for a member, and point at a version of that
+    // workspace that is still `uploaded`: the application cannot queue other states.
+    pgPolicy("outbox_app_insert", {
+      for: "insert",
+      to: appRole,
+      withCheck: sql`${inContextWorkspace(table.workspaceId)} and exists (
+        select 1 from "document_versions" v
+        where v.workspace_id = ${table.workspaceId} and v.id = ${table.versionId}
+          and v.status = 'uploaded')`,
+    }),
     pgPolicy("outbox_worker_discover", { for: "select", to: workerRole, using: sql`true` }),
     pgPolicy("outbox_worker_insert", {
       for: "insert",

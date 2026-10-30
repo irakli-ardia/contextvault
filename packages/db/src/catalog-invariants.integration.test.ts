@@ -39,8 +39,8 @@ const EXPECTED_GRANTS: Record<string, readonly string[]> = {
   "public.documents": ["SELECT", "INSERT"],
   "public.document_versions": ["SELECT", "INSERT"],
   "public.pending_uploads": ["SELECT", "INSERT", "DELETE"],
-  // Nothing yet: the upload increment grants the application role INSERT.
-  "public.outbox": [],
+  // Insert only, and not available_at, dispatched_at or created_at: an entry is always due and live.
+  "public.outbox": ["id", "workspace_id", "version_id", "kind"].map((c) => `INSERT(${c})`),
 };
 
 // The ingestion worker (migration 0008): lifecycle metadata of document_versions only (no storage

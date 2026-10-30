@@ -1,4 +1,4 @@
-import type { DocumentId, DocumentVersionId, UserId, WorkspaceId } from "../kernel/ids";
+import type { DocumentId, DocumentVersionId, OutboxId, UserId, WorkspaceId } from "../kernel/ids";
 import type { DocumentMime, DocumentSummary, UploadQuota } from "./document";
 import type { StorageKey } from "./storage-key";
 
@@ -23,6 +23,8 @@ export interface FinalizeUploadInput {
   readonly workspaceId: WorkspaceId;
   readonly documentId: DocumentId;
   readonly versionId: DocumentVersionId;
+  /** The id of the `process_version` outbox entry written with the version. */
+  readonly outboxId: OutboxId;
   readonly storageKey: StorageKey;
   readonly displayName: string;
   readonly mime: DocumentMime;
@@ -51,8 +53,8 @@ export interface UploadRepository {
    */
   reserveUpload(input: ReserveUploadInput, quota: UploadQuota): Promise<ReserveResult>;
   /**
-   * Turns a reservation into a document with its first version (`uploaded`), and removes the
-   * reservation, in the caller's transaction. Identical live content in the workspace returns
+   * Turns a reservation into a document with its first version (`uploaded`) and one outbox entry
+   * for it, and removes the reservation, in the caller's transaction. Identical live content in the workspace returns
    * `duplicate` and costs no quota. On `duplicate` and `quota` nothing is written and the
    * reservation stays, so the caller deletes the object first and then calls `releaseUpload`.
    * When it would create a document, it throws `UploadReservationMissing` if the reservation

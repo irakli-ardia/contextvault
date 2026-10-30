@@ -68,6 +68,8 @@ export async function createIngestionHarness() {
     fx,
     worker,
     ownSource,
+    userA,
+    userB,
     wsA,
     wsB,
     run,
@@ -83,8 +85,13 @@ export async function createIngestionHarness() {
       if (owner === undefined) throw new Error("unknown workspace");
       const { versionId } = await seedDocument(fx, workspaceId, owner);
       const delayMs = options.outboxDelayMs === undefined ? 0 : options.outboxDelayMs;
-      if (delayMs !== null)
-        await run(workspaceId, (r) => r.insertOutbox(entryFor(workspaceId, versionId, delayMs)));
+      // The upload already wrote the entry, due now: remove it, or move its due time.
+      await fx.fixture.query(
+        delayMs === null
+          ? "delete from outbox where version_id = $1"
+          : "update outbox set available_at = created_at + $2 * interval '1 millisecond' where version_id = $1",
+        delayMs === null ? [versionId] : [versionId, delayMs],
+      );
       await fx.fixture.query(
         "update document_versions set status = $2, attempt = $3 where id = $1",
         [versionId, options.status ?? "uploaded", options.attempt ?? 0],
