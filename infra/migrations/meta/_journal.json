@@ -64,6 +64,13 @@
       "when": 1793342230656,
       "tag": "0008_worker_force_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793375825697,
+      "tag": "0009_worker_outbox_defer",
+      "breakpoints": true
     }
   ]
 }
