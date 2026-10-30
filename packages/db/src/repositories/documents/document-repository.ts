@@ -25,7 +25,7 @@ const columns = {
   status: latestStatus,
 };
 
-function toSummary(row: {
+export function toSummary(row: {
   id: string;
   displayName: string;
   mime: string;

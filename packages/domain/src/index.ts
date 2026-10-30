@@ -73,12 +73,46 @@ export {
   type SessionTokenHash,
   type SessionTokens,
 } from "./identity/tokens";
+export {
+  type DispatchFailure,
+  type DispatchOutboxDeps,
+  type DispatchOutboxResult,
+  dispatchOutbox,
+  outboxJobId,
+} from "./ingestion/dispatch-outbox";
+export {
+  canTransition,
+  decideFailure,
+  type FailureDecision,
+  type IngestionFailure,
+  type IngestionStage,
+  isRunning,
+  maxAttempts,
+} from "./ingestion/lifecycle";
+export type {
+  IngestionRepository,
+  IngestionUnitOfWork,
+  IngestionVersion,
+  JobQueue,
+  OutboxEntry,
+  OutboxSource,
+  WorkerContext,
+  WorkerUnitOfWork,
+} from "./ingestion/ports";
+export {
+  type SettleFailureDeps,
+  type SettleFailureInput,
+  type SettleFailureResult,
+  settleFailure,
+} from "./ingestion/settle-failure";
 export { DomainError, TransactionOutcomeUnknown } from "./kernel/errors";
 export {
   type DocumentId,
   type DocumentVersionId,
+  type OutboxId,
   parseDocumentId,
   parseDocumentVersionId,
+  parseOutboxId,
   parseSessionId,
   parseUserId,
   parseWorkspaceId,

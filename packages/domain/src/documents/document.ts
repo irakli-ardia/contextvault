@@ -8,9 +8,11 @@ export const versionStatuses = [
   "queued",
   "parsing",
   "chunking",
+  "processed",
   "ready",
   "failed",
 ] as const;
+// `processed` is a terminal, non-searchable end state until M1.6 activates `ready`.
 export type VersionStatus = (typeof versionStatuses)[number];
 
 export const isDocumentMime = (value: string): value is DocumentMime =>

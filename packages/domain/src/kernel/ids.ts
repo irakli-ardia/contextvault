@@ -44,3 +44,12 @@ export function parseDocumentVersionId(value: string): DocumentVersionId {
     throw new DomainError("id.invalid", "Invalid document version id");
   return value;
 }
+
+export type OutboxId = string & { readonly brand: "OutboxId" };
+
+const isOutboxId = (value: string): value is OutboxId => isUuid(value);
+
+export function parseOutboxId(value: string): OutboxId {
+  if (!isOutboxId(value)) throw new DomainError("id.invalid", "Invalid outbox id");
+  return value;
+}
