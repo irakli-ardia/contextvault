@@ -3,10 +3,12 @@ import { loadWorkerEnv } from "@contextvault/config";
 import { DelayedError, Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { testRedisUrl } from "./test-redis-url";
 
-// Spike for M1.4 5A.1: can a processor re-deliver a job later with attempts: 1 and never fail it?
-// Needs the isolated cv-test Redis; refuses to run against anything else.
-const redisUrl = new URL(loadWorkerEnv().REDIS_URL);
+// Regression test: a processor can re-deliver a job later with attempts: 1 and never fail it.
+// Runs only against the verified cv-test Redis or GitHub Actions' own loopback Redis.
+// biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
+const flags = process.env;
 const queueName = `cvtest-delay-${randomUUID()}`;
 const delayMs = 150;
 const delays = 3;
@@ -19,21 +21,24 @@ type Seen = {
   lockHeld: boolean;
 };
 
-let redis: Redis;
-let queue: Queue;
+let redisUrl: URL;
+let redis: Redis | undefined;
+let queue: Queue | undefined;
 
 beforeAll(async () => {
-  if (redisUrl.hostname !== "127.0.0.1" || redisUrl.port !== "56379") {
-    throw new Error("delayed-redelivery spike runs only against the isolated cv-test Redis");
-  }
+  redisUrl = testRedisUrl(loadWorkerEnv().REDIS_URL, flags);
   redis = new Redis(redisUrl.toString(), { maxRetriesPerRequest: null });
   queue = new Queue(queueName, { connection: redis });
   await queue.waitUntilReady();
 });
 afterAll(async () => {
-  await queue.obliterate({ force: true });
-  await queue.close();
-  redis.disconnect();
+  // Only what beforeAll created: the queue name is unique to this run, so obliterate is ours.
+  try {
+    await queue?.obliterate({ force: true });
+    await queue?.close();
+  } finally {
+    redis?.disconnect();
+  }
 });
 
 const sockets = (): number =>
@@ -41,8 +46,10 @@ const sockets = (): number =>
 
 describe("BullMQ delayed redelivery (attempts: 1)", () => {
   it("delays an active job three times without failing it, then completes it", async () => {
+    if (!redis || !queue) throw new Error("setup did not complete");
+    const [probe, jobs] = [redis, queue];
     const baseline = sockets();
-    const jobId = `spike-${randomUUID()}`;
+    const jobId = `delay-${randomUUID()}`;
     const seen: Seen[] = [];
     const delayedAt: number[] = [];
     const transitions: string[] = [];
@@ -55,7 +62,7 @@ describe("BullMQ delayed redelivery (attempts: 1)", () => {
           attemptsMade: job.attemptsMade,
           attemptsStarted: job.attemptsStarted,
           token,
-          lockHeld: (await redis.get(`bull:${queueName}:${job.id}:lock`)) === token,
+          lockHeld: (await probe.get(`bull:${queueName}:${job.id}:lock`)) === token,
         });
         if (seen.length <= delays) {
           delayedAt.push(Date.now());
@@ -71,7 +78,7 @@ describe("BullMQ delayed redelivery (attempts: 1)", () => {
     worker.on("failed", (job) => failed.push(job?.id ?? "?"));
     const completed = new Promise<void>((resolve) => worker.on("completed", () => resolve()));
 
-    await queue.add("process", { n: 1 }, { jobId, attempts: 1 });
+    await jobs.add("process", { n: 1 }, { jobId, attempts: 1 });
     await completed;
 
     // Active -> delayed inside the processor; back to active after the delay.
@@ -82,20 +89,20 @@ describe("BullMQ delayed redelivery (attempts: 1)", () => {
     expect(starts).toBe(delays + 1);
     // Lock is held by the worker's token on every run, and gone once the job is released.
     expect(seen.every((s) => s.lockHeld && s.token !== undefined)).toBe(true);
-    expect(await redis.exists(`bull:${queueName}:${jobId}:lock`)).toBe(0);
+    expect(await probe.exists(`bull:${queueName}:${jobId}:lock`)).toBe(0);
     // Delay is not an attempt: attemptsMade stays 0, attemptsStarted counts every pickup.
     expect(seen.map((s) => s.attemptsMade)).toEqual([0, 0, 0, 0]);
     expect(seen.map((s) => s.attemptsStarted)).toEqual([1, 2, 3, 4]);
 
-    const job = await queue.getJob(jobId);
+    const job = await jobs.getJob(jobId);
     expect(await job?.getState()).toBe("completed");
     expect(job?.attemptsMade).toBe(1);
     expect(job?.attemptsStarted).toBe(4);
     expect(job?.returnvalue).toBe("done");
     expect(failed).toEqual([]);
-    expect(await queue.getFailedCount()).toBe(0);
-    expect(await queue.getDelayedCount()).toBe(0);
-    expect(await queue.getActiveCount()).toBe(0);
+    expect(await jobs.getFailedCount()).toBe(0);
+    expect(await jobs.getDelayedCount()).toBe(0);
+    expect(await jobs.getActiveCount()).toBe(0);
 
     await worker.close();
     conn.disconnect();
