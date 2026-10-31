@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import http from "node:http";
 import type { Page } from "@playwright/test";
+import { verifiedValue } from "./stack-env";
 
 export const web = "http://127.0.0.1:3100";
 
@@ -21,17 +22,11 @@ export interface Reservation {
 }
 // The database as the operator sees it (bundled fixture tool, read only).
 function inspect(workspaceId: string): { documents: Stored[]; pending: Reservation[] } {
-  const out = execFileSync(
-    "node",
-    [
-      "--env-file-if-exists=.env",
-      "--env-file-if-exists=.env.test",
-      "packages/db/dist/e2e-accounts.mjs",
-      "inspect",
-      workspaceId,
-    ],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
+  verifiedValue("DATABASE_FIXTURE_URL");
+  const out = execFileSync("node", ["packages/db/dist/e2e-accounts.mjs", "inspect", workspaceId], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
   return JSON.parse(out)[0];
 }
 export const stored = (workspaceId: string): Stored[] => inspect(workspaceId).documents;

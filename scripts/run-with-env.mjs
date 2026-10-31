@@ -7,6 +7,8 @@
 // so the owner, fixture and bootstrap credentials in `.env` cannot reach a runtime process. Each
 // value is the parent's (an empty string counts, so a blank still wins) or else the repo-root
 // `.env`'s. The web entry never reads `.env` (Next does not either): its values are the parent's.
+// Under with-test-stack.mjs (CV_TEST_STACK_VERIFIED=1) no app reads `.env`: the verified stack's
+// values come from the parent alone, so a name it lacks cannot be filled from development.
 //
 // process.execve is experimental in Node 24 and absent on Windows and IBM i; engines pins Node
 // 24.22.1 and development and CI run macOS and Linux. If the exec itself fails, Node aborts the
@@ -57,6 +59,9 @@ export const buildEnv = (app, file, parent) => {
   return env;
 };
 
+const fileValues = (app, parent, envFile) =>
+  app === "web" || parent.CV_TEST_STACK_VERIFIED === "1" ? {} : readDotEnv(envFile);
+
 const run = (argv) => {
   const [app, entry, ...args] = argv;
   // A leading "-" would make Node read the entry as one of its own flags (--env-file=.env would
@@ -68,7 +73,8 @@ const run = (argv) => {
   const envFile = fileURLToPath(new URL("../.env", import.meta.url));
   try {
     // biome-ignore lint/style/noProcessEnv: the launcher is the one place that decides what of the parent environment a runtime process may see
-    const env = buildEnv(app, app === "web" ? {} : readDotEnv(envFile), process.env);
+    const parent = process.env;
+    const env = buildEnv(app, fileValues(app, parent, envFile), parent);
     process.execve(process.execPath, [process.execPath, entry, ...args], env);
   } catch (error) {
     // A bad env value's error text quotes the whole environment, so only the error code is shown.

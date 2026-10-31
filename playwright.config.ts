@@ -1,8 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { assertBuiltFor, verifiedApi } from "./apps/web/e2e/stack-env";
+
+// Fail closed before any server starts: a bare `playwright test` has no verified stack, and the
+// API endpoint comes from it alone (never the development default 3001). The web build froze the
+// same origin into its `/api/*` rewrite, which assertBuiltFor checks.
+const api = verifiedApi();
+assertBuiltFor(api.origin);
 
 // Dedicated web port so a running dev server (3000) can never be mistaken for the tested build.
-// The API uses its default port because the web build bakes in the rewrite destination
-// (`API_INTERNAL_URL`, default http://127.0.0.1:3001); a running dev API makes this run fail loudly.
 const port = 3100;
 const baseURL = `http://127.0.0.1:${port}`;
 
@@ -28,13 +33,13 @@ export default defineConfig({
       cwd: ".",
       env: {
         NODE_ENV: "development",
-        API_PORT: "3001",
+        API_PORT: api.port,
         API_HOST: "127.0.0.1",
         WEB_ORIGIN: baseURL,
         // Reached only through the Next server, never directly by a client: no appended address.
         TRUSTED_PROXY_HOPS: "0",
       },
-      url: "http://127.0.0.1:3001/health",
+      url: `${api.origin}/health`,
       reuseExistingServer: false,
       timeout: 60_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
@@ -44,6 +49,8 @@ export default defineConfig({
       // reports its own SIGTERM as a failure and can outlive the run.
       command: `node ../../scripts/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port} > ../../playwright-report/web.log 2>&1`,
       cwd: "apps/web",
+      // The verified stack's NODE_ENV is test; `next start` keeps its production default.
+      env: { NODE_ENV: "production" },
       url: baseURL,
       reuseExistingServer: false,
       timeout: 60_000,
@@ -56,7 +63,7 @@ export default defineConfig({
       command:
         "node ../../scripts/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3101 > ../../playwright-report/web-upload.log 2>&1",
       cwd: "apps/web",
-      env: { API_INTERNAL_URL: "http://127.0.0.1:3199" },
+      env: { NODE_ENV: "production", API_INTERNAL_URL: "http://127.0.0.1:3199" },
       url: "http://127.0.0.1:3101",
       reuseExistingServer: false,
       timeout: 60_000,

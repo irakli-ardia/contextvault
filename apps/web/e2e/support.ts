@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { type APIResponse, test as base, expect, type Page } from "@playwright/test";
 import { deleteObject } from "./s3-state";
+import { verifiedValue } from "./stack-env";
 
 export interface Account {
   readonly email: string;
@@ -10,16 +11,12 @@ export interface Account {
 // The seeder is the bundled operator tooling (`packages/db`): real provisioning and Argon2id,
 // random passwords per run, removal of exactly the accounts it created.
 function seeder(args: string[]): string {
-  return execFileSync(
-    "node",
-    [
-      "--env-file-if-exists=.env",
-      "--env-file-if-exists=.env.test",
-      "packages/db/dist/e2e-accounts.mjs",
-      ...args,
-    ],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
+  // Creates and deletes rows: never on a database the wrapper did not verify.
+  verifiedValue("DATABASE_FIXTURE_URL");
+  return execFileSync("node", ["packages/db/dist/e2e-accounts.mjs", ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
 }
 
 function isAccount(value: unknown): value is Account {

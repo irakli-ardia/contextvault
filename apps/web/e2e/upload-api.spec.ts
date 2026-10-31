@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { MAX_UPLOAD_BYTES } from "@contextvault/contracts";
-import { anonymousStatus, listKeys, objectState } from "./s3-state";
+import { anonymousStatus, listKeys, objectState, S3_SECRET_ACCESS_KEY } from "./s3-state";
 import { browserApi, expect, firstWorkspaceId, signIn, test } from "./support";
 import {
   browserUpload,
@@ -176,7 +176,6 @@ test.describe("upload through the whole stack", () => {
     expect(logs).not.toMatch(/ws\/[0-9a-f-]{36}\/doc\//);
     expect(logs).not.toMatch(/[0-9a-f]{64}/);
     expect(logs).not.toContain(ada.password);
-    const secret = /^S3_SECRET_ACCESS_KEY=(.+)$/m.exec(readFileSync(".env", "utf8"))?.[1];
-    if (secret) expect(logs).not.toContain(secret);
+    expect(logs).not.toContain(S3_SECRET_ACCESS_KEY);
   });
 });

@@ -176,6 +176,25 @@ describe("child process", () => {
     expect(result.stdout.trim()).toBe("PASS");
   });
 
+  it("ignores .env under the verified test stack, so a missing name stays missing", () => {
+    setDotEnv(fake(API));
+    const parent = { ...BASE, CV_TEST_STACK_VERIFIED: "1", API_PORT: "3001" };
+    const want = { API_PORT: "3001", PATH: BASE.PATH };
+    expect(launch("api", parent, "env", JSON.stringify(want)).stdout.trim()).toBe("PASS");
+  });
+
+  it.each(["api", "worker", "web"])(
+    "hands %s its whole allowlist from the parent under the verified stack, incl. NODE_ENV",
+    (app) => {
+      setDotEnv({ ...fake(ALLOWLISTS[app]), NODE_ENV: "development" });
+      const values = { ...fake(ALLOWLISTS[app]), NODE_ENV: "test" };
+      const parent = { ...BASE, ...values, CV_TEST_STACK_VERIFIED: "1" };
+      expect(
+        launch(app, parent, "env", JSON.stringify({ ...values, PATH: BASE.PATH })).stdout.trim(),
+      ).toBe("PASS");
+    },
+  );
+
   it("starts with no .env at all", () => {
     setDotEnv(null);
     const want = { NODE_ENV: "development", PATH: BASE.PATH };

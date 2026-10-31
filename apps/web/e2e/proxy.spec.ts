@@ -1,7 +1,8 @@
+import { verifiedApi } from "./stack-env";
 import { expect, header, signIn, test } from "./support";
 
 const origin = "http://127.0.0.1:3100";
-const internal = "127.0.0.1:3001";
+const internal = `127.0.0.1:${verifiedApi().port}`;
 
 test.describe("the same-origin proxy", () => {
   test("forwards every Set-Cookie attribute and never leaks the backend", async ({
