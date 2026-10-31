@@ -13,5 +13,6 @@ One short record per hard-to-reverse choice. A record is never edited to change 
 | [0007](0007-monorepo-and-toolchain.md) | Monorepo and toolchain | accepted |
 | [0008](0008-first-party-authentication.md) | First-party authentication and sessions | accepted |
 | [0009](0009-streaming-upload-transport.md) | Streaming upload transport and raw-body contract | accepted |
+| [0010](0010-isolated-test-stack.md) | Isolated test stack for pre-push checks | accepted |
 
 Index and vector-search tuning (exact scan versus HNSW) and reranker choice are decided in the milestones that need them.
