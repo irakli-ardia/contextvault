@@ -54,14 +54,14 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 
 - The entry receives only the variables on that app's allowlist, plus `PATH` and `TMPDIR`; `scripts/run-with-env.mjs` is the source of truth for the lists.
 - For api and worker, each value comes from the parent environment if set (an empty string counts) and otherwise from the root `.env`.
-- Web mode never reads `.env`: its values come only from the parent environment.
+- Web mode never reads `.env`: its values come only from the parent environment. Neither does any mode when `CV_TEST_STACK_VERIFIED=1` (set by `with-test-stack.mjs`).
 - Every other inherited variable (including `NODE_OPTIONS`, `AWS_*` and `HOME`) and the rest of `.env` are not forwarded, so the bootstrap, owner, fixture and migration credentials never reach launcher-started processes. Allowlisted runtime credentials such as `DATABASE_URL`, `S3_*` and `REDIS_URL` are passed.
 - Processes started any other way, such as `apps/web`'s `dev` script, are not covered.
 - Unit tests check the allowlists against `.env.example` and that no privileged name is allowlisted; they do not compare them with the `packages/config` schemas.
 
 `process.execve` is experimental in Node 24 and does not exist on Windows or IBM i, so this workflow requires Node 24.22.1 on macOS or Linux. The launcher is not available elsewhere, and if the exec itself fails Node aborts the process.
 
-**Test credentials.** They live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` and the e2e account tooling load; dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
+**Test credentials.** They live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` loads (the e2e helpers and account tooling read only the process environment, set by `scripts/checks/with-test-stack.mjs` and refused without `CV_TEST_STACK_VERIFIED=1`; [ADR 0010](adr/0010-isolated-test-stack.md)); dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
 
 Copy it once: `cp .env.test.example .env.test`. The values are the same development-only placeholders as `.env.example`, matching the Compose stack.
 
@@ -109,7 +109,7 @@ pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isola
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
-pnpm run test:e2e           # needs `build`, `infra:up`, `db:migrate`, `.env`; serves web on 127.0.0.1:3100 and the built API on 3001, each through the launcher
+pnpm run test:e2e           # only through scripts/checks/with-test-stack.mjs (bare Playwright refuses to start); needs a `build` made with the stack's API_INTERNAL_URL; serves web on 127.0.0.1:3100 and the built API on the stack's API_PORT (never 3001), each through the launcher
 node scripts/checks/docs-check.mjs
 node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
 ```
@@ -275,7 +275,20 @@ node scripts/git/conventions.mjs install-hooks
 
 The `pre-push` hook runs `pnpm run typecheck`, so push from a shell where `node -v` prints `v24.22.1`.
 On another Node version, `engineStrict` makes the hook fail by design.
-The hook also applies migrations and runs the integration tests, so start the infrastructure first (`pnpm run infra:up`).
+
+### Pre-push hook
+
+The hook runs the integration and E2E tests, so it needs the isolated `cv-test` stack ([ADR 0010](adr/0010-isolated-test-stack.md)) and never touches development infrastructure or the repository's `.env` files. Name the external directory (outside the repository, holding the stack's own `.env` and `.env.test`) for the push:
+
+```bash
+CV_TEST_ENV_DIR=/path/to/cv-test-env git push
+```
+
+- Without `CV_TEST_ENV_DIR` the hook fails right after the cheap documentation checks, before anything mutates.
+- A preflight (`with-test-stack.mjs true`) then validates the files and the PostgreSQL identity marker; the slow checks start only if it passes.
+- Migrations, integration and E2E run through `scripts/checks/with-test-stack.mjs`, in that order. The hook never starts, stops or resets containers: if the test stack is unavailable or fails verification, the push is blocked; start it yourself, then push again.
+- `build` alone gets `NODE_ENV=production` (`env NODE_ENV=production pnpm run build`), because the test environment's `NODE_ENV` makes `next build` fail. Other steps keep the test environment, and the external files are unchanged.
+- Development migrations stay a separate, deliberate `pnpm run db:migrate` against `.env`; the hook never runs them.
 
 ## Troubleshooting
 

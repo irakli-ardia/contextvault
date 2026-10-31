@@ -3,25 +3,25 @@ node scripts/git/conventions.mjs current || exit 1
 node scripts/checks/docs-check.mjs || exit 1
 node scripts/checks/tracked-files.mjs || exit 1
 
-# Integration tests need the local stack. Read-only check: this hook never starts or stops containers.
-if [ ! -f .env ]; then
-  echo "pre-push: .env is missing. Run: cp .env.example .env && pnpm run infra:up" >&2
+# Infrastructure steps run only against the isolated cv-test stack (docs/adr/0010). The caller
+# names the external env directory; there is no default and the repository's environment files are never used.
+if [ -z "${CV_TEST_ENV_DIR:-}" ]; then
+  echo "pre-push: CV_TEST_ENV_DIR is required. See docs/local-setup.md (Pre-push hook)." >&2
   exit 1
 fi
-if [ ! -f .env.test ]; then
-  echo "pre-push: .env.test is missing. See docs/local-setup.md (Environment)." >&2
-  exit 1
-fi
-healthy=$(pnpm --silent run infra:ps --format '{{.Health}}' 2>/dev/null | grep -c '^healthy$')
-if [ "$healthy" -ne 3 ]; then
-  echo "pre-push: local infrastructure is not healthy ($healthy of 3 services). Run: pnpm run infra:up" >&2
-  exit 1
-fi
+stack="node scripts/checks/with-test-stack.mjs"
 
-# Migrations are idempotent; integration tests need them applied.
-pnpm run db:migrate || exit 1
+# Non-mutating preflight: validates the external files and the database marker before the slow checks.
+$stack true || exit 1
 
 # Every check is mandatory: a missing script is a failure, not a skip.
-for script in format:check lint arch dead-code db:check typecheck test test:integration build test:e2e; do
+for script in format:check lint arch dead-code db:check typecheck test; do
   pnpm run "$script" || exit 1
 done
+
+# Migrations are idempotent; integration tests need them applied.
+$stack pnpm run db:migrate || exit 1
+$stack pnpm run test:integration || exit 1
+# Next.js refuses the test environment's NODE_ENV for a build; production applies to this process only.
+$stack env NODE_ENV=production pnpm run build || exit 1
+$stack pnpm run test:e2e || exit 1
