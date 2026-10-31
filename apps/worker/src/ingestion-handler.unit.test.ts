@@ -63,6 +63,7 @@ function setup(over: Setup = {}) {
     heartbeatIntervalMs: 1_000,
     heartbeatTimeoutMs: 1_000,
     processJobName: "process",
+    shutdown: new AbortController().signal,
   };
   const run = (data: unknown = { workspaceId: ws, versionId: version }, name = "process") =>
     handleIngestionJob(deps, { name, data, moveToDelayed }, "tok");

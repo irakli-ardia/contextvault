@@ -26,6 +26,8 @@ export interface IngestionHandlerDeps extends ProcessVersionDeps {
   readonly heartbeatIntervalMs: number;
   readonly heartbeatTimeoutMs: number;
   readonly processJobName: string;
+  /** Aborted by the consumer when shutdown cancels the jobs still running. Not an ownership loss. */
+  readonly shutdown: AbortSignal;
 }
 
 /** Fails the job with a stable code. BullMQ stores the message, so it is never an error's own. */
@@ -60,8 +62,9 @@ export async function handleIngestionJob(
       return result;
     },
   };
-  // One controller per delivery, so a lost lease cancels this job and no other. The signal is
-  // advisory: a stage that ignores it is still stopped from writing by the fenced statements.
+  // One controller per delivery, so a lost lease cancels this job and no other; shutdown cancels
+  // every job through its own signal. Both are advisory: a stage that ignores them is still
+  // stopped from writing by the fenced statements.
   const controller = new AbortController();
   let leaseLost = false;
   const stages = withHeartbeat(deps.stages, {
@@ -80,7 +83,7 @@ export async function handleIngestionJob(
   try {
     result = await processVersion(
       { ...deps, uow, stages },
-      { ...payload, signal: controller.signal },
+      { ...payload, signal: AbortSignal.any([controller.signal, deps.shutdown]) },
     );
   } catch (error) {
     return fail(deps, job, token, error, claimResolved);
@@ -89,6 +92,7 @@ export async function handleIngestionJob(
     level: result.outcome === "processed" ? "info" : "warn",
     ...describe(result),
     ...(leaseLost ? { leaseLost } : {}),
+    ...(result.outcome === "aborted" && deps.shutdown.aborted ? { shutdownCancelled: true } : {}),
   });
 }
 
@@ -102,6 +106,18 @@ function describe(result: ProcessVersionResult): Record<string, unknown> {
 function reject(deps: IngestionHandlerDeps, code: string): never {
   deps.log({ level: "error", code: "INGESTION_JOB_REJECTED", reason: code });
   throw new IngestionJobFailed(code);
+}
+
+/** Offers the job again after the delay without touching PostgreSQL. */
+export async function redeliverLater(
+  deps: Pick<IngestionHandlerDeps, "redeliveryDelayMs">,
+  job: Pick<IngestionJob, "moveToDelayed">,
+  token: string | undefined,
+): Promise<never> {
+  await job.moveToDelayed(Date.now() + deps.redeliveryDelayMs, token).catch(() => {
+    throw new IngestionJobFailed("redelivery.failed");
+  });
+  throw new DelayedError();
 }
 
 async function fail(
@@ -121,10 +137,7 @@ async function fail(
   if (!claimResolved && isTransientDbError(error)) {
     // Rolled back before any claim, so redelivery consumes no attempt and cannot double-process.
     deps.log({ level: "warn", code: "INGESTION_JOB_REDELIVERED", cause });
-    await job.moveToDelayed(Date.now() + deps.redeliveryDelayMs, token).catch(() => {
-      throw new IngestionJobFailed("redelivery.failed");
-    });
-    throw new DelayedError();
+    return redeliverLater(deps, job, token);
   }
   // After the claim the version is running under this generation; the lease expiry returns it.
   const code = claimResolved ? "ingestion.post_claim_error" : "db.permanent_error";

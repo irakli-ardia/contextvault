@@ -1,3 +1,4 @@
+import { getEventListeners } from "node:events";
 import {
   type IngestionRepository,
   type IngestionUnitOfWork,
@@ -48,6 +49,7 @@ function setup(
   };
   const uow: IngestionUnitOfWork = { run: (_ctx, work) => work({ ingestion: repo }) };
   const log = vi.fn<(entry: Record<string, unknown>) => void>();
+  const shutdown = new AbortController();
   const signals: Record<string, StageInput["signal"]> = {};
   const deps = {
     uow,
@@ -63,6 +65,7 @@ function setup(
     heartbeatIntervalMs: 1_000,
     heartbeatTimeoutMs: 1_000,
     processJobName: "process",
+    shutdown: shutdown.signal,
   };
   const run = (versionId: string) =>
     handleIngestionJob(
@@ -75,7 +78,7 @@ function setup(
       "tok",
     );
   const codes = () => log.mock.calls.map(([{ code }]) => code);
-  return { run, transitions, beats, signals, log, codes };
+  return { run, transitions, beats, signals, log, codes, shutdown };
 }
 
 describe("per-job cancellation", () => {
@@ -132,5 +135,43 @@ describe("per-job cancellation", () => {
     expect(t.transitions).toEqual([`${a}:chunking`, `${a}:processed`]);
     expect(t.codes()).not.toContain("INGESTION_LEASE_LOST");
     expect(JSON.stringify(t.log.mock.calls)).not.toContain("secret-host");
+  });
+
+  it("cancels on shutdown without claiming a lost lease, then stops beating and frees its listeners", async () => {
+    const t = setup(async () => true, untilAborted);
+    const job = t.run(a);
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(t.beats[a]).toBe(1);
+    t.shutdown.abort();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await job;
+    expect(t.beats[a]).toBe(1);
+    expect(t.signals[a]?.aborted).toBe(true);
+    expect(t.codes()).not.toContain("INGESTION_LEASE_LOST");
+    expect(t.log).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "aborted", shutdownCancelled: true }),
+    );
+    expect(t.log).not.toHaveBeenCalledWith(expect.objectContaining({ leaseLost: true }));
+    expect(t.transitions).toEqual([]);
+    const signal = t.signals[a];
+    if (!(signal instanceof AbortSignal)) throw new Error("stage did not get an AbortSignal");
+    expect(getEventListeners(signal, "abort")).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("logs a lost lease and a shutdown cancellation as the separate facts they are", async () => {
+    const t = setup(
+      async () => false,
+      () => sleep(3_500),
+    );
+    const job = t.run(a);
+    await vi.advanceTimersByTimeAsync(2_000);
+    t.shutdown.abort();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await job;
+    expect(t.codes().filter((code) => code === "INGESTION_LEASE_LOST")).toHaveLength(1);
+    expect(t.log).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "aborted", leaseLost: true, shutdownCancelled: true }),
+    );
   });
 });
