@@ -215,6 +215,10 @@ export function fakeDeadline(expired = false) {
     addEventListener: (_type: "abort", listener: () => void) => {
       listeners.push(listener);
     },
+    removeEventListener: (_type: "abort", listener: () => void) => {
+      const at = listeners.indexOf(listener);
+      if (at >= 0) listeners.splice(at, 1);
+    },
   };
   return {
     signal,

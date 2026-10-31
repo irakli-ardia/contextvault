@@ -13,7 +13,6 @@ import { handleIngestionJob, IngestionJobFailed } from "./ingestion-handler";
 const ws = "00000000-0000-4000-8000-000000000001";
 const version = "00000000-0000-4000-8000-000000000002";
 const secret = "postgres://user:hunter2@db/doc-body";
-const never = { aborted: false, addEventListener: () => undefined };
 
 const transient = Object.assign(new Error(secret), { code: "ECONNRESET" });
 const permanent = Object.assign(new Error(secret), { code: "42501" });
@@ -61,7 +60,8 @@ function setup(over: Setup = {}) {
     newId: () => "00000000-0000-4000-8000-0000000000aa",
     log,
     redeliveryDelayMs: 1_000,
-    signal: never,
+    heartbeatIntervalMs: 1_000,
+    heartbeatTimeoutMs: 1_000,
     processJobName: "process",
   };
   const run = (data: unknown = { workspaceId: ws, versionId: version }, name = "process") =>

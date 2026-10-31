@@ -1,5 +1,4 @@
 import {
-  type DeadlineSignal,
   type IngestionUnitOfWork,
   type ProcessVersionDeps,
   type ProcessVersionResult,
@@ -9,6 +8,7 @@ import {
 import { DelayedError, UnrecoverableError } from "bullmq";
 import { errorCause } from "./error-cause";
 import { parseIngestionPayload } from "./ingestion-job";
+import { withHeartbeat } from "./lease-heartbeat";
 import { isTransientDbError } from "./transient-db-error";
 
 /** The part of a BullMQ job the handler uses. */
@@ -22,8 +22,9 @@ export interface IngestionHandlerDeps extends ProcessVersionDeps {
   readonly log: (entry: Record<string, unknown>) => void;
   /** Wait before a job that never reached a claim is delivered again. */
   readonly redeliveryDelayMs: number;
-  /** Aborts on shutdown or lost ownership; 5A.4 supplies one per job. */
-  readonly signal: DeadlineSignal;
+  /** Lease renewal period while a stage runs, and the bound of each renewal. */
+  readonly heartbeatIntervalMs: number;
+  readonly heartbeatTimeoutMs: number;
   readonly processJobName: string;
 }
 
@@ -59,13 +60,36 @@ export async function handleIngestionJob(
       return result;
     },
   };
+  // One controller per delivery, so a lost lease cancels this job and no other. The signal is
+  // advisory: a stage that ignores it is still stopped from writing by the fenced statements.
+  const controller = new AbortController();
+  let leaseLost = false;
+  const stages = withHeartbeat(deps.stages, {
+    uow: deps.uow,
+    intervalMs: deps.heartbeatIntervalMs,
+    beatTimeoutMs: deps.heartbeatTimeoutMs,
+    log: deps.log,
+    onLost: () => {
+      if (leaseLost) return;
+      leaseLost = true;
+      deps.log({ level: "warn", code: "INGESTION_LEASE_LOST" });
+      controller.abort();
+    },
+  });
   let result: ProcessVersionResult;
   try {
-    result = await processVersion({ ...deps, uow }, { ...payload, signal: deps.signal });
+    result = await processVersion(
+      { ...deps, uow, stages },
+      { ...payload, signal: controller.signal },
+    );
   } catch (error) {
     return fail(deps, job, token, error, claimResolved);
   }
-  deps.log({ level: result.outcome === "processed" ? "info" : "warn", ...describe(result) });
+  deps.log({
+    level: result.outcome === "processed" ? "info" : "warn",
+    ...describe(result),
+    ...(leaseLost ? { leaseLost } : {}),
+  });
 }
 
 function describe(result: ProcessVersionResult): Record<string, unknown> {

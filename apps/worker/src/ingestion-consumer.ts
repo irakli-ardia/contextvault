@@ -19,6 +19,10 @@ export interface IngestionConsumerOptions {
   readonly concurrency?: number;
   /** Default 5 s. */
   readonly redeliveryDelayMs?: number;
+  /** Default 30 s, a tenth of the planned five-minute lease. */
+  readonly heartbeatIntervalMs?: number;
+  /** Bound of each lease renewal, default 5 s. */
+  readonly heartbeatTimeoutMs?: number;
 }
 
 export interface IngestionConsumer {
@@ -43,7 +47,8 @@ export async function createIngestionConsumer(
     newId: options.newId,
     log,
     redeliveryDelayMs: options.redeliveryDelayMs ?? 5_000,
-    signal: new AbortController().signal,
+    heartbeatIntervalMs: options.heartbeatIntervalMs ?? 30_000,
+    heartbeatTimeoutMs: options.heartbeatTimeoutMs ?? 5_000,
     processJobName,
   };
   let worker: Worker<unknown> | undefined;

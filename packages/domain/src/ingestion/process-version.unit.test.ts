@@ -10,7 +10,11 @@ type Behaviour = (input: StageInput) => Promise<void> | void;
 
 // This package has no AbortController typings: a signal is a flag the test flips.
 const newSignal = () => {
-  const signal = { aborted: false, addEventListener: () => undefined };
+  const signal = {
+    aborted: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  };
   return {
     signal,
     abort: () => {
@@ -170,7 +174,13 @@ describe("processVersion ownership and cancellation", () => {
     const { f, ran, run } = setup();
     const id = f.addVersion(1, "queued");
 
-    expect(await run(id, { aborted: true, addEventListener: () => undefined })).toEqual({
+    expect(
+      await run(id, {
+        aborted: true,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    ).toEqual({
       outcome: "aborted",
     });
     expect(ran).toEqual([]);

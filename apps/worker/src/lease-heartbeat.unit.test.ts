@@ -205,4 +205,69 @@ describe("withHeartbeat", () => {
     await done;
     expect(calls).toHaveLength(0);
   });
+  it("abandons a beat that never settles after beatTimeoutMs, and ignores its late answer", async () => {
+    let release: (owned: boolean) => void = () => undefined;
+    const { runner, onLost, log } = setup(
+      () => new Promise<boolean>((resolve) => (release = resolve)),
+      () => sleep(1_500),
+    );
+    let finished = false;
+    const done = runner.run(input()).then(() => {
+      finished = true;
+    });
+    await vi.advanceTimersByTimeAsync(1_500 + 4_999);
+    expect(finished).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await done;
+    expect(vi.getTimerCount()).toBe(0);
+    release(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(onLost).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("drops the late failure of an abandoned beat without logging or an unhandled rejection", async () => {
+    let fail: (error: Error) => void = () => undefined;
+    const { runner, log } = setup(
+      () => new Promise<boolean>((_resolve, reject) => (fail = reject)),
+      () => sleep(1_500),
+    );
+    const done = runner.run(input());
+    await vi.advanceTimersByTimeAsync(1_500 + 5_000);
+    await done;
+    fail(new Error(secret));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("leaves no abort listener behind after a stage completes, fails or aborts", async () => {
+    const controller = new AbortController();
+    const live = new Set<unknown>();
+    const signal: StageInput["signal"] = {
+      get aborted() {
+        return controller.signal.aborted;
+      },
+      addEventListener: (type, listener, options) => {
+        live.add(listener);
+        controller.signal.addEventListener(type, listener, options);
+      },
+      removeEventListener: (type, listener) => {
+        live.delete(listener);
+        controller.signal.removeEventListener(type, listener);
+      },
+    };
+    const outcomes = [() => sleep(10), () => Promise.reject(new Error("stage")), () => sleep(10)];
+    let n = 0;
+    const { runner } = setup(
+      async () => true,
+      () => outcomes[n++ % outcomes.length]?.() ?? Promise.resolve(),
+    );
+    for (let i = 0; i < 6; i += 1) {
+      const done = runner.run(input(signal)).catch(() => undefined);
+      if (i === 5) controller.abort();
+      await vi.advanceTimersByTimeAsync(10);
+      await done;
+      expect(live.size).toBe(0);
+    }
+  });
 });

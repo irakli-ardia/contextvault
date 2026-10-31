@@ -1,6 +1,6 @@
 import { createIngestionHarness } from "@contextvault/db/testing/ingestion";
 import type { DocumentVersionId, StageInput, StageRunner } from "@contextvault/domain";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, type Mock, vi } from "vitest";
 import { failStage, faultyUow, recordingStages } from "./ingestion-consumer-test-support";
 import { withHeartbeat } from "./lease-heartbeat";
 
@@ -34,12 +34,12 @@ async function claimed(): Promise<{ id: DocumentVersionId; gen: number; input: S
 }
 
 const decorate = (
-  stage: () => Promise<void>,
+  stage: (onLost: Mock) => Promise<void>,
   uow = h.worker.unitOfWork,
   log = vi.fn<(entry: Record<string, unknown>) => void>(),
 ) => {
   const onLost = vi.fn();
-  const inner: StageRunner = { run: stage };
+  const inner: StageRunner = { run: () => stage(onLost) };
   const runner = withHeartbeat(inner, { uow, intervalMs, beatTimeoutMs: 5_000, onLost, log });
   return { runner, onLost, log };
 };
@@ -55,7 +55,10 @@ describe("lease heartbeat against PostgreSQL", () => {
   it("renews the lease of the owner on the database clock while a stage runs", async () => {
     const { id, gen, input } = await claimed();
     expect(await ageSeconds(id)).toBeGreaterThan(590);
-    const { runner, onLost } = decorate(() => sleep(intervalMs * 4));
+    // The stage lasts until a beat has landed, so load cannot end it before the first renewal.
+    const { runner, onLost } = decorate(async () => {
+      await expect.poll(() => ageSeconds(id), { timeout: 10_000 }).toBeLessThan(60);
+    });
     await runner.run(input);
     expect(await ageSeconds(id)).toBeLessThan(60);
     expect(await h.row(id)).toMatchObject({ status: "parsing", lease_generation: gen });
@@ -69,7 +72,10 @@ describe("lease heartbeat against PostgreSQL", () => {
     const { id, input } = await claimed();
     await h.fx.fixture.query(`${change} where id = $1`, [id]);
     const before = await h.row(id);
-    const { runner, onLost } = decorate(() => sleep(intervalMs * 5));
+    // The stage lasts until the loss is reported: an answer after the stage ended decides nothing.
+    const { runner, onLost } = decorate(async (lost) => {
+      await expect.poll(() => lost.mock.calls.length, { timeout: 10_000 }).toBe(1);
+    });
     await runner.run(input);
     expect(onLost).toHaveBeenCalledExactlyOnceWith({
       versionId: id,

@@ -10,7 +10,10 @@ export interface HeartbeatOptions {
   readonly uow: IngestionUnitOfWork;
   /** Default 30 s, a tenth of the planned five-minute lease. */
   readonly intervalMs: number;
-  /** Statement bound of each renewal; the pool's connection timeout bounds the wait before it. */
+  /**
+   * Statement bound of each renewal (the pool's connection timeout bounds the wait before it), and
+   * the longest `stop` waits for a renewal still in flight.
+   */
   readonly beatTimeoutMs: number;
   /** Called once, only when the database answered that this generation no longer owns the version. */
   readonly onLost: (lost: { versionId: DocumentVersionId; leaseGeneration: number }) => void;
@@ -27,8 +30,11 @@ export interface HeartbeatOptions {
  * generation never moves back. A thrown error (including an unknown commit outcome, harmless
  * because renewing twice is idempotent) proves nothing and is retried on the next tick.
  *
- * The next beat is armed only when the last one ends, so beats never overlap, and `stop` awaits
- * the one in flight: the stage returns with no timer and no transaction of the heartbeat left.
+ * The next beat is armed only when the last one ends, so beats never overlap. `stop` waits for the
+ * one in flight, but at most `beatTimeoutMs`: Promise.race cancels nothing, so a renewal stuck on
+ * a dead connection is only abandoned. It stays inside the pool until the statement timeout, the
+ * connection timeout or the socket error ends it, and its answer, success or error, is dropped
+ * silently. A hard end-to-end bound needs a client-side query timeout on the pool (not set here).
  */
 function startHeartbeat(options: HeartbeatOptions, input: StageInput): { stop(): Promise<void> } {
   const { workspaceId, versionId, leaseGeneration, signal } = input;
@@ -59,6 +65,7 @@ function startHeartbeat(options: HeartbeatOptions, input: StageInput): { stop():
       if (failing) options.log({ level: "info", code: "INGESTION_HEARTBEAT_RECOVERED" });
       failing = false;
     } catch (error) {
+      if (stopped) return;
       if (!failing) {
         options.log({
           level: "warn",
@@ -82,7 +89,16 @@ function startHeartbeat(options: HeartbeatOptions, input: StageInput): { stop():
   return {
     async stop() {
       halt();
-      await running;
+      signal.removeEventListener("abort", halt);
+      let bound: NodeJS.Timeout | undefined;
+      const abandoned = new Promise<void>((resolve) => {
+        bound = setTimeout(resolve, options.beatTimeoutMs);
+      });
+      try {
+        await Promise.race([running, abandoned]);
+      } finally {
+        clearTimeout(bound);
+      }
     },
   };
 }

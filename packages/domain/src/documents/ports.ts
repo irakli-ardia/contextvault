@@ -8,6 +8,7 @@ export interface StoredObject {
 export interface DeadlineSignal {
   readonly aborted: boolean;
   addEventListener(type: "abort", listener: () => void, options?: { once?: boolean }): void;
+  removeEventListener(type: "abort", listener: () => void): void;
 }
 
 export interface PutOptions {
