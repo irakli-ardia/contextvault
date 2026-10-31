@@ -103,11 +103,18 @@ export type {
   WorkerUnitOfWork,
 } from "./ingestion/ports";
 export {
+  type ProcessVersionDeps,
+  type ProcessVersionInput,
+  type ProcessVersionResult,
+  processVersion,
+} from "./ingestion/process-version";
+export {
   type SettleFailureDeps,
   type SettleFailureInput,
   type SettleFailureResult,
   settleFailure,
 } from "./ingestion/settle-failure";
+export { StageFailure, type StageInput, type StageRunner } from "./ingestion/stage-runner";
 export { DomainError, TransactionOutcomeUnknown } from "./kernel/errors";
 export {
   type DocumentId,
