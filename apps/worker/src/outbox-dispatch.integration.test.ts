@@ -39,11 +39,18 @@ beforeAll(async () => {
   jobQueue = createJobQueue({ connection: producerRedis, queueName, enqueueTimeoutMs: 400 });
   direct = new Redis(redisUrl.toString(), { maxRetriesPerRequest: null });
   inspect = new Queue(queueName, { connection: direct });
-  await jobQueue.enqueue({
-    jobId: `warmup-${randomUUID()}`,
-    workspaceId: wsA,
-    versionId: await h.seed(wsA),
-  });
+  // Readiness, not timeout behaviour: the 400 ms budget above is for the tests that assert it, and a
+  // cold first add under parallel suites can exceed it.
+  const warmup = createJobQueue({ connection: producerRedis, queueName, enqueueTimeoutMs: 15_000 });
+  try {
+    await warmup.enqueue({
+      jobId: `warmup-${randomUUID()}`,
+      workspaceId: wsA,
+      versionId: await h.seed(wsA),
+    });
+  } finally {
+    await warmup.close();
+  }
 });
 afterAll(async () => {
   await h.drainOutbox();
