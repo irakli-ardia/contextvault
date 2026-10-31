@@ -2,7 +2,7 @@ import type { JobQueue } from "@contextvault/domain";
 import { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 
-const ingestionQueueName = "ingestion";
+export const ingestionQueueName = "ingestion";
 export const processJobName = "process";
 
 interface ProcessJobData {
