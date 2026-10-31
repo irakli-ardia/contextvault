@@ -20,6 +20,8 @@
     "build": "pnpm --filter @contextvault/web --filter @contextvault/api --filter @contextvault/worker run build",
     "test:integration": "node --env-file-if-exists=.env --env-file-if-exists=.env.test node_modules/vitest/vitest.mjs run --project integration",
     "test:e2e": "pnpm --filter @contextvault/db run bundle && playwright test",
+    "test:e2e:ci": "pnpm --filter @contextvault/db run bundle && node --env-file=.env --env-file=.env.test scripts/checks/with-ci-stack.mjs run node node_modules/@playwright/test/cli.js test",
+    "infra:mark:ci": "node --env-file=.env --env-file=.env.test scripts/checks/with-ci-stack.mjs mark",
     "infra:up": "docker compose --env-file .env -f infra/compose.yaml up --wait --wait-timeout 180 && node scripts/infra-bucket.mjs",
     "infra:down": "docker compose --env-file .env -f infra/compose.yaml down",
     "infra:ps": "docker compose --env-file .env -f infra/compose.yaml ps",

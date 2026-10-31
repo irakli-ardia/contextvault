@@ -106,6 +106,8 @@ describe("loading boundaries", () => {
       .parse(JSON.parse(read("package.json"))).scripts;
     expect(Object.keys(scripts).filter((k) => scripts[k]?.includes(".env.test"))).toEqual([
       "test:integration",
+      "test:e2e:ci",
+      "infra:mark:ci",
     ]);
     for (const file of [
       "scripts/dev.mjs",

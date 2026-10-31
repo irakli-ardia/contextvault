@@ -41,6 +41,11 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # One API endpoint for the web build's /api/* rewrite and for Playwright (ADR 0010); the
+      # port is not the development default 3001, which the E2E guard refuses.
+      API_PORT: "3201"
+      API_INTERNAL_URL: http://127.0.0.1:3201
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -77,6 +82,10 @@ jobs:
         run: pnpm run test
       - name: Start infrastructure
         run: pnpm run infra:up
+      - name: Mark CI stack
+        # Writes this run's identity marker to the fresh database and bucket; test:e2e:ci refuses
+        # to start without it (ADR 0010).
+        run: pnpm run infra:mark:ci
       - name: Migrate database
         run: pnpm run db:migrate
       - name: Integration tests
@@ -92,7 +101,8 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Browser tests
-        run: pnpm run test:e2e
+        # Runs only if the database and bucket carry the marker written above.
+        run: pnpm run test:e2e:ci
       - name: Infrastructure logs
         if: failure()
         run: pnpm run infra:logs
