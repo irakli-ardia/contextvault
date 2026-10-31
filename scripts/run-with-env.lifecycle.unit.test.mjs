@@ -141,8 +141,10 @@ const supervise = async (child, group, body) => {
   try {
     return await body(watched);
   } finally {
-    for (const pid of watched.pids()) if (alive(pid)) kill(pid, "SIGKILL");
+    // The child goes first and alone: once its pid is killed, macOS answers EPERM (not ESRCH) to any
+    // further signal to it or its group until Node reaps the zombie.
     if (running(child)) kill(group ? -child.pid : child.pid, "SIGKILL");
+    for (const pid of watched.pids()) if (pid !== child.pid && alive(pid)) kill(pid, "SIGKILL");
   }
 };
 
