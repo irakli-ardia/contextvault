@@ -109,6 +109,25 @@ export {
   processVersion,
 } from "./ingestion/process-version";
 export {
+  type RecoverExpiredLeaseDeps,
+  type RecoverExpiredLeaseInput,
+  type RecoverExpiredLeaseResult,
+  recoverExpiredLease,
+} from "./ingestion/recover-expired-lease";
+export {
+  leaseDurationMs,
+  redriveBaseCooldownMs,
+  redriveCooldownMs,
+  redriveMaxCooldownMs,
+} from "./ingestion/recovery-policy";
+export type {
+  ExpiredLease,
+  ExpiredLeaseCandidate,
+  RecoveryRepository,
+  RecoverySource,
+  RecoveryUnitOfWork,
+} from "./ingestion/recovery-ports";
+export {
   type SettleFailureDeps,
   type SettleFailureInput,
   type SettleFailureResult,
