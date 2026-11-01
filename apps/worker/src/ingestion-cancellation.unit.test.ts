@@ -62,6 +62,7 @@ function setup(
     newId: () => "00000000-0000-4000-8000-0000000000aa",
     log,
     redeliveryDelayMs: 1_000,
+    random: () => 0,
     heartbeatIntervalMs: 1_000,
     heartbeatTimeoutMs: 1_000,
     processJobName: "process",

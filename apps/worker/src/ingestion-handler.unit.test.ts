@@ -60,13 +60,17 @@ function setup(over: Setup = {}) {
     newId: () => "00000000-0000-4000-8000-0000000000aa",
     log,
     redeliveryDelayMs: 1_000,
+    random: () => 0,
     heartbeatIntervalMs: 1_000,
     heartbeatTimeoutMs: 1_000,
     processJobName: "process",
     shutdown: new AbortController().signal,
   };
-  const run = (data: unknown = { workspaceId: ws, versionId: version }, name = "process") =>
-    handleIngestionJob(deps, { name, data, moveToDelayed }, "tok");
+  const run = (
+    data: unknown = { workspaceId: ws, versionId: version },
+    name = "process",
+    attemptsStarted?: number,
+  ) => handleIngestionJob(deps, { name, data, attemptsStarted, moveToDelayed }, "tok");
   return { run, stageRun, log, moveToDelayed };
 }
 
@@ -133,7 +137,7 @@ describe("handleIngestionJob", () => {
     expect(stageRun).not.toHaveBeenCalled();
     const [at, token] = moveToDelayed.mock.calls[0] ?? [];
     expect(token).toBe("tok");
-    expect(at).toBeGreaterThanOrEqual(before + 1_000);
+    expect(at).toBeGreaterThanOrEqual(before + 500);
     expect(JSON.stringify(log.mock.calls)).not.toContain("hunter2");
   });
 
@@ -159,6 +163,23 @@ describe("handleIngestionJob", () => {
     });
     await failsWith(run(), "ingestion.post_claim_error");
     expect(moveToDelayed).not.toHaveBeenCalled();
+  });
+
+  it("backs off the redelivery with each pickup", async () => {
+    const { run, moveToDelayed } = setup({ fault: () => transient });
+    const payload = { workspaceId: ws, versionId: version };
+    const now = Date.now();
+    for (const [attempt, floor] of [
+      [1, 500],
+      [3, 2_000],
+      [9, 30_000],
+    ] as const) {
+      moveToDelayed.mockClear();
+      await expect(run(payload, "process", attempt)).rejects.toBeInstanceOf(DelayedError);
+      const at = moveToDelayed.mock.calls[0]?.[0] ?? 0;
+      expect(at - now).toBeGreaterThanOrEqual(floor - 50);
+      expect(at - now).toBeLessThan(floor + 500);
+    }
   });
 
   it("fails the job if the delay itself cannot be written", async () => {

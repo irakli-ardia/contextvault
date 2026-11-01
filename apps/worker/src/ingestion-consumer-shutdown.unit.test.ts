@@ -140,9 +140,14 @@ async function setup(stage: (input: StageInput) => Promise<void>) {
   });
   const worker = h.FakeWorker.last;
   if (!worker) throw new Error("no worker");
-  const moveToDelayed = vi.fn(async () => undefined);
+  const moveToDelayed = vi.fn(async (_at: number, _token?: string) => undefined);
   const deliver = (versionId: string) =>
-    worker.deliver({ name: "process", data: { workspaceId: ws, versionId }, moveToDelayed });
+    worker.deliver({
+      name: "process",
+      data: { workspaceId: ws, versionId },
+      attemptsStarted: 9,
+      moveToDelayed,
+    });
   const codes = () => log.mock.calls.map(([{ code }]) => code);
   // Observed from the start, so a rejection that settles before the test awaits it is not unhandled.
   const outcome = (closing: Promise<void>) =>
@@ -297,6 +302,8 @@ describe("ingestion consumer shutdown", () => {
     const closing = t.outcome(t.consumer.close());
     await expect(t.deliver(a)).rejects.toBeInstanceOf(DelayedError);
     expect(t.moveToDelayed).toHaveBeenCalledTimes(1);
+    // The handover keeps the fixed base delay, whatever the pickup count.
+    expect(t.moveToDelayed.mock.calls[0]?.[0]).toBe(Date.now() + 5_000);
     expect(t.claims).toEqual([]);
     expect(stage).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(release);

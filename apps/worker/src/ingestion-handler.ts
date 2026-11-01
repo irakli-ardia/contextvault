@@ -9,12 +9,15 @@ import { DelayedError, UnrecoverableError } from "bullmq";
 import { errorCause } from "./error-cause";
 import { parseIngestionPayload } from "./ingestion-job";
 import { withHeartbeat } from "./lease-heartbeat";
+import { redeliveryDelayMs } from "./redelivery-delay";
 import { isTransientDbError } from "./transient-db-error";
 
 /** The part of a BullMQ job the handler uses. */
 export interface IngestionJob {
   readonly name: string;
   readonly data: unknown;
+  /** BullMQ counts every pickup, this one included, from 1. */
+  readonly attemptsStarted?: number | undefined;
   moveToDelayed(timestamp: number, token?: string): Promise<void>;
 }
 
@@ -22,6 +25,8 @@ export interface IngestionHandlerDeps extends ProcessVersionDeps {
   readonly log: (entry: Record<string, unknown>) => void;
   /** Wait before a job that never reached a claim is delivered again. */
   readonly redeliveryDelayMs: number;
+  /** Jitter source in [0, 1), injectable so tests are deterministic. */
+  readonly random: () => number;
   /** Lease renewal period while a stage runs, and the bound of each renewal. */
   readonly heartbeatIntervalMs: number;
   readonly heartbeatTimeoutMs: number;
@@ -110,11 +115,11 @@ function reject(deps: IngestionHandlerDeps, code: string): never {
 
 /** Offers the job again after the delay without touching PostgreSQL. */
 export async function redeliverLater(
-  deps: Pick<IngestionHandlerDeps, "redeliveryDelayMs">,
+  delayMs: number,
   job: Pick<IngestionJob, "moveToDelayed">,
   token: string | undefined,
 ): Promise<never> {
-  await job.moveToDelayed(Date.now() + deps.redeliveryDelayMs, token).catch(() => {
+  await job.moveToDelayed(Date.now() + delayMs, token).catch(() => {
     throw new IngestionJobFailed("redelivery.failed");
   });
   throw new DelayedError();
@@ -137,7 +142,9 @@ async function fail(
   if (!claimResolved && isTransientDbError(error)) {
     // Rolled back before any claim, so redelivery consumes no attempt and cannot double-process.
     deps.log({ level: "warn", code: "INGESTION_JOB_REDELIVERED", cause });
-    return redeliverLater(deps, job, token);
+    // Backs off with each pickup so a database outage is not polled at a fixed rate.
+    const delay = redeliveryDelayMs(deps.redeliveryDelayMs, job.attemptsStarted, deps.random);
+    return redeliverLater(delay, job, token);
   }
   // After the claim the version is running under this generation; the lease expiry returns it.
   const code = claimResolved ? "ingestion.post_claim_error" : "db.permanent_error";

@@ -17,7 +17,7 @@ export interface IngestionConsumerOptions {
   readonly queueName?: string;
   /** Default 2, as planned. */
   readonly concurrency?: number;
-  /** Default 5 s. */
+  /** Base of the exponential pre-claim redelivery backoff (capped at 60 s), and the fixed shutdown handover delay. Default 5 s. */
   readonly redeliveryDelayMs?: number;
   /** Default 30 s, a tenth of the planned five-minute lease. */
   readonly heartbeatIntervalMs?: number;
@@ -63,6 +63,7 @@ export async function createIngestionConsumer(
     newId: options.newId,
     log,
     redeliveryDelayMs: options.redeliveryDelayMs ?? 5_000,
+    random: Math.random,
     heartbeatIntervalMs: options.heartbeatIntervalMs ?? 30_000,
     heartbeatTimeoutMs: options.heartbeatTimeoutMs ?? 5_000,
     processJobName,
@@ -77,7 +78,9 @@ export async function createIngestionConsumer(
       // again untouched, so shutdown never claims a version or spends an attempt.
       (job, token) =>
         jobs.run(() =>
-          stopping ? redeliverLater(deps, job, token) : handleIngestionJob(deps, job, token),
+          stopping
+            ? redeliverLater(deps.redeliveryDelayMs, job, token)
+            : handleIngestionJob(deps, job, token),
         ),
       { connection: redis, concurrency: options.concurrency ?? 2 },
     );
