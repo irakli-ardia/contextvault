@@ -104,7 +104,10 @@ export interface IngestionRepository {
   }): Promise<boolean>;
   /** A live entry for the same version already schedules it, so a second one is not inserted. */
   insertOutbox(entry: NewOutboxEntry): Promise<void>;
-  /** `false` when the entry was already dispatched, so only one caller wins. */
+  /**
+   * `false` when the entry was already dispatched, so only one caller wins. Locks the entry's
+   * version first and keeps that lock to the end of the transaction (the order `claim` uses).
+   */
   markDispatched(outboxId: OutboxId): Promise<boolean>;
 }
 

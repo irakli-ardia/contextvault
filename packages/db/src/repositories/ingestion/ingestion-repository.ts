@@ -50,17 +50,24 @@ export function createIngestionRepository(
     },
 
     // Raw SQL: Drizzle leaves single-table column references unqualified, which would let the
-    // correlated subqueries capture `id`. One statement, so the status check, the deleted check,
-    // the retry schedule, the counters and the closing of the consumed outbox entry cannot
-    // interleave with another claim or be half applied. Schedules compare against the database
-    // clock only. The data-modifying CTE runs whether or not it is read, and only for a won claim.
-    // The first statement takes the live entry's lock before the version's, the order the
-    // dispatcher's mark-then-transition uses, so the two cannot deadlock.
+    // correlated subqueries capture `id`. Lock order is version, then outbox, everywhere: the first
+    // statement locks a claimable version (FOR NO KEY UPDATE, which an outbox insert's foreign-key
+    // check does not conflict with), so the second statement's snapshot is taken after any
+    // concurrent writer under that lock, such as a redrive inserting an entry, has committed.
+    // Without it that entry is invisible to the second statement, which would claim without closing
+    // it, and the retry's own entry would then conflict with it and lose its backoff. A running or
+    // finished version takes no lock, so duplicate deliveries never block a heartbeat.
+    // The second statement is one statement, so the status check, the deleted check, the retry
+    // schedule, the counters and the closing of the consumed outbox entry cannot interleave with
+    // another claim or be half applied. Schedules compare against the database clock only. The
+    // data-modifying CTE runs whether or not it is read, and only for a won claim.
     async claim({ versionId }) {
-      await executor.execute(sql`
-        select 1 from outbox
-        where workspace_id = ${workspaceId} and version_id = ${versionId} and dispatched_at is null
-        for update`);
+      const locked = await executor.execute(sql`
+        select 1 from document_versions
+        where id = ${versionId} and workspace_id = ${workspaceId}
+          and status in ('uploaded', 'queued') and attempt < ${maxAttempts}
+        for no key update`);
+      if (locked.rows.length === 0) return null;
       const { rows } = await executor.execute<{ lease_generation: number; attempt: number }>(sql`
         with claimed as (
           update document_versions dv
@@ -155,18 +162,22 @@ export function createIngestionRepository(
       if (live === undefined) throw new Error("Outbox insert conflicted without a live entry");
     },
 
+    // Version, then outbox, as `claim` does, in two statements so the order does not rest on the
+    // planner. The first locks the entry's version (the outbox row is only read, not locked); the
+    // lock is held to the end of the transaction, so the caller's later read and transition of that
+    // version see no concurrent claim. The UPDATE runs after it, with a fresh snapshot, so an entry
+    // a claim consumed while this waited is no longer matched.
     async markDispatched(outboxId) {
-      const rows = await executor
-        .update(outbox)
-        .set({ dispatchedAt: sql`now()` })
-        .where(
-          and(
-            eq(outbox.id, outboxId),
-            eq(outbox.workspaceId, workspaceId),
-            isNull(outbox.dispatchedAt),
-          ),
-        )
-        .returning({ id: outbox.id });
+      const locked = await executor.execute(sql`
+        select dv.id from outbox o
+        join document_versions dv on dv.id = o.version_id and dv.workspace_id = o.workspace_id
+        where o.id = ${outboxId} and o.workspace_id = ${workspaceId} and o.dispatched_at is null
+        for no key update of dv`);
+      if (locked.rows.length === 0) return false;
+      const { rows } = await executor.execute(sql`
+        update outbox set dispatched_at = now()
+        where id = ${outboxId} and workspace_id = ${workspaceId} and dispatched_at is null
+        returning id`);
       return rows.length === 1;
     },
   };

@@ -8,7 +8,7 @@ import type { Executor } from "../../client";
 // a fresh `updated_at` or a bumped generation no longer matches and the statement returns nothing.
 // Expiry is judged on the database clock only. `updated_at`, status and attempt are left alone;
 // the generation bump alone fences the dead worker. No outbox row is locked here, so the order
-// outbox-then-version used by `claim` and the dispatcher is never inverted.
+// version-then-outbox used by `claim` and the dispatcher is never inverted.
 export function createRecoveryRepository(
   executor: Executor,
   workspaceId: WorkspaceId,
