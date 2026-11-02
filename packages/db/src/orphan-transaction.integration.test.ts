@@ -105,13 +105,17 @@ describe("racing redrives", () => {
   it("a second redrive waits on the version lock, then sees the committed entry", async () => {
     const id = await seedOrphan(h, wsA);
     const first = gated(uow);
-    const winner = redrive(first.uow, id);
-    await first.entered;
-    const loser = redrive(uow, id);
-    await waitUntilBlocked(h, id);
-    first.release();
-    expect(await winner).toEqual({ outcome: "redriven" });
-    expect(await loser).toEqual({ outcome: "skipped" });
+    try {
+      const winner = redrive(first.uow, id);
+      await first.entered;
+      const loser = redrive(uow, id);
+      await waitUntilBlocked(h, id);
+      first.release();
+      expect(await winner).toEqual({ outcome: "redriven" });
+      expect(await loser).toEqual({ outcome: "skipped" });
+    } finally {
+      first.release();
+    }
     expect(await live(id)).toHaveLength(1);
   });
 
@@ -125,13 +129,18 @@ describe("racing redrives", () => {
   it("a claim waiting on the redrive's lock consumes the new entry", async () => {
     const id = await seedOrphan(h, wsA);
     const first = gated(uow);
-    const redriving = redrive(first.uow, id);
-    await first.entered;
-    const claiming = h.run(wsA, (r) => r.claim({ versionId: id }));
-    await waitUntilBlocked(h, id);
-    first.release();
-    expect(await redriving).toEqual({ outcome: "redriven" });
-    expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    try {
+      const redriving = redrive(first.uow, id);
+      await first.entered;
+      const claiming = h.run(wsA, (r) => r.claim({ versionId: id }));
+      await waitUntilBlocked(h, id);
+      first.release();
+      expect(await redriving).toEqual({ outcome: "redriven" });
+      expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    } finally {
+      first.release();
+    }
     expect(await live(id)).toEqual([]);
+    expect(await h.row(id)).toMatchObject({ status: "parsing", attempt: 1, lease_generation: 1 });
   });
 });

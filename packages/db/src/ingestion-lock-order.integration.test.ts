@@ -44,35 +44,53 @@ function gated() {
   return { uow, entered: entered.promise, release: gate.resolve };
 }
 
-/** A test-controlled transaction that holds the version's lock, as a claim or a redrive would. */
+/**
+ * A test-controlled transaction that holds the version's lock, as a claim or a redrive would.
+ * `release` commits and is idempotent, so a `finally` can call it after an assertion threw.
+ */
 async function holdVersionLock(id: DocumentVersionId, insertDueOutbox: boolean) {
   const client = await h.fx.fixture.connect();
-  await client.query("begin");
-  await client.query("select 1 from document_versions where id = $1 for no key update", [id]);
-  if (insertDueOutbox) {
-    await client.query(
-      `insert into outbox (id, workspace_id, version_id, kind, available_at)
-       values ($1, $2, $3, 'process_version', now())`,
-      [randomUUID(), wsA, id],
-    );
-  }
-  return async () => {
+  let open = true;
+  const release = async () => {
+    if (!open) return;
+    open = false;
     try {
       await client.query("commit");
     } finally {
       client.release();
     }
   };
+  try {
+    await client.query("begin");
+    await client.query("select 1 from document_versions where id = $1 for no key update", [id]);
+    if (insertDueOutbox) {
+      await client.query(
+        `insert into outbox (id, workspace_id, version_id, kind, available_at)
+         values ($1, $2, $3, 'process_version', now())`,
+        [randomUUID(), wsA, id],
+      );
+    }
+  } catch (error) {
+    open = false;
+    await client.query("rollback").catch(() => undefined);
+    client.release();
+    throw error;
+  }
+  return release;
 }
 
 describe("claim racing with an outbox insert under the version lock", () => {
   it("a claim that waited on the version consumes the new entry, so the retry keeps its backoff", async () => {
     const id = await h.seed(wsA, { status: "queued", outboxDelayMs: null });
     const commit = await holdVersionLock(id, true);
-    const claiming = claim(id);
-    await waitUntilBlocked(h, id);
-    await commit();
-    expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    try {
+      const claiming = claim(id);
+      await waitUntilBlocked(h, id);
+      await commit();
+      expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    } finally {
+      await commit();
+    }
 
     const retry = { stage: "parsing", code: "storage.unavailable", retryable: true } as const;
     expect(
@@ -99,13 +117,17 @@ describe("dispatcher and claim contending on an uploaded version", () => {
   it("dispatcher holds both locks: the claim waits, then claims the queued version", async () => {
     const id = await h.seed(wsA);
     const dispatcher = gated();
-    const dispatching = dispatch(dispatcher.uow);
-    await dispatcher.entered;
-    const claiming = claim(id);
-    await waitUntilBlocked(h, id);
-    dispatcher.release();
-    expect(await dispatching).toMatchObject({ dispatched: 1, alreadyDispatched: 0 });
-    expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    try {
+      const dispatching = dispatch(dispatcher.uow);
+      await dispatcher.entered;
+      const claiming = claim(id);
+      await waitUntilBlocked(h, id);
+      dispatcher.release();
+      expect(await dispatching).toMatchObject({ dispatched: 1, alreadyDispatched: 0 });
+      expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+    } finally {
+      dispatcher.release();
+    }
     expect(await h.row(id)).toMatchObject({ status: "parsing", attempt: 1, lease_generation: 1 });
     expect(await live(id)).toHaveLength(0);
   });
@@ -113,15 +135,19 @@ describe("dispatcher and claim contending on an uploaded version", () => {
   it("claim holds both locks: the dispatcher waits, then finds the entry consumed", async () => {
     const id = await h.seed(wsA);
     const claimer = gated();
-    const claiming = claimer.uow.run({ workspaceId: wsA }, ({ ingestion }) =>
-      ingestion.claim({ versionId: id }),
-    );
-    await claimer.entered;
-    const dispatching = dispatch(worker.unitOfWork);
-    await waitUntilBlocked(h, id);
-    claimer.release();
-    expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
-    expect(await dispatching).toMatchObject({ dispatched: 0, alreadyDispatched: 1 });
+    try {
+      const claiming = claimer.uow.run({ workspaceId: wsA }, ({ ingestion }) =>
+        ingestion.claim({ versionId: id }),
+      );
+      await claimer.entered;
+      const dispatching = dispatch(worker.unitOfWork);
+      await waitUntilBlocked(h, id);
+      claimer.release();
+      expect(await claiming).toEqual({ leaseGeneration: 1, attempt: 1 });
+      expect(await dispatching).toMatchObject({ dispatched: 0, alreadyDispatched: 1 });
+    } finally {
+      claimer.release();
+    }
     expect(await h.row(id)).toMatchObject({ status: "parsing", attempt: 1, lease_generation: 1 });
     expect(await live(id)).toHaveLength(0);
   });
@@ -129,15 +155,19 @@ describe("dispatcher and claim contending on an uploaded version", () => {
   it("a dispatcher waiting for the version holds no outbox lock", async () => {
     const id = await h.seed(wsA);
     const commit = await holdVersionLock(id, false);
-    const dispatching = dispatch(worker.unitOfWork);
-    await waitUntilBlocked(h, id);
-    // With the lock order inverted the dispatcher would already hold the entry: NOWAIT fails.
-    await h.fx.fixture.query(
-      "select 1 from outbox where version_id = $1 and dispatched_at is null for update nowait",
-      [id],
-    );
-    await commit();
-    expect(await dispatching).toMatchObject({ dispatched: 1 });
+    try {
+      const dispatching = dispatch(worker.unitOfWork);
+      await waitUntilBlocked(h, id);
+      // With the lock order inverted the dispatcher would already hold the entry: NOWAIT fails.
+      await h.fx.fixture.query(
+        "select 1 from outbox where version_id = $1 and dispatched_at is null for update nowait",
+        [id],
+      );
+      await commit();
+      expect(await dispatching).toMatchObject({ dispatched: 1 });
+    } finally {
+      await commit();
+    }
     expect(await h.row(id)).toMatchObject({ status: "queued", attempt: 0 });
   });
 });

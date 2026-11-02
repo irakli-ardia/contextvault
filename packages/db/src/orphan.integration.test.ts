@@ -160,11 +160,13 @@ describe("outbox history and idle time", () => {
 describe("redrive cooldown against the database clock", () => {
   const snapshotFor = (s: OrphanSnapshot | null) => redriveCooldownMs(s?.outboxRows, s?.attempt);
 
-  it("redrives at the cooldown boundary and skips just below it", async () => {
+  it("redrives at the cooldown boundary and skips below it", async () => {
     const cooldown = redriveCooldownMs(0, 0);
     const at = await seedOrphan(h, wsA, { updatedAgoMs: cooldown });
     expect(await redrive(at)).toEqual({ outcome: "redriven" });
-    const below = await seedOrphan(h, wsA, { updatedAgoMs: cooldown - 2_000 });
+    // A minute below: seeding-to-check latency on a slow runner only adds idle time, so it cannot
+    // reach the boundary, and the version must still be skipped.
+    const below = await seedOrphan(h, wsA, { updatedAgoMs: cooldown - minute });
     expect(await redrive(below)).toEqual({ outcome: "skipped" });
     expect(await liveEntries(below)).toEqual([]);
   });

@@ -2,6 +2,7 @@ import type {
   DocumentVersionId,
   OrphanSnapshot,
   VersionStatus,
+  WorkerUnitOfWork,
   WorkspaceId,
 } from "@contextvault/domain";
 import type { Harness } from "./recovery-test-support";
@@ -62,4 +63,29 @@ export function expectIdle(snapshot: OrphanSnapshot | null, ms: number): void {
   if (snapshot.idleMs < ms || snapshot.idleMs > ms + 30_000) {
     throw new Error(`idleMs ${snapshot.idleMs} not within 30 s of ${ms}`);
   }
+}
+
+/**
+ * Keeps each transaction open after its work, until `release()`: an explicit barrier, not a sleep.
+ * `entered` resolves once the work ran inside the open transaction. With `rollback`, release ends
+ * the transaction by throwing, so the work is undone. `release` is idempotent: call it in `finally`.
+ */
+export function gate<Repos>(inner: WorkerUnitOfWork<Repos>, options: { rollback?: boolean } = {}) {
+  const entered = Promise.withResolvers<void>();
+  const barrier = Promise.withResolvers<void>();
+  const uow: WorkerUnitOfWork<Repos> = {
+    run: (context, work, runOptions) =>
+      inner.run(
+        context,
+        async (repos) => {
+          const result = await work(repos);
+          entered.resolve();
+          await barrier.promise;
+          if (options.rollback) throw new Error("rolled back by the test");
+          return result;
+        },
+        runOptions,
+      ),
+  };
+  return { uow, entered: entered.promise, release: barrier.resolve };
 }
