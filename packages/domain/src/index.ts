@@ -90,6 +90,11 @@ export {
   maxAttempts,
 } from "./ingestion/lifecycle";
 export type {
+  OrphanRepository,
+  OrphanSnapshot,
+  OrphanUnitOfWork,
+} from "./ingestion/orphan-ports";
+export type {
   ClaimedVersion,
   IngestionRepository,
   IngestionUnitOfWork,
@@ -116,6 +121,7 @@ export {
 } from "./ingestion/recover-expired-lease";
 export {
   leaseDurationMs,
+  outboxHistoryCap,
   redriveBaseCooldownMs,
   redriveCooldownMs,
   redriveMaxCooldownMs,
@@ -127,6 +133,12 @@ export type {
   RecoverySource,
   RecoveryUnitOfWork,
 } from "./ingestion/recovery-ports";
+export {
+  type RedriveOrphanDeps,
+  type RedriveOrphanInput,
+  type RedriveOrphanResult,
+  redriveOrphan,
+} from "./ingestion/redrive-orphan";
 export {
   type SettleFailureDeps,
   type SettleFailureInput,
