@@ -1,0 +1,1 @@
+CREATE INDEX "document_versions_running_updated_idx" ON "document_versions" USING btree ("updated_at") WHERE "document_versions"."status" in ('parsing', 'chunking');

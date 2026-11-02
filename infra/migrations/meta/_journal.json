@@ -85,6 +85,13 @@
       "when": 1793380179613,
       "tag": "0011_worker_outbox_revoke_defer",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793595048263,
+      "tag": "0012_recovery_discovery_indexes",
+      "breakpoints": true
     }
   ]
 }

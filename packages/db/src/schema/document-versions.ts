@@ -48,6 +48,11 @@ export const documentVersions = pgTable(
     unique("document_versions_document_id_version_no_unique").on(table.documentId, table.versionNo),
     unique("document_versions_workspace_id_id_unique").on(table.workspaceId, table.id),
     index("document_versions_workspace_document_idx").on(table.workspaceId, table.documentId),
+    // Recovery discovery (M1.4 5B): oldest lease first, over the few rows in a running state, so
+    // the sweep never scans the settled majority.
+    index("document_versions_running_updated_idx")
+      .on(table.updatedAt)
+      .where(sql`${table.status} in ('parsing', 'chunking')`),
     check("document_versions_version_no", sql`${table.versionNo} >= 1`),
     check(
       "document_versions_status",
