@@ -11,7 +11,9 @@
       "!**/*.md",
       "!**/*.svg",
       "!.claude",
-      "!.agents"
+      "!.agents",
+      "!benchmarks/orphan-discovery/results.json",
+      "!benchmarks/orphan-discovery/plans.json"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },
