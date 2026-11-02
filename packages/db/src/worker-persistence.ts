@@ -1,5 +1,6 @@
 import type {
   IngestionUnitOfWork,
+  OrphanSource,
   OrphanUnitOfWork,
   OutboxSource,
   RecoverySource,
@@ -9,6 +10,7 @@ import { createDatabase } from "./client";
 import { establishWorkerContext } from "./context";
 import { createIngestionRepository } from "./repositories/ingestion/ingestion-repository";
 import { createOrphanRepository } from "./repositories/ingestion/orphan-repository";
+import { createOrphanSource } from "./repositories/ingestion/orphan-source";
 import { createOutboxSource } from "./repositories/ingestion/outbox-source";
 import { createRecoveryRepository } from "./repositories/ingestion/recovery-repository";
 import { createRecoverySource } from "./repositories/ingestion/recovery-source";
@@ -20,6 +22,7 @@ export interface WorkerPersistence {
   readonly orphanUnitOfWork: OrphanUnitOfWork;
   readonly source: OutboxSource;
   readonly recoverySource: RecoverySource;
+  readonly orphanSource: OrphanSource;
   readonly close: () => Promise<void>;
 }
 
@@ -70,6 +73,7 @@ export function createWorkerPersistence(options: {
     },
     source: createOutboxSource(db),
     recoverySource: createRecoverySource(db),
+    orphanSource: createOrphanSource(db),
     close,
   };
 }

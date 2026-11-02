@@ -90,8 +90,11 @@ export {
   maxAttempts,
 } from "./ingestion/lifecycle";
 export type {
+  OrphanCandidate,
+  OrphanCursor,
   OrphanRepository,
   OrphanSnapshot,
+  OrphanSource,
   OrphanUnitOfWork,
 } from "./ingestion/orphan-ports";
 export type {
@@ -121,6 +124,7 @@ export {
 } from "./ingestion/recover-expired-lease";
 export {
   leaseDurationMs,
+  orphanPageLimit,
   outboxHistoryCap,
   redriveBaseCooldownMs,
   redriveCooldownMs,

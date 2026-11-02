@@ -27,3 +27,6 @@ export function redriveCooldownMs(outboxRows?: number, attempt?: number): number
     redriveBaseCooldownMs * 2 ** Math.min(rest, maxCooldownExponent),
   );
 }
+
+/** Largest page `OrphanSource.listWaiting` serves. */
+export const orphanPageLimit = 500;
