@@ -1,5 +1,6 @@
 import type {
   IngestionUnitOfWork,
+  OrphanUnitOfWork,
   OutboxSource,
   RecoverySource,
   RecoveryUnitOfWork,
@@ -7,6 +8,7 @@ import type {
 import { createDatabase } from "./client";
 import { establishWorkerContext } from "./context";
 import { createIngestionRepository } from "./repositories/ingestion/ingestion-repository";
+import { createOrphanRepository } from "./repositories/ingestion/orphan-repository";
 import { createOutboxSource } from "./repositories/ingestion/outbox-source";
 import { createRecoveryRepository } from "./repositories/ingestion/recovery-repository";
 import { createRecoverySource } from "./repositories/ingestion/recovery-source";
@@ -15,6 +17,7 @@ import { runTransaction } from "./unit-of-work";
 export interface WorkerPersistence {
   readonly unitOfWork: IngestionUnitOfWork;
   readonly recoveryUnitOfWork: RecoveryUnitOfWork;
+  readonly orphanUnitOfWork: OrphanUnitOfWork;
   readonly source: OutboxSource;
   readonly recoverySource: RecoverySource;
   readonly close: () => Promise<void>;
@@ -48,6 +51,19 @@ export function createWorkerPersistence(options: {
           (tx) =>
             work({
               recovery: createRecoveryRepository(tx, context.workspaceId),
+              ingestion: createIngestionRepository(tx, context.workspaceId),
+            }),
+        ),
+    },
+    orphanUnitOfWork: {
+      run: (context, work, runOptions) =>
+        runTransaction(
+          db,
+          runOptions?.timeoutMs,
+          (tx) => establishWorkerContext(tx, context),
+          (tx) =>
+            work({
+              orphan: createOrphanRepository(tx, context.workspaceId),
               ingestion: createIngestionRepository(tx, context.workspaceId),
             }),
         ),
