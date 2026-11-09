@@ -1,8 +1,8 @@
 import { parsePassword } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { sqlState } from "../testing/tenant-fixture";
-import { AccountExists } from "./errors";
-import { provisionAccount } from "./provision-account";
+import { sqlState } from "../../testing/tenant-fixture";
+import { AccountExists } from "../errors";
+import { provisionAccount } from "../provision-account";
 import { password, provisioningHarness } from "./test-harness";
 
 const h = await provisioningHarness();

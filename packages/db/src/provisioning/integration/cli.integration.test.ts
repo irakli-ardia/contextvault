@@ -1,11 +1,11 @@
 import { loadDatabaseEnv, loadMigrationEnv } from "@contextvault/config";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { createDatabase } from "../client";
-import { PrivilegeCheckFailed } from "../privilege-check";
-import { type CliIo, runCli } from "./cli";
-import { openOps } from "./open-ops";
-import { provisionAccount } from "./provision-account";
-import { resetPassword } from "./reset-password";
+import { createDatabase } from "../../client";
+import { PrivilegeCheckFailed } from "../../privilege-check";
+import { type CliIo, runCli } from "../cli";
+import { openOps } from "../open-ops";
+import { provisionAccount } from "../provision-account";
+import { resetPassword } from "../reset-password";
 import { password, provisioningHarness } from "./test-harness";
 
 const h = await provisioningHarness();

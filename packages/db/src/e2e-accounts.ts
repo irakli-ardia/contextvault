@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { assertArgon2Runtime, createPasswordHasher } from "@contextvault/auth";
 import { loadEnv, loadFixtureEnv } from "@contextvault/config";
 import pg from "pg";
-import { deleteAccounts } from "./account-cleanup";
+import { deleteAccounts } from "./provisioning/account-cleanup";
 import { openOps } from "./provisioning/open-ops";
 
 // Browser-test fixtures, run by Playwright as a child process (never imported by an app):

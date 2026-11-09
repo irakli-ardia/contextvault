@@ -2,9 +2,9 @@ import { loadBootstrapEnv, loadFixtureEnv, loadMigrationEnv } from "@contextvaul
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { afterAll, describe, expect, it } from "vitest";
-import { deleteAccounts } from "./account-cleanup";
 import { createDatabase } from "./client";
 import { assertLeastPrivilege, PrivilegeCheckFailed } from "./privilege-check";
+import { deleteAccounts } from "./provisioning/account-cleanup";
 import { attempt, effectOf, openRolePools, ROLES, scalar } from "./role-test-support";
 import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 

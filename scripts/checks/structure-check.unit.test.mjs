@@ -72,7 +72,7 @@ describe("findProblems", () => {
 
   it("never grows the legacy list", () => {
     // Lower this number when a slice moves files. Raising it means a misplaced test was added.
-    expect(LEGACY_FILES.size).toBeLessThanOrEqual(56);
+    expect(LEGACY_FILES.size).toBeLessThanOrEqual(51);
   });
 });
 
@@ -147,6 +147,7 @@ describe("production code never imports integration or testing files", () => {
     ["packages/db/src/e2e-accounts.ts", "@contextvault/db/testing"],
     ["packages/db/src/e2e-accounts.ts", "./testing/document-fixture"],
     ["packages/db/src/e2e-accounts.ts", "./integration/x"],
+    ["packages/db/src/provisioning/integration/test-harness.ts", "./integration/x"],
     ["packages/auth/src/a.ts", "./integration/x"],
     ["packages/domain/src/a.ts", "./integration/x"],
     ["packages/contracts/src/a.ts", "./integration/x"],
@@ -165,8 +166,9 @@ describe("production code never imports integration or testing files", () => {
     ["packages/db/src/a.integration.test.ts", "./testing/tenant-fixture"],
     ["packages/db/src/a.unit.test.ts", "./testing/tenant-fixture"],
     ["packages/db/src/a-test-support.ts", "./testing/tenant-fixture"],
-    ["packages/db/src/provisioning/test-harness.ts", "../testing/tenant-fixture"],
+    ["packages/db/src/provisioning/integration/test-harness.ts", "../../testing/tenant-fixture"],
     ["packages/db/src/testing/a.ts", "./tenant-fixture"],
+    ["packages/db/src/provisioning/integration/test-harness.ts", "@contextvault/auth"],
     ["packages/db/src/user-create.ts", "@contextvault/auth"],
     ["packages/auth/src/a.unit.test.ts", "./integration/x"],
     ["packages/domain/src/a.unit.test.ts", "./integration/x"],
@@ -178,6 +180,7 @@ describe("production code never imports integration or testing files", () => {
   // The test-file overrides repeat each package's other restrictions; they must not go slack.
   it.each([
     ["packages/db/src/a.unit.test.ts", "@contextvault/auth"],
+    ["packages/db/src/provisioning/cli.ts", "@contextvault/auth"],
     ["packages/auth/src/a.unit.test.ts", "pg"],
     ["packages/domain/src/a.unit.test.ts", "react"],
     ["packages/contracts/src/a-test-support.ts", "bullmq"],

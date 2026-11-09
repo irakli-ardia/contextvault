@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTenantFixture, type TenantFixture } from "./testing/tenant-fixture";
+import { createTenantFixture, type TenantFixture } from "../../testing/tenant-fixture";
 
 // Runs the bundled CLI exactly as Playwright does, but with an explicit environment so only the
 // variables a case names can reach it. Migration credentials are deliberately wrong or absent.
@@ -11,7 +11,7 @@ const badMigration = "postgres://nobody:wrong@127.0.0.1:1/none";
 
 function cli(args: string[], env: Record<string, string>) {
   const { status, stdout, stderr } = spawnSync(process.execPath, [bundle, ...args], {
-    cwd: new URL("..", import.meta.url).pathname,
+    cwd: new URL("../../..", import.meta.url).pathname,
     encoding: "utf8",
     env: { NODE_ENV: "development", ...env },
   });
@@ -27,7 +27,7 @@ const fixtureEnv = () => ({
 const e2eEmail = () => `e2e-${randomUUID()}@test.invalid`;
 
 beforeAll(async () => {
-  execFileSync("pnpm", ["run", "bundle"], { cwd: new URL("..", import.meta.url).pathname });
+  execFileSync("pnpm", ["run", "bundle"], { cwd: new URL("../../..", import.meta.url).pathname });
   fx = await createTenantFixture(1);
 }, 60_000);
 afterAll(() => fx.close());

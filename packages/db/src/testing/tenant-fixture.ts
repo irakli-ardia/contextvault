@@ -2,8 +2,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { parseUserId, parseWorkspaceId, type UserId, type WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
-import { deleteAccounts } from "../account-cleanup";
 import { createPersistence, type Persistence } from "../persistence";
+import { deleteAccounts } from "../provisioning/account-cleanup";
 import { postgresErrorCode } from "../repositories/workspaces/postgres-error";
 
 // Real-Postgres fixture for integration tests. `fixture` seeds users and cleans up on the explicit

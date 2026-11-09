@@ -6,9 +6,9 @@ import {
   parseUserId,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { AccountNotFound } from "./errors";
-import { provisionAccount } from "./provision-account";
-import { resetPassword } from "./reset-password";
+import { AccountNotFound } from "../errors";
+import { provisionAccount } from "../provision-account";
+import { resetPassword } from "../reset-password";
 import { password, provisioningHarness } from "./test-harness";
 
 const h = await provisioningHarness();

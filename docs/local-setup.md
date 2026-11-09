@@ -115,6 +115,8 @@ node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tra
 pnpm run structure                      # integration test placement and generic file names
 ```
 
+`next build` fails in the isolated test environment (its `.env` sets `NODE_ENV=development`: `/_global-error` prerender throws `Cannot read properties of null (reading 'useContext')`); `test` and `production` build. Build with `with-test-stack.mjs env NODE_ENV=production pnpm run build`, then run `test:e2e`.
+
 ## Local infrastructure
 
 ```bash

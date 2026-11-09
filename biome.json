@@ -201,10 +201,6 @@
       }
     },
     {
-      "includes": ["packages/db/src/provisioning/test-harness.ts"],
-      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
-    },
-    {
       "includes": ["packages/auth/**"],
       "linter": {
         "rules": {
@@ -286,6 +282,26 @@
                 "paths": {
                   "@contextvault/auth": "Persistence code never depends on the password hasher; only the operator entry point (user-create.ts) injects it."
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/src/provisioning/integration/test-harness.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "The harness is imported by integration tests; it imports no other integration file."
+                  }
+                ]
               }
             }
           }

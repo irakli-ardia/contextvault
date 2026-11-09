@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { parseUserId, parseWorkspaceId } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { workspaceLockName } from "./ensure-workspace";
-import { AccountExists } from "./errors";
-import { provisionAccount } from "./provision-account";
+import { workspaceLockName } from "../ensure-workspace";
+import { AccountExists } from "../errors";
+import { provisionAccount } from "../provision-account";
 import { password, provisioningHarness } from "./test-harness";
 
 const h = await provisioningHarness();

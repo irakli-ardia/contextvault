@@ -8,13 +8,13 @@ import {
   parseSessionId,
   parseUserId,
 } from "@contextvault/domain";
+import { createDatabase } from "../../client";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 import { deleteAccounts } from "../account-cleanup";
-import { createDatabase } from "../client";
-import { createTenantFixture } from "../testing/tenant-fixture";
-import { createEnsureWorkspace, type EnsureWorkspace } from "./ensure-workspace";
-import { createOwnerAccounts, type OwnerAccounts } from "./owner-accounts";
-import type { ProvisionDeps } from "./provision-account";
-import { createCredentialReset } from "./reset-password";
+import { createEnsureWorkspace, type EnsureWorkspace } from "../ensure-workspace";
+import { createOwnerAccounts, type OwnerAccounts } from "../owner-accounts";
+import type { ProvisionDeps } from "../provision-account";
+import { createCredentialReset } from "../reset-password";
 
 export const password = "correct horse battery";
 
