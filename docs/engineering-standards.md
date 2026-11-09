@@ -28,8 +28,9 @@ Shorter code is never a reason to weaken security, correctness, transactions, co
 - Unit tests sit beside the file they test. Integration tests and the fixtures only they use sit together in an `integration/` directory owned by the feature (`documents/integration/`), optionally split by area (`integration/uploads/`). A flat `src/integration/` at a workspace root is a catch-all and is rejected; `src/integration/<area>/` is allowed. Browser tests stay in `apps/web/e2e/`.
 - A file used by one module lives in that module. Move it up only when a second module needs it, to the lowest directory both share.
 - Dependencies point inward: apps depend on packages, never the reverse; a package never imports an app; `packages/domain` imports no other workspace package. `.fallowrc.json` enforces the workspace zones (`pnpm run arch`).
-- Production code never imports from an `integration/` directory, and in `packages/db` never from `testing/` (the fixtures behind the `@contextvault/db/testing*` entries); Biome `noRestrictedImports` enforces it (tests and test-support files may).
-- `pnpm run structure` enforces integration test placement, the `.ts` extension, and the no-generic-names rule. `LEGACY_FILES` lists, file by file, the integration tests not yet moved. It may only shrink, and a stale entry fails the check.
+- Production code never imports from an `integration/` directory, and in `packages/db` never from `testing/` (test-only support; some files back the `@contextvault/db/testing*` entries); Biome `noRestrictedImports` enforces it (tests and test-support files may).
+- An integration test imports only its own area's files and files outside integration areas. Support shared by two or more areas goes in the workspace's `testing/` (in `packages/db`, only some of it backs the `@contextvault/db/testing*` exports). `pnpm run structure` fails a relative import into another area.
+- `pnpm run structure` also enforces integration test placement, the `.ts` extension, and the no-generic-names rule. `LEGACY_FILES` lists, file by file, the integration tests not yet moved. It may only shrink, and a stale entry fails the check.
 
 ## TypeScript
 

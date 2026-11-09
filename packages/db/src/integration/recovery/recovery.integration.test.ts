@@ -3,7 +3,7 @@ import { leaseDurationMs, type RecoveryUnitOfWork, type VersionStatus } from "@c
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { createIngestionHarness } from "../../testing/ingestion-test-support";
-import { recover, seedRunning } from "./recovery-test-support";
+import { recover, seedRunning } from "../../testing/recovery-test-support";
 
 // Expired-lease recovery through the worker role against real PostgreSQL.
 const h = await createIngestionHarness();

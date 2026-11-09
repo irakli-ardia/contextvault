@@ -11,7 +11,7 @@ import {
 } from "@contextvault/domain";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createIngestionHarness } from "../../testing/ingestion-test-support";
-import { recover, seedRunning, waitUntilBlocked } from "../recovery/recovery-test-support";
+import { recover, seedRunning, waitUntilBlocked } from "../../testing/recovery-test-support";
 import { gate, hour, seedOrphan } from "./orphan-test-support";
 
 // Redrive against the dispatcher, a retry and expired-lease recovery, on lifecycle states those

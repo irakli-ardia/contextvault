@@ -5,6 +5,8 @@
 //   2. integration tests use the `.ts` extension, the only one the integration project discovers
 //   3. no file or directory is named utils, helpers, common, misc, manager or shared
 //   4. at least one source file is scanned, so a wrong root cannot pass silently
+//   5. an `integration/` file imports only its own area's files or files outside any integration
+//      area (shared support belongs in the workspace's `testing/`); see importProblems
 //
 // LEGACY_FILES is the exact list of misplaced integration tests still waiting for their slice.
 // A file leaves the list in the slice that moves it, and a stale entry fails the check, so the
@@ -15,9 +17,10 @@
 // Usage: structure-check.mjs [root]. The default root is the repository holding this script.
 
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 export const LEGACY_FILES = new Set([
   "apps/api/src/auth/auth-flow.integration.test.ts",
@@ -85,6 +88,57 @@ export function findProblems(files, legacy = LEGACY_FILES) {
   return problems;
 }
 
+// The integration area of a repository path: `<feature>/integration` (nested directories
+// included), or `src/integration/<area>`. null outside `src` or outside every integration area.
+function integrationArea(path) {
+  const match = SOURCE.exec(path);
+  if (!match) return null;
+  const prefix = path.slice(0, path.length - match[2].length);
+  const parts = match[2].split("/").slice(0, -1);
+  const at = parts.indexOf("integration");
+  if (at === -1) return null;
+  return prefix + parts.slice(0, at === 0 ? 2 : at + 1).join("/");
+}
+
+const CODE = /\.(ts|tsx|mts|cts)$/;
+
+// Relative specifiers (static, `export … from`, dynamic `import()`, `require`) found by the
+// TypeScript scanner, so comments and strings that merely look like imports are ignored. The
+// scanner misses `export * as ns from "…"`, so export declarations are also read from the AST.
+function relativeImports(text) {
+  const names = new Set(ts.preProcessFile(text, true, true).importedFiles.map((i) => i.fileName));
+  const source = ts.createSourceFile("x.ts", text, ts.ScriptTarget.Latest);
+  for (const node of source.statements) {
+    if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      names.add(node.moduleSpecifier.text);
+    }
+  }
+  return [...names].filter((name) => name.startsWith("."));
+}
+
+// An integration file may import its own area and anything outside integration areas, never
+// another area's private files. Targets resolve by path, so `../x/../recovery/y` and `./../y` count.
+export function importProblems(files, read) {
+  const problems = [];
+  for (const file of files) {
+    const area = CODE.test(file) ? integrationArea(file) : null;
+    if (area === null) continue;
+    for (const name of relativeImports(read(file))) {
+      const owner = integrationArea(posix.join(posix.dirname(file), name));
+      if (owner !== null && owner !== area) {
+        problems.push(
+          `${file}: imports "${name}" from another integration area; move shared support to the workspace's testing/`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 export function listFiles(root) {
   return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: root,
@@ -101,7 +155,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       cwd: dirname(fileURLToPath(import.meta.url)),
       encoding: "utf8",
     }).trim();
-  const problems = findProblems(listFiles(root));
+  const files = listFiles(root);
+  const problems = [
+    ...findProblems(files),
+    ...importProblems(files, (file) => readFileSync(join(root, file), "utf8")),
+  ];
   if (problems.length > 0) {
     console.error(`structure-check: ${problems.length} problem(s)\n${problems.join("\n")}`);
     process.exit(1);

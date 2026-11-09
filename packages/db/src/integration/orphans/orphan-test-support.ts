@@ -5,7 +5,7 @@ import type {
   WorkerUnitOfWork,
   WorkspaceId,
 } from "@contextvault/domain";
-import type { Harness } from "../recovery/recovery-test-support";
+import type { Harness } from "../../testing/recovery-test-support";
 
 export const minute = 60_000;
 export const hour = 60 * minute;
