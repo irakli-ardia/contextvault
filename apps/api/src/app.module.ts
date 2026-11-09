@@ -39,7 +39,7 @@ export class AppModule implements NestModule {
       controllers: [HealthController, AuthController, WorkspacesController, UploadsController],
       providers: [
         ...authProviders(env, options.hasher),
-        ...storageProviders(options.store),
+        ...storageProviders(env, options.store),
         ...documentProviders(options.uploadTimeouts),
         AuthService,
         SessionCookies,

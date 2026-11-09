@@ -73,7 +73,7 @@
           "domain"
         ]
       },
-      { "from": "api-storage", "allow": ["api-auth", "config", "contracts", "domain"] },
+      { "from": "api-storage", "allow": ["config", "contracts", "domain"] },
       { "from": "api-health", "allow": ["api-auth", "api-testing"] },
       { "from": "api-workspaces", "allow": ["api-auth", "db", "domain"] },
       {

@@ -42,7 +42,7 @@ const tree = (http, extra = {}) => ({
   [`${a}documents/http/c.ts`]: 'import "../../http/h";\n',
   [`${a}integration/app/g.test.ts`]: 'import "../../auth/a";\nimport "../../documents/d";\n',
   [`${a}health/x.ts`]: 'import "../auth/a";\n',
-  [`${a}storage/s.ts`]: 'import "../auth/a";\n',
+  [`${a}storage/s.ts`]: "export const s = 1;\n",
   [`${a}workspaces/w.ts`]: 'import "../auth/a";\n',
   [`${a}testing/t.ts`]: 'import "../app";\n',
   [`${a}auth/integration/i.test.ts`]: 'import "../../testing/t";\n',
@@ -105,6 +105,7 @@ describe("api zone boundaries", () => {
       'import "../workspaces/w";\n',
       "api-documents → api-workspaces",
     ],
+    ["storage -> auth", "storage/s.ts", 'import "../auth/a";\n', "api-storage → api-auth"],
     [
       "storage -> documents",
       "storage/s.ts",
