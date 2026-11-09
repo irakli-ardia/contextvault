@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { type DocumentVersionId, redriveOrphan } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
+import { waitUntilBlocked } from "../recovery/recovery-test-support";
 import { gate, seedOrphan } from "./orphan-test-support";
-import { waitUntilBlocked } from "./recovery-test-support";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // Redrive against claim and against other redrives, ordered by barriers and observed in pg_locks.
 // Each case names its serial order: the second transaction must behave as if it ran after the first.

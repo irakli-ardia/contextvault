@@ -5,7 +5,7 @@ import {
   recoverExpiredLease,
   type WorkspaceId,
 } from "@contextvault/domain";
-import type { createIngestionHarness } from "./testing/ingestion-test-support";
+import type { createIngestionHarness } from "../../testing/ingestion-test-support";
 
 export type Harness = Awaited<ReturnType<typeof createIngestionHarness>>;
 

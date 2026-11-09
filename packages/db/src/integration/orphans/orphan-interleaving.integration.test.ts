@@ -10,9 +10,9 @@ import {
   settleFailure,
 } from "@contextvault/domain";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
+import { recover, seedRunning, waitUntilBlocked } from "../recovery/recovery-test-support";
 import { gate, hour, seedOrphan } from "./orphan-test-support";
-import { recover, seedRunning, waitUntilBlocked } from "./recovery-test-support";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // Redrive against the dispatcher, a retry and expired-lease recovery, on lifecycle states those
 // paths really produce. Each case names its serial order and the invariants it ends in.

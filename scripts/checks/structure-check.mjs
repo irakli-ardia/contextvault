@@ -37,20 +37,6 @@ export const LEGACY_FILES = new Set([
   "apps/worker/src/lease-heartbeat.integration.test.ts",
   "apps/worker/src/outbox-dispatch.integration.test.ts",
   "apps/worker/src/redis-connection.integration.test.ts",
-  "packages/db/src/ingestion-claim.integration.test.ts",
-  "packages/db/src/ingestion-flow.integration.test.ts",
-  "packages/db/src/ingestion-lock-order.integration.test.ts",
-  "packages/db/src/ingestion-outbox.integration.test.ts",
-  "packages/db/src/orphan-concurrency.integration.test.ts",
-  "packages/db/src/orphan-discovery-cooldown.integration.test.ts",
-  "packages/db/src/orphan-discovery.integration.test.ts",
-  "packages/db/src/orphan-interleaving.integration.test.ts",
-  "packages/db/src/orphan-rls.integration.test.ts",
-  "packages/db/src/orphan-transaction.integration.test.ts",
-  "packages/db/src/orphan.integration.test.ts",
-  "packages/db/src/recovery-concurrency.integration.test.ts",
-  "packages/db/src/recovery.integration.test.ts",
-  "packages/db/src/worker-rls.integration.test.ts",
 ]);
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/(.+)$/;

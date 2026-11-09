@@ -6,8 +6,8 @@ import {
   type VersionStatus,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
 import { hour, lockOrphan, seedOrphan } from "./orphan-test-support";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // OrphanSource.listWaiting through the worker role against real PostgreSQL. Other tests' rows share
 // the database, so each case scans every page and looks only at the ids it seeded.

@@ -7,8 +7,8 @@ import {
   settleFailure,
 } from "@contextvault/domain";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { waitUntilBlocked } from "./recovery-test-support";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
+import { waitUntilBlocked } from "../recovery/recovery-test-support";
 
 // Lock order is version, then outbox. Each case holds one transaction open on a barrier and
 // observes the other blocked in pg_locks, so nothing here sleeps to order the interleaving.

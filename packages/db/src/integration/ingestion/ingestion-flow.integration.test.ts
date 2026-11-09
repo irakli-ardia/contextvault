@@ -9,7 +9,7 @@ import {
   settleFailure,
 } from "@contextvault/domain";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
 
 // The real adapters end to end: dispatch, claim, retry with PostgreSQL-owned backoff, redelivery.
 const h = await createIngestionHarness();

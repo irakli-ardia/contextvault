@@ -6,9 +6,9 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
+import { createIngestionHarness } from "../../testing/ingestion-test-support";
+import { waitUntilBlocked } from "../recovery/recovery-test-support";
 import { hour, type lockOrphan, seedOrphan } from "./orphan-test-support";
-import { waitUntilBlocked } from "./recovery-test-support";
-import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // One transaction for lockOrphan and insertOutbox, and the minimal races that show the version
 // lock serializes redrives. The wider contention matrix is a later slice.
