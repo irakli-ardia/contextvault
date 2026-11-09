@@ -5,7 +5,6 @@ import { dispatchOutbox, type VersionStatus, type WorkspaceId } from "@contextva
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createJobQueue, processJobName } from "./bullmq-job-queue";
 import { createIngestionConsumer, type IngestionConsumerOptions } from "./ingestion-consumer";
 import {
   type Fault,
@@ -13,8 +12,9 @@ import {
   faultyUow,
   recordingStages,
 } from "./ingestion-consumer-test-support";
-import { startRedisProxy } from "./redis-proxy-test-support";
+import { createJobQueue, processJobName } from "./queue/bullmq-job-queue";
 import { testRedisUrl } from "./test-redis-url";
+import { startRedisProxy } from "./testing/redis-proxy-test-support";
 
 // Real PostgreSQL (worker role) and real BullMQ on the isolated test stack, one queue per run.
 // biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config

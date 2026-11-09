@@ -4,9 +4,12 @@ import { parseDocumentVersionId, parseWorkspaceId } from "@contextvault/domain";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createJobQueue, EnqueueTimeout, processJobName } from "./bullmq-job-queue";
-import { closeProducer, connectProducer } from "./producer-connection";
-import { type startRedisProxy as StartProxy, startRedisProxy } from "./redis-proxy-test-support";
+import {
+  type startRedisProxy as StartProxy,
+  startRedisProxy,
+} from "../../testing/redis-proxy-test-support";
+import { createJobQueue, EnqueueTimeout, processJobName } from "../bullmq-job-queue";
+import { closeProducer, connectProducer } from "../producer-connection";
 
 // Real Redis through a proxy that can cut it off or swallow its replies. Needs the isolated
 // test Redis (REDIS_URL); the queue name is unique to this file.

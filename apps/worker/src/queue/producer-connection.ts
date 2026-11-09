@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { errorCause } from "./error-cause";
+import { errorCause } from "../error-cause";
 
 // Dedicated to the queue producer. Unlike a BullMQ Worker's blocking connection (which needs
 // maxRetriesPerRequest: null and so queues commands forever), a command here fails at once while

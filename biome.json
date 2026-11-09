@@ -90,6 +90,10 @@
                   {
                     "group": ["**/integration/**"],
                     "message": "Production code never imports integration tests or their support files."
+                  },
+                  {
+                    "group": ["**/testing", "**/testing/**"],
+                    "message": "Production code never imports the test-only helpers in testing/."
                   }
                 ]
               }

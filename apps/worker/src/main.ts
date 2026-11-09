@@ -1,10 +1,10 @@
 import { EnvError, loadWorkerEnv } from "@contextvault/config";
 import { createWorkerPersistence } from "@contextvault/db";
 import { dispatchOutbox } from "@contextvault/domain";
-import { createJobQueue } from "./bullmq-job-queue";
-import { startDispatcherLoop } from "./dispatcher-loop";
 import { fail, installProcessGuards } from "./process-guards";
-import { closeProducer, connectProducer } from "./producer-connection";
+import { createJobQueue } from "./queue/bullmq-job-queue";
+import { startDispatcherLoop } from "./queue/dispatcher-loop";
+import { closeProducer, connectProducer } from "./queue/producer-connection";
 
 const batchSize = 50;
 const log = (entry: Record<string, unknown>): void => console.error(JSON.stringify(entry));

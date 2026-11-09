@@ -5,13 +5,13 @@ import type { StageInput, WorkspaceId } from "@contextvault/domain";
 import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { processJobName } from "./bullmq-job-queue";
 import { closeConsumer, connectConsumer } from "./consumer-connection";
 import { IngestionShutdownIncomplete } from "./consumer-shutdown";
 import { createIngestionConsumer, type IngestionConsumerOptions } from "./ingestion-consumer";
 import { recordingStages } from "./ingestion-consumer-test-support";
-import { startRedisProxy } from "./redis-proxy-test-support";
+import { processJobName } from "./queue/bullmq-job-queue";
 import { testRedisUrl } from "./test-redis-url";
+import { startRedisProxy } from "./testing/redis-proxy-test-support";
 
 // Real PostgreSQL (worker role) and real BullMQ on the isolated test stack, one queue per test.
 // Waits are on events (a stage starting, a job settling), never on a guessed delay; the only

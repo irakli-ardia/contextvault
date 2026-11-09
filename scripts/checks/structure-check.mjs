@@ -32,14 +32,11 @@ export const LEGACY_FILES = new Set([
   "apps/api/src/storage/s3-document-store-guarantees.integration.test.ts",
   "apps/api/src/storage/s3-document-store-incomplete.integration.test.ts",
   "apps/api/src/storage/s3-document-store.integration.test.ts",
-  "apps/worker/src/bullmq-job-queue.integration.test.ts",
   "apps/worker/src/delayed-redelivery.integration.test.ts",
   "apps/worker/src/ingestion-consumer-shutdown.integration.test.ts",
   "apps/worker/src/ingestion-consumer.integration.test.ts",
   "apps/worker/src/ingestion-heartbeat.integration.test.ts",
   "apps/worker/src/lease-heartbeat.integration.test.ts",
-  "apps/worker/src/outbox-dispatch.integration.test.ts",
-  "apps/worker/src/redis-connection.integration.test.ts",
 ]);
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/(.+)$/;

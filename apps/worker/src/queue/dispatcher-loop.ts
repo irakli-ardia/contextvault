@@ -1,5 +1,5 @@
 import type { DispatchOutboxResult, OutboxCursor } from "@contextvault/domain";
-import { errorCause } from "./error-cause";
+import { errorCause } from "../error-cause";
 
 export interface DispatcherLoopOptions {
   /** One scan from the cursor; may throw (the database is down). */

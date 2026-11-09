@@ -5,10 +5,10 @@ import { dispatchOutbox, type IngestionUnitOfWork, parseOutboxId } from "@contex
 import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createJobQueue, EnqueueTimeout } from "./bullmq-job-queue";
-import { startDispatcherLoop } from "./dispatcher-loop";
-import { connectProducer } from "./producer-connection";
-import { startRedisProxy } from "./redis-proxy-test-support";
+import { startRedisProxy } from "../../testing/redis-proxy-test-support";
+import { createJobQueue, EnqueueTimeout } from "../bullmq-job-queue";
+import { startDispatcherLoop } from "../dispatcher-loop";
+import { connectProducer } from "../producer-connection";
 
 // Real PostgreSQL (worker role) and real BullMQ on the isolated test infrastructure. The
 // dispatcher is narrowed to this file's workspaces; other files share the database.

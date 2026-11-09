@@ -72,7 +72,7 @@ describe("findProblems", () => {
 
   it("never grows the legacy list", () => {
     // Lower this number when a slice moves files. Raising it means a misplaced test was added.
-    expect(LEGACY_FILES.size).toBeLessThanOrEqual(17);
+    expect(LEGACY_FILES.size).toBeLessThanOrEqual(14);
   });
 });
 
@@ -148,6 +148,9 @@ describe("production code never imports integration or testing files", () => {
     ["packages/db/src/e2e-accounts.ts", "./testing/document-fixture"],
     ["packages/db/src/e2e-accounts.ts", "./integration/x"],
     ["packages/db/src/provisioning/integration/test-harness.ts", "./integration/x"],
+    ["apps/worker/src/a.ts", "./testing/redis-proxy-test-support"],
+    ["apps/worker/src/queue/a.ts", "../testing/redis-proxy-test-support"],
+    ["apps/worker/src/queue/a.ts", "../testing"],
     ["packages/auth/src/a.ts", "./integration/x"],
     ["packages/domain/src/a.ts", "./integration/x"],
     ["packages/contracts/src/a.ts", "./integration/x"],
@@ -160,6 +163,12 @@ describe("production code never imports integration or testing files", () => {
     ["apps/api/src/documents/integration/a.integration.test.ts", "./upload-support"],
     ["apps/api/src/documents/a.unit.test.ts", "./integration/upload-support"],
     ["apps/api/src/test-support.ts", "./documents/integration/upload-support"],
+    [
+      "apps/worker/src/queue/integration/a.integration.test.ts",
+      "../../testing/redis-proxy-test-support",
+    ],
+    ["apps/worker/src/queue/a.unit.test.ts", "../testing/redis-proxy-test-support"],
+    ["apps/worker/src/testing/a.ts", "./redis-proxy-test-support"],
     ["packages/db/src/a.integration.test.ts", "./integration/x"],
     ["packages/db/src/a.unit.test.ts", "./integration/x"],
     ["packages/db/src/a-test-support.ts", "./integration/x"],
