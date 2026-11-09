@@ -1,7 +1,7 @@
 import { loadDatabaseEnv, loadMigrationEnv } from "@contextvault/config";
 import { describe, expect, it } from "vitest";
-import { createPersistence } from "./persistence";
-import { PrivilegeCheckFailed } from "./privilege-check";
+import { createPersistence } from "../../persistence";
+import { PrivilegeCheckFailed } from "../../privilege-check";
 
 const check = async (connectionString: string) => {
   const persistence = createPersistence({ connectionString, poolSize: 1 });

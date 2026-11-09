@@ -2,11 +2,11 @@ import { loadBootstrapEnv, loadFixtureEnv, loadMigrationEnv } from "@contextvaul
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { afterAll, describe, expect, it } from "vitest";
-import { createDatabase } from "./client";
-import { assertLeastPrivilege, PrivilegeCheckFailed } from "./privilege-check";
-import { deleteAccounts } from "./provisioning/account-cleanup";
+import { createDatabase } from "../../client";
+import { assertLeastPrivilege, PrivilegeCheckFailed } from "../../privilege-check";
+import { deleteAccounts } from "../../provisioning/account-cleanup";
+import { createTenantFixture, sqlState } from "../../testing/tenant-fixture";
 import { attempt, effectOf, openRolePools, ROLES, scalar } from "./role-test-support";
-import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 
 // What each role can and cannot do, proven by running it (the catalog view is in role-model).
 // Every probe statement runs in a transaction that is rolled back.
@@ -131,7 +131,7 @@ describe("owner role (migrations and provisioning)", () => {
       scalar<number>(pools.owner, "select count(*)::int as v from drizzle.__drizzle_migrations");
     const before = await journal();
     expect(before).toBeGreaterThanOrEqual(7);
-    const folder = new URL("../../../infra/migrations", import.meta.url).pathname;
+    const folder = new URL("../../../../../infra/migrations", import.meta.url).pathname;
     await migrate(drizzle(pools.owner), { migrationsFolder: folder });
     expect(await journal()).toBe(before);
   });

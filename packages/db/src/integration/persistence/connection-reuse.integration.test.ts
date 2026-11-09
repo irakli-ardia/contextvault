@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { parseWorkspaceId } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createTenantFixture } from "./testing/tenant-fixture";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 // Pool size 1: every transaction reuses the same physical connection.
 const fx = await createTenantFixture(1);

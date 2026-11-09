@@ -9,7 +9,7 @@ import {
   type User,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createTenantFixture } from "./testing/tenant-fixture";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 const fx = await createTenantFixture(2);
 afterAll(() => fx.close());

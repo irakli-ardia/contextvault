@@ -6,7 +6,7 @@ import {
   loadWorkerDatabaseEnv,
 } from "@contextvault/config";
 import pg from "pg";
-import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
+import { postgresErrorCode } from "../../repositories/workspaces/postgres-error";
 
 // Role-model tests connect as each role of the five-role model; the URLs come from the same
 // loaders the tooling uses, so a test can only reach a role through its documented variable.

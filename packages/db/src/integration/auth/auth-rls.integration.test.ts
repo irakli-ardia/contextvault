@@ -1,6 +1,6 @@
 import type { UserId } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
+import { createTenantFixture, sqlState } from "../../testing/tenant-fixture";
 
 // The thirteen probes from the M1.2 architecture spike, against the real application role.
 // P1-P13 name them; the tests after P13 are the extra properties the plan §11 asks for.

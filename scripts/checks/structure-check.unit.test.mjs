@@ -72,7 +72,7 @@ describe("findProblems", () => {
 
   it("never grows the legacy list", () => {
     // Lower this number when a slice moves files. Raising it means a misplaced test was added.
-    expect(LEGACY_FILES.size).toBeLessThanOrEqual(51);
+    expect(LEGACY_FILES.size).toBeLessThanOrEqual(39);
   });
 });
 

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import pg from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTenantFixture } from "./testing/tenant-fixture";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 const fixtureUrl = () => loadFixtureEnv().DATABASE_FIXTURE_URL;
 const fixtureUser = () => decodeURIComponent(new URL(fixtureUrl()).username);

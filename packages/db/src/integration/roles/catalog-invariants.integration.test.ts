@@ -247,7 +247,7 @@ describe("catalog invariants", () => {
   it("runs against a database with every committed migration applied", async () => {
     const journal: unknown = JSON.parse(
       readFileSync(
-        new URL("../../../infra/migrations/meta/_journal.json", import.meta.url),
+        new URL("../../../../../infra/migrations/meta/_journal.json", import.meta.url),
         "utf8",
       ),
     );
