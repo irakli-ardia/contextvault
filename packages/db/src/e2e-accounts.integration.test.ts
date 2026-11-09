@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTenantFixture, type TenantFixture } from "./tenant-fixture";
+import { createTenantFixture, type TenantFixture } from "./testing/tenant-fixture";
 
 // Runs the bundled CLI exactly as Playwright does, but with an explicit environment so only the
 // variables a case names can reach it. Migration credentials are deliberately wrong or absent.

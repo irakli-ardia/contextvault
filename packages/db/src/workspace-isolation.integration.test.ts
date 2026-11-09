@@ -9,7 +9,7 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTenantFixture, sqlState } from "./tenant-fixture";
+import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 
 const fx = await createTenantFixture();
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);

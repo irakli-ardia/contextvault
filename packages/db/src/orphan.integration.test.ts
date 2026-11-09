@@ -8,8 +8,8 @@ import {
   type VersionStatus,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./ingestion-test-support";
 import { expectIdle, hour, lockOrphan, minute, seedOrphan } from "./orphan-test-support";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // OrphanRepository.lockOrphan through the worker role against real PostgreSQL.
 const h = await createIngestionHarness();

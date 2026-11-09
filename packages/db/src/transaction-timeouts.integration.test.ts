@@ -4,10 +4,10 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDatabase } from "./client";
 import { establishContext } from "./context";
-import { newUpload, reserveInput, roomy } from "./document-fixture";
 import { createRepositories } from "./repositories/index";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
-import { createTenantFixture } from "./tenant-fixture";
+import { newUpload, reserveInput, roomy } from "./testing/document-fixture";
+import { createTenantFixture } from "./testing/tenant-fixture";
 import { applyTimeout } from "./unit-of-work";
 
 const fx = await createTenantFixture(6);

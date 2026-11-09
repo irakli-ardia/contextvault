@@ -5,8 +5,14 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { finalizeInput, newUpload, reserveInput, roomy, seedDocument } from "./document-fixture";
-import { createTenantFixture } from "./tenant-fixture";
+import {
+  finalizeInput,
+  newUpload,
+  reserveInput,
+  roomy,
+  seedDocument,
+} from "./testing/document-fixture";
+import { createTenantFixture } from "./testing/tenant-fixture";
 
 const fx = await createTenantFixture(12);
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);

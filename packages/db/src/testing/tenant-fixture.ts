@@ -2,9 +2,9 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { loadDatabaseEnv, loadFixtureEnv } from "@contextvault/config";
 import { parseUserId, parseWorkspaceId, type UserId, type WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
-import { deleteAccounts } from "./account-cleanup";
-import { createPersistence, type Persistence } from "./persistence";
-import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
+import { deleteAccounts } from "../account-cleanup";
+import { createPersistence, type Persistence } from "../persistence";
+import { postgresErrorCode } from "../repositories/workspaces/postgres-error";
 
 // Real-Postgres fixture for integration tests. `fixture` seeds users and cleans up on the explicit
 // DATABASE_FIXTURE_URL (no fallback to any other URL); everything under test goes through the

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { createTenantFixture, sqlState } from "./tenant-fixture";
+import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 
 const fx = await createTenantFixture(1);
 afterAll(() => fx.close());

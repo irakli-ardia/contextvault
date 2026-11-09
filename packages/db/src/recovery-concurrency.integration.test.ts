@@ -1,7 +1,7 @@
 import { leaseDurationMs } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./ingestion-test-support";
 import { gated, recover, seedRunning, waitUntilBlocked } from "./recovery-test-support";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // Races between expiry, heartbeat, a second recovery and a claim, ordered by explicit barriers:
 // one transaction stays open while the other is observed blocked on the version's row lock.

@@ -6,8 +6,8 @@ import {
   parseOutboxId,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness, entryFor } from "./ingestion-test-support";
-import { sqlState } from "./tenant-fixture";
+import { createIngestionHarness, entryFor } from "./testing/ingestion-test-support";
+import { sqlState } from "./testing/tenant-fixture";
 
 // Outbox writes, targeted conflict handling, discovery and the starvation guard.
 const h = await createIngestionHarness();

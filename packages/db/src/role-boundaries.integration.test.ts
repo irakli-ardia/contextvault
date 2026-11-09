@@ -6,7 +6,7 @@ import { deleteAccounts } from "./account-cleanup";
 import { createDatabase } from "./client";
 import { assertLeastPrivilege, PrivilegeCheckFailed } from "./privilege-check";
 import { attempt, effectOf, openRolePools, ROLES, scalar } from "./role-test-support";
-import { createTenantFixture, sqlState } from "./tenant-fixture";
+import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 
 // What each role can and cannot do, proven by running it (the catalog view is in role-model).
 // Every probe statement runs in a transaction that is rolled back.

@@ -10,7 +10,7 @@ import {
 } from "@contextvault/domain";
 import { deleteAccounts } from "../account-cleanup";
 import { createDatabase } from "../client";
-import { createTenantFixture } from "../tenant-fixture";
+import { createTenantFixture } from "../testing/tenant-fixture";
 import { createEnsureWorkspace, type EnsureWorkspace } from "./ensure-workspace";
 import { createOwnerAccounts, type OwnerAccounts } from "./owner-accounts";
 import type { ProvisionDeps } from "./provision-account";

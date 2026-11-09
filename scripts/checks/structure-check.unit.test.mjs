@@ -109,9 +109,9 @@ describe("structure-check command", () => {
 });
 
 // Biome replaces (not merges) noRestrictedImports options per override, so every override that
-// governs production code must carry the integration rule. Linting files in a scratch copy of the
+// governs production code must carry the integration rule (and, in packages/db, the testing/ rule). Linting files in a scratch copy of the
 // config keeps the repository untouched.
-describe("production code never imports integration files", () => {
+describe("production code never imports integration or testing files", () => {
   let dir;
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), "structure-biome-"));
@@ -135,6 +135,18 @@ describe("production code never imports integration files", () => {
     ["apps/api/src/documents/a.ts", "./integration/upload-support"],
     ["apps/api/src/auth/a.ts", "../documents/integration/upload-support"],
     ["packages/db/src/a.ts", "./integration/x"],
+    ["packages/db/src/a.ts", "./testing/tenant-fixture"],
+    ["packages/db/src/provisioning/a.ts", "../testing/tenant-fixture"],
+    ["packages/db/src/repositories/ingestion/a.ts", "../../testing/ingestion-test-support"],
+    ["packages/db/src/user-create.ts", "./testing/tenant-fixture"],
+    ["packages/db/src/a.ts", "./testing"],
+    ["packages/db/src/a.ts", "@contextvault/db/testing"],
+    ["packages/db/src/a.ts", "@contextvault/db/testing/ingestion"],
+    ["packages/db/src/repositories/a.ts", "../testing"],
+    ["packages/db/src/user-create.ts", "./testing"],
+    ["packages/db/src/e2e-accounts.ts", "@contextvault/db/testing"],
+    ["packages/db/src/e2e-accounts.ts", "./testing/document-fixture"],
+    ["packages/db/src/e2e-accounts.ts", "./integration/x"],
     ["packages/auth/src/a.ts", "./integration/x"],
     ["packages/domain/src/a.ts", "./integration/x"],
     ["packages/contracts/src/a.ts", "./integration/x"],
@@ -150,6 +162,12 @@ describe("production code never imports integration files", () => {
     ["packages/db/src/a.integration.test.ts", "./integration/x"],
     ["packages/db/src/a.unit.test.ts", "./integration/x"],
     ["packages/db/src/a-test-support.ts", "./integration/x"],
+    ["packages/db/src/a.integration.test.ts", "./testing/tenant-fixture"],
+    ["packages/db/src/a.unit.test.ts", "./testing/tenant-fixture"],
+    ["packages/db/src/a-test-support.ts", "./testing/tenant-fixture"],
+    ["packages/db/src/provisioning/test-harness.ts", "../testing/tenant-fixture"],
+    ["packages/db/src/testing/a.ts", "./tenant-fixture"],
+    ["packages/db/src/user-create.ts", "@contextvault/auth"],
     ["packages/auth/src/a.unit.test.ts", "./integration/x"],
     ["packages/domain/src/a.unit.test.ts", "./integration/x"],
     ["packages/contracts/src/a.unit.test.ts", "./integration/x"],

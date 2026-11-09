@@ -10,10 +10,10 @@ import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { createDatabase, type Executor } from "./client";
 import { establishWorkerContext } from "./context";
-import { createIngestionHarness } from "./ingestion-test-support";
 import { seedOrphan } from "./orphan-test-support";
 import { createOrphanRepository } from "./repositories/ingestion/orphan-repository";
 import { postgresErrorCode } from "./repositories/workspaces/postgres-error";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // The orphan path as the NOBYPASSRLS `contextvault_worker` role. Cases that pair a workspace's
 // repository with another workspace's asserted context separate the repository's own SQL

@@ -8,9 +8,15 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { finalizeInput, newUpload, reserveInput, roomy, seedDocument } from "./document-fixture";
-import { createIngestionHarness } from "./ingestion-test-support";
-import { sqlState } from "./tenant-fixture";
+import {
+  finalizeInput,
+  newUpload,
+  reserveInput,
+  roomy,
+  seedDocument,
+} from "./testing/document-fixture";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
+import { sqlState } from "./testing/tenant-fixture";
 
 // The upload transaction writes the first outbox entry; the application role can do nothing else
 // with the table. Real adapters throughout, as the application and worker roles.

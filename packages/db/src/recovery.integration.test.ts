@@ -2,8 +2,8 @@ import { loadWorkerDatabaseEnv } from "@contextvault/config";
 import { leaseDurationMs, type RecoveryUnitOfWork, type VersionStatus } from "@contextvault/domain";
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./ingestion-test-support";
 import { recover, seedRunning } from "./recovery-test-support";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // Expired-lease recovery through the worker role against real PostgreSQL.
 const h = await createIngestionHarness();

@@ -3,8 +3,8 @@ import { loadWorkerDatabaseEnv } from "@contextvault/config";
 import type { WorkspaceId } from "@contextvault/domain";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { seedDocument, type Upload } from "./document-fixture";
-import { createTenantFixture, sqlState } from "./tenant-fixture";
+import { seedDocument, type Upload } from "./testing/document-fixture";
+import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
 
 // The ingestion worker role (NOBYPASSRLS, no user): it may discover lifecycle metadata in every
 // workspace, but every write and every read of document data is bound to the one workspace its

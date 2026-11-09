@@ -154,6 +154,15 @@
                   {
                     "group": ["**/integration/**"],
                     "message": "Production code never imports integration tests or their support files."
+                  },
+                  {
+                    "group": [
+                      "**/testing",
+                      "**/testing/**",
+                      "@contextvault/db/testing",
+                      "@contextvault/db/testing/**"
+                    ],
+                    "message": "Production code never imports the test-only fixtures in testing/."
                   }
                 ]
               }
@@ -163,11 +172,36 @@
       }
     },
     {
-      "includes": [
-        "packages/db/src/user-create.ts",
-        "packages/db/src/e2e-accounts.ts",
-        "packages/db/src/provisioning/test-harness.ts"
-      ],
+      "includes": ["packages/db/src/user-create.ts", "packages/db/src/e2e-accounts.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "Production code never imports integration tests or their support files."
+                  },
+                  {
+                    "group": [
+                      "**/testing",
+                      "**/testing/**",
+                      "@contextvault/db/testing",
+                      "@contextvault/db/testing/**"
+                    ],
+                    "message": "Production code never imports the test-only fixtures in testing/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/src/provisioning/test-harness.ts"],
       "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
     },
     {

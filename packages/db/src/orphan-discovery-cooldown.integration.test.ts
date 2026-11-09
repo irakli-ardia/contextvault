@@ -7,8 +7,8 @@ import {
   redriveCooldownMs,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./ingestion-test-support";
 import { hour, lockOrphan, minute, seedOrphan } from "./orphan-test-support";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // The SQL cooldown in OrphanSource.listWaiting against the domain's redriveCooldownMs. Its own
 // harness: the matrix seeds more documents than one workspace's quota allows next to other tests.

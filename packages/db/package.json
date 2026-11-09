@@ -4,8 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/tenant-fixture.ts",
-    "./testing/ingestion": "./src/ingestion-test-support.ts"
+    "./testing": "./src/testing/tenant-fixture.ts",
+    "./testing/ingestion": "./src/testing/ingestion-test-support.ts"
   },
   "scripts": {
     "bundle": "tsdown",

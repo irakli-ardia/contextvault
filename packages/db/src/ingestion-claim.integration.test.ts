@@ -5,7 +5,7 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
-import { createIngestionHarness } from "./ingestion-test-support";
+import { createIngestionHarness } from "./testing/ingestion-test-support";
 
 // Claim and the fenced compare-and-set steps, through the worker role against real PostgreSQL.
 const h = await createIngestionHarness();

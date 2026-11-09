@@ -9,9 +9,9 @@ import {
   type VersionStatus,
   type WorkspaceId,
 } from "@contextvault/domain";
+import { createWorkerPersistence } from "../worker-persistence";
 import { seedDocument } from "./document-fixture";
 import { createTenantFixture } from "./tenant-fixture";
-import { createWorkerPersistence } from "./worker-persistence";
 
 export interface VersionRow {
   status: string;
