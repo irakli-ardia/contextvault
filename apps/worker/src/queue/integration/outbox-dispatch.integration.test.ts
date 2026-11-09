@@ -6,14 +6,18 @@ import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startRedisProxy } from "../../testing/redis-proxy-test-support";
+import { testRedisUrl } from "../../testing/test-redis-url";
 import { createJobQueue, EnqueueTimeout } from "../bullmq-job-queue";
 import { startDispatcherLoop } from "../dispatcher-loop";
 import { connectProducer } from "../producer-connection";
 
 // Real PostgreSQL (worker role) and real BullMQ on the isolated test infrastructure. The
 // dispatcher is narrowed to this file's workspaces; other files share the database.
+// The Redis guard runs before the database harness so a bare local run touches neither.
+// biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
+const flags = process.env;
+const redisUrl = testRedisUrl(loadWorkerEnv().REDIS_URL, flags);
 const h = await createIngestionHarness();
-const redisUrl = new URL(loadWorkerEnv().REDIS_URL);
 const queueName = `cvtest-${randomUUID()}`;
 const { wsA, wsB, worker } = h;
 

@@ -8,12 +8,15 @@ import {
   type startRedisProxy as StartProxy,
   startRedisProxy,
 } from "../../testing/redis-proxy-test-support";
+import { testRedisUrl } from "../../testing/test-redis-url";
 import { createJobQueue, EnqueueTimeout, processJobName } from "../bullmq-job-queue";
 import { closeProducer, connectProducer } from "../producer-connection";
 
 // Real Redis through a proxy that can cut it off or swallow its replies. Needs the isolated
 // test Redis (REDIS_URL); the queue name is unique to this file.
-const redisUrl = new URL(loadWorkerEnv().REDIS_URL);
+// biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
+const flags = process.env;
+const redisUrl = testRedisUrl(loadWorkerEnv().REDIS_URL, flags);
 const queueName = `cvtest-${randomUUID()}`;
 const job = () => ({
   jobId: `outbox-${randomUUID()}`,

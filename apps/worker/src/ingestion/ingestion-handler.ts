@@ -6,7 +6,7 @@ import {
   TransactionOutcomeUnknown,
 } from "@contextvault/domain";
 import { DelayedError, UnrecoverableError } from "bullmq";
-import { errorCause } from "./error-cause";
+import { errorCause } from "../error-cause";
 import { parseIngestionPayload } from "./ingestion-job";
 import { withHeartbeat } from "./lease-heartbeat";
 import { redeliveryDelayMs } from "./redelivery-delay";

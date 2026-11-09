@@ -1,8 +1,8 @@
 import { createIngestionHarness } from "@contextvault/db/testing/ingestion";
 import type { DocumentVersionId, StageInput, StageRunner } from "@contextvault/domain";
 import { afterAll, describe, expect, it, type Mock, vi } from "vitest";
+import { withHeartbeat } from "../lease-heartbeat";
 import { failStage, faultyUow, recordingStages } from "./ingestion-consumer-test-support";
-import { withHeartbeat } from "./lease-heartbeat";
 
 // Real PostgreSQL (worker role) on the isolated test stack. Time passes on the database clock: a
 // stale lease is made by backdating `updated_at`, never by an application timestamp.

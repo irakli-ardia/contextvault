@@ -3,7 +3,7 @@ import { loadWorkerEnv } from "@contextvault/config";
 import { DelayedError, Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { testRedisUrl } from "./test-redis-url";
+import { testRedisUrl } from "../../testing/test-redis-url";
 
 // Regression test: a processor can re-deliver a job later with attempts: 1 and never fail it.
 // Runs only against the verified cv-test Redis or GitHub Actions' own loopback Redis.

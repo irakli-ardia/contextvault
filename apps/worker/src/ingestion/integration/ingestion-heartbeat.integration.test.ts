@@ -5,10 +5,10 @@ import type { IngestionUnitOfWork, StageInput } from "@contextvault/domain";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createIngestionConsumer, type IngestionConsumerOptions } from "./ingestion-consumer";
+import { processJobName } from "../../queue/bullmq-job-queue";
+import { testRedisUrl } from "../../testing/test-redis-url";
+import { createIngestionConsumer, type IngestionConsumerOptions } from "../ingestion-consumer";
 import { type Fault, faultyUow, recordingStages } from "./ingestion-consumer-test-support";
-import { processJobName } from "./queue/bullmq-job-queue";
-import { testRedisUrl } from "./test-redis-url";
 
 // Real PostgreSQL (worker role) and real BullMQ on the isolated test stack. The lease is the
 // row's `updated_at` on the database clock, so a stale one is made by backdating it.

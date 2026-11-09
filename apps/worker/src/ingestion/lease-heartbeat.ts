@@ -4,7 +4,7 @@ import type {
   StageInput,
   StageRunner,
 } from "@contextvault/domain";
-import { errorCause } from "./error-cause";
+import { errorCause } from "../error-cause";
 
 export interface HeartbeatOptions {
   readonly uow: IngestionUnitOfWork;

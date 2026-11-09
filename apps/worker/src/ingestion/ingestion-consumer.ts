@@ -1,10 +1,10 @@
 import type { IngestionUnitOfWork, StageRunner } from "@contextvault/domain";
 import { Worker } from "bullmq";
+import { errorCause } from "../error-cause";
+import { ingestionQueueName, processJobName } from "../queue/bullmq-job-queue";
 import { closeConsumer, connectConsumer } from "./consumer-connection";
 import { createActiveJobs, IngestionShutdownIncomplete, settledWithin } from "./consumer-shutdown";
-import { errorCause } from "./error-cause";
 import { handleIngestionJob, redeliverLater } from "./ingestion-handler";
-import { ingestionQueueName, processJobName } from "./queue/bullmq-job-queue";
 
 export interface IngestionConsumerOptions {
   readonly redisUrl: string;

@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
+import { errorCause } from "../error-cause";
 import { settledWithin } from "./consumer-shutdown";
-import { errorCause } from "./error-cause";
 
 // Dedicated to the queue consumer. BullMQ's blocking commands need maxRetriesPerRequest: null and
 // the offline queue, so a command waits out an outage instead of failing. Startup still fails

@@ -103,7 +103,7 @@
       }
     },
     {
-      "includes": ["apps/**/*.test.ts", "apps/**/test-support.ts"],
+      "includes": ["apps/**/*.test.ts", "apps/**/*test-support.ts"],
       "linter": {
         "rules": {
           "style": {
