@@ -11,8 +11,8 @@ import {
   reserveInput,
   roomy,
   seedDocument,
-} from "./testing/document-fixture";
-import { createTenantFixture } from "./testing/tenant-fixture";
+} from "../../testing/document-fixture";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 const fx = await createTenantFixture(12);
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);

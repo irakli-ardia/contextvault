@@ -11,7 +11,7 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTenantFixture } from "./testing/tenant-fixture";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 const fx = await createTenantFixture(12);
 const uow = fx.persistence.unitOfWork;

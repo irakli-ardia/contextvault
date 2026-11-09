@@ -37,8 +37,6 @@ export const LEGACY_FILES = new Set([
   "apps/worker/src/lease-heartbeat.integration.test.ts",
   "apps/worker/src/outbox-dispatch.integration.test.ts",
   "apps/worker/src/redis-connection.integration.test.ts",
-  "packages/db/src/document-constraints.integration.test.ts",
-  "packages/db/src/documents-rls.integration.test.ts",
   "packages/db/src/ingestion-claim.integration.test.ts",
   "packages/db/src/ingestion-flow.integration.test.ts",
   "packages/db/src/ingestion-lock-order.integration.test.ts",
@@ -52,12 +50,6 @@ export const LEGACY_FILES = new Set([
   "packages/db/src/orphan.integration.test.ts",
   "packages/db/src/recovery-concurrency.integration.test.ts",
   "packages/db/src/recovery.integration.test.ts",
-  "packages/db/src/reservation-lost-ack.integration.test.ts",
-  "packages/db/src/upload-document.integration.test.ts",
-  "packages/db/src/upload-finalize.integration.test.ts",
-  "packages/db/src/upload-outbox.integration.test.ts",
-  "packages/db/src/upload-quota.integration.test.ts",
-  "packages/db/src/upload-reservations.integration.test.ts",
   "packages/db/src/worker-rls.integration.test.ts",
 ]);
 

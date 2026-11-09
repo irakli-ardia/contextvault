@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { seedDocument, sha256, type Upload } from "./testing/document-fixture";
-import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
+import { seedDocument, sha256, type Upload } from "../../testing/document-fixture";
+import { createTenantFixture, sqlState } from "../../testing/tenant-fixture";
 
 const fx = await createTenantFixture(2);
 let doc: Upload;

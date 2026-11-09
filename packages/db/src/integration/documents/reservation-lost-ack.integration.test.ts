@@ -9,8 +9,8 @@ import {
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createPersistence } from "./persistence";
-import { createTenantFixture } from "./testing/tenant-fixture";
+import { createPersistence } from "../../persistence";
+import { createTenantFixture } from "../../testing/tenant-fixture";
 
 // A relay between the app and the real PostgreSQL that, once armed, forwards the next COMMIT,
 // swallows the database's answer and then cuts the client side: the database has committed (its

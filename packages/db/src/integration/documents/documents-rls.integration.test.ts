@@ -8,8 +8,8 @@ import {
   seedDocument,
   sha256,
   type Upload,
-} from "./testing/document-fixture";
-import { createTenantFixture, sqlState } from "./testing/tenant-fixture";
+} from "../../testing/document-fixture";
+import { createTenantFixture, sqlState } from "../../testing/tenant-fixture";
 
 const fx = await createTenantFixture();
 const run = fx.persistence.unitOfWork.run.bind(fx.persistence.unitOfWork);
