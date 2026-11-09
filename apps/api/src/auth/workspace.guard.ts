@@ -7,7 +7,7 @@ import {
   type WorkspaceRepository,
 } from "@contextvault/domain";
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from "@nestjs/common";
-import type { HttpRequest } from "./http-types";
+import type { HttpRequest } from "../http/http-types";
 import { bindActor, identityOf } from "./request-state";
 import { PERSISTENCE } from "./tokens";
 

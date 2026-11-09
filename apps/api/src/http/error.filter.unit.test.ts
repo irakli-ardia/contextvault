@@ -14,7 +14,7 @@ import { ExecutionContextHost } from "@nestjs/core/helpers/execution-context-hos
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api-error";
 import { ErrorFilter } from "./error.filter";
-import { bindRequestId } from "./request-state";
+import { bindRequestId } from "./request-id";
 
 interface Sent {
   status: number;

@@ -7,8 +7,9 @@ import {
   uploadDocument,
 } from "@contextvault/domain";
 import { Controller, Inject, Logger, Post, Req, Res } from "@nestjs/common";
-import { ApiError } from "../../auth/api-error";
-import { CurrentActor, requestIdOf } from "../../auth/request-state";
+import { CurrentActor } from "../../auth/request-state";
+import { ApiError } from "../../http/api-error";
+import { requestIdOf } from "../../http/request-id";
 import type { UploadTimeouts } from "../documents.providers";
 import { UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "../tokens";
 import { UploadLimiter } from "../upload-limiter";

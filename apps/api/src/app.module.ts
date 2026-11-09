@@ -11,9 +11,7 @@ import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { AuthController } from "./auth/auth.controller";
 import { authProviders } from "./auth/auth.providers";
 import { AuthService } from "./auth/auth.service";
-import { ErrorFilter } from "./auth/error.filter";
 import { OriginGuard } from "./auth/origin.guard";
-import { responseHeaders } from "./auth/response-headers.middleware";
 import { SessionGuard } from "./auth/session.guard";
 import { SessionCookies } from "./auth/session-cookies";
 import { WorkspaceGuard } from "./auth/workspace.guard";
@@ -21,6 +19,8 @@ import { documentProviders, type UploadTimeouts } from "./documents/documents.pr
 import { closeConnection } from "./documents/http/close-connection.middleware";
 import { UploadsController } from "./documents/http/uploads.controller";
 import { HealthController } from "./health/health.controller";
+import { ErrorFilter } from "./http/error.filter";
+import { responseHeaders } from "./http/response-headers.middleware";
 import { storageProviders } from "./storage/storage.providers";
 import { WorkspacesController } from "./workspaces/workspaces.controller";
 

@@ -8,7 +8,20 @@
   "boundaries": {
     "zones": [
       { "name": "web", "patterns": ["apps/web/**"] },
-      { "name": "api", "patterns": ["apps/api/**"] },
+      { "name": "api-http", "patterns": ["apps/api/src/http/**"] },
+
+      {
+        "name": "api",
+        "patterns": [
+          "apps/api/*",
+          "apps/api/src/*",
+          "apps/api/src/auth/**",
+          "apps/api/src/documents/**",
+          "apps/api/src/health/**",
+          "apps/api/src/storage/**",
+          "apps/api/src/workspaces/**"
+        ]
+      },
       { "name": "worker-queue", "patterns": ["apps/worker/src/queue/**"] },
       { "name": "worker-ingestion", "patterns": ["apps/worker/src/ingestion/**"] },
       {
@@ -28,7 +41,7 @@
       { "from": "web", "allow": ["config", "contracts"] },
       {
         "from": "api",
-        "allow": ["auth", "config", "contracts", "db", "domain", "retrieval", "ai"]
+        "allow": ["api-http", "auth", "config", "contracts", "db", "domain", "retrieval", "ai"]
       },
       {
         "from": "worker",
@@ -42,6 +55,8 @@
         "from": "worker-ingestion",
         "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "ai"]
       },
+      { "from": "api-http", "allow": ["domain"] },
+
       { "from": "auth", "allow": ["domain"] },
       { "from": "config", "allow": [] },
       { "from": "contracts", "allow": [] },

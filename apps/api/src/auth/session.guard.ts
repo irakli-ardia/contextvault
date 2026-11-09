@@ -1,7 +1,7 @@
 import { resolveSession, type SessionDeps } from "@contextvault/domain";
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import type { HttpRequest } from "./http-types";
+import type { HttpRequest } from "../http/http-types";
 import { isPublicKey } from "./public.decorator";
 import { bindIdentity } from "./request-state";
 import { SessionCookies } from "./session-cookies";

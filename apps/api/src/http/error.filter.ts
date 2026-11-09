@@ -13,11 +13,10 @@ import {
   HttpException,
   Logger,
 } from "@nestjs/common";
-// Known auth -> documents coupling, tracked for restructuring slice 4 (shared api `http/` module).
-import { isInterruption, uploadStatusOf } from "../documents/http/upload-errors";
 import { ApiError } from "./api-error";
 import type { HttpRequest } from "./http-types";
-import { requestIdOf } from "./request-state";
+import { requestIdOf } from "./request-id";
+import { isInterruption, uploadStatusOf } from "./upload-errors";
 
 interface Classified {
   status: number;

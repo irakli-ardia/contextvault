@@ -10,7 +10,7 @@ import {
   type User,
 } from "@contextvault/domain";
 import { Inject, Injectable } from "@nestjs/common";
-import { ApiError } from "./api-error";
+import { ApiError } from "../http/api-error";
 import { accountPolicy, ipPolicy, LoginLimiter } from "./login-limiter";
 import { LOGIN_DEPS, SESSION_DEPS } from "./tokens";
 

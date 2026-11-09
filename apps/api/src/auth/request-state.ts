@@ -6,7 +6,6 @@ import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 // them, and nothing else in the app can construct one for a request.
 const identities = new WeakMap<object, Identity>();
 const actors = new WeakMap<object, Actor>();
-const requestIds = new WeakMap<object, string>();
 
 export const bindIdentity = (req: object, identity: Identity): void => {
   identities.set(req, identity);
@@ -14,10 +13,6 @@ export const bindIdentity = (req: object, identity: Identity): void => {
 export const bindActor = (req: object, actor: Actor): void => {
   actors.set(req, actor);
 };
-export const bindRequestId = (req: object, id: string): void => {
-  requestIds.set(req, id);
-};
-export const requestIdOf = (req: object): string => requestIds.get(req) ?? "unknown";
 export const identityOf = (req: object): Identity | undefined => identities.get(req);
 const actorOf = (req: object): Actor | undefined => actors.get(req);
 

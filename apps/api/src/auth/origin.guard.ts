@@ -1,7 +1,7 @@
 import type { ApiEnv } from "@contextvault/config";
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from "@nestjs/common";
-import { ApiError } from "./api-error";
-import type { HttpRequest } from "./http-types";
+import { ApiError } from "../http/api-error";
+import type { HttpRequest } from "../http/http-types";
 import { ENV } from "./tokens";
 
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);

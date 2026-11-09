@@ -1,5 +1,5 @@
 import type { UserId } from "@contextvault/domain";
-import { ApiError } from "../auth/api-error";
+import { ApiError } from "../http/api-error";
 
 export const MAX_UPLOADS_PER_USER = 2;
 export const MAX_UPLOADS_PER_PROCESS = 8;

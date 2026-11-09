@@ -2,7 +2,7 @@ import type { ApiEnv } from "@contextvault/config";
 import type { SessionTokenHash, SessionTokens } from "@contextvault/domain";
 import { Inject, Injectable } from "@nestjs/common";
 import { parse, serialize } from "cookie";
-import type { HttpRequest, HttpResponse } from "./http-types";
+import type { HttpRequest, HttpResponse } from "../http/http-types";
 import { ENV, SESSION_TOKENS } from "./tokens";
 
 const maxAgeSeconds = 7 * 24 * 60 * 60;

@@ -1,4 +1,4 @@
-// The slice of the Express request and response the auth layer reads or writes. Declared here so
+// The slice of the Express request and response the app reads or writes. Declared here so
 // the app needs no direct Express dependency; Nest hands the real objects to the guards.
 export interface HttpRequest {
   readonly method: string;
