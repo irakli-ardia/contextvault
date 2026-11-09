@@ -8,8 +8,8 @@ import {
   loginAs,
   seedAccount,
   startApi,
-} from "../test-support";
-import { UploadLimiter } from "./upload-limiter";
+} from "../../test-support";
+import { UploadLimiter } from "../upload-limiter";
 import { captureLogs, listen, must, pdfBytes, purge, rows, store, upload } from "./upload-support";
 
 type Mode = "refuse" | "afterBody" | "hang" | "boom" | "conflict";

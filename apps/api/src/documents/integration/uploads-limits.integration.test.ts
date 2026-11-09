@@ -6,8 +6,8 @@ import {
   loginAs,
   seedAccount,
   startApi,
-} from "../test-support";
-import { UploadLimiter } from "./upload-limiter";
+} from "../../test-support";
+import { UploadLimiter } from "../upload-limiter";
 import {
   captureLogs,
   listen,

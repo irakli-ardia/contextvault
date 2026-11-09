@@ -86,6 +86,10 @@
                   {
                     "group": ["@contextvault/db/*", "**/packages/db/**"],
                     "message": "Import @contextvault/db only through its entry point."
+                  },
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "Production code never imports integration tests or their support files."
                   }
                 ]
               }
@@ -145,7 +149,13 @@
               "options": {
                 "paths": {
                   "@contextvault/auth": "Persistence code never depends on the password hasher; only the operator entry point (user-create.ts) injects it."
-                }
+                },
+                "patterns": [
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "Production code never imports integration tests or their support files."
+                  }
+                ]
               }
             }
           }
@@ -183,6 +193,10 @@
                       "pg/**"
                     ],
                     "message": "packages/auth knows neither HTTP nor SQL: it adapts domain ports to Node crypto."
+                  },
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "Production code never imports integration tests or their support files."
                   }
                 ]
               }
@@ -193,6 +207,95 @@
     },
     {
       "includes": ["packages/domain/**", "packages/contracts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "next",
+                      "next/**",
+                      "react",
+                      "react/**",
+                      "@nestjs/**",
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "pg",
+                      "pg/**",
+                      "bullmq",
+                      "ioredis"
+                    ],
+                    "message": "Domain and contract packages import no framework, ORM, or queue client: declare a port and adapt it outside."
+                  },
+                  {
+                    "group": ["**/integration/**"],
+                    "message": "Production code never imports integration tests or their support files."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/**/*.test.ts", "packages/db/**/*test-support.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@contextvault/auth": "Persistence code never depends on the password hasher; only the operator entry point (user-create.ts) injects it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/auth/**/*.test.ts", "packages/auth/**/*test-support.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "next",
+                      "next/**",
+                      "@nestjs/**",
+                      "express",
+                      "node:http",
+                      "node:https",
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "pg",
+                      "pg/**"
+                    ],
+                    "message": "packages/auth knows neither HTTP nor SQL: it adapts domain ports to Node crypto."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "packages/domain/**/*.test.ts",
+        "packages/domain/**/*test-support.ts",
+        "packages/contracts/**/*.test.ts",
+        "packages/contracts/**/*test-support.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

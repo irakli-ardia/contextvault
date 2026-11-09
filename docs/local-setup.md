@@ -112,6 +112,7 @@ pnpm exec playwright install --with-deps --only-shell chromium   # once per mach
 pnpm run test:e2e           # only through scripts/checks/with-test-stack.mjs (bare Playwright refuses to start); needs a `build` made with the stack's API_INTERNAL_URL; serves web on 127.0.0.1:3100 and the built API on the stack's API_PORT (never 3001), each through the launcher
 node scripts/checks/docs-check.mjs
 node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
+pnpm run structure                      # integration test placement and generic file names
 ```
 
 ## Local infrastructure

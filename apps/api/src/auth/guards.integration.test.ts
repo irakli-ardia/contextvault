@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { UploadsController } from "../documents/uploads.controller";
+import { UploadsController } from "../documents/http/uploads.controller";
 import { HealthController } from "../health/health.controller";
 import {
   type Account,

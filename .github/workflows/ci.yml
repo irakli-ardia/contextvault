@@ -60,6 +60,8 @@ jobs:
         run: node scripts/checks/docs-check.mjs
       - name: Tracked files
         run: node scripts/checks/tracked-files.mjs
+      - name: Structure
+        run: node scripts/checks/structure-check.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Local environment

@@ -13,7 +13,8 @@ import {
   HttpException,
   Logger,
 } from "@nestjs/common";
-import { isInterruption, uploadStatusOf } from "../documents/upload-errors";
+// Known auth -> documents coupling, tracked for restructuring slice 4 (shared api `http/` module).
+import { isInterruption, uploadStatusOf } from "../documents/http/upload-errors";
 import { ApiError } from "./api-error";
 import type { HttpRequest } from "./http-types";
 import { requestIdOf } from "./request-state";
@@ -37,33 +38,46 @@ function fromHttpException(status: number): Classified {
   return { status, code: "request.invalid", headers: {} };
 }
 
-function classify(error: unknown): {
-  status: number;
-  code: string;
-  headers: Record<string, string>;
-} {
-  if (error instanceof ApiError)
-    return { status: error.status, code: error.code, headers: { ...error.headers } };
-  if (error instanceof InvalidCredentials) return { status: 401, code: error.code, headers: {} };
-  if (error instanceof Unauthenticated) return { status: 401, code: error.code, headers: {} };
-  if (error instanceof PermissionDenied) return { status: 403, code: error.code, headers: {} };
+type Rule = (error: unknown) => Classified | undefined;
+
+const when =
+  <T extends Error>(
+    type: new (...args: never[]) => T,
+    map: (error: T) => Classified | undefined,
+  ): Rule =>
+  (error) =>
+    error instanceof type ? map(error) : undefined;
+
+const known = (status: number, code: string): Classified => ({ status, code, headers: {} });
+
+// First match wins; the order is the precedence.
+const rules: readonly Rule[] = [
+  when(ApiError, (e) => ({ status: e.status, code: e.code, headers: { ...e.headers } })),
+  when(InvalidCredentials, (e) => known(401, e.code)),
+  when(Unauthenticated, (e) => known(401, e.code)),
+  when(PermissionDenied, (e) => known(403, e.code)),
   // A non-member, a missing workspace, a malformed id, and an unknown route are one answer.
-  if (error instanceof WorkspaceAccessDenied)
-    return { status: 404, code: "not_found", headers: {} };
-  if (error instanceof HashingBusy) {
-    return { status: 429, code: "auth.throttled", headers: { "Retry-After": "1" } };
-  }
-  const upload = uploadStatusOf(error);
-  if (upload) return { ...upload, headers: {} };
+  when(WorkspaceAccessDenied, () => known(404, "not_found")),
+  when(HashingBusy, () => ({ ...known(429, "auth.throttled"), headers: { "Retry-After": "1" } })),
+  (error) => {
+    const upload = uploadStatusOf(error);
+    return upload && { ...upload, headers: {} };
+  },
   // Storage unreachable or refusing us is an operational failure, not a client error.
-  if (
-    error instanceof StorageError &&
-    ["storage.unavailable", "storage.rejected"].includes(error.code)
-  ) {
-    return { status: 503, code: "storage.unavailable", headers: {} };
+  when(StorageError, (e) =>
+    ["storage.unavailable", "storage.rejected"].includes(e.code)
+      ? known(503, "storage.unavailable")
+      : undefined,
+  ),
+  when(HttpException, (e) => fromHttpException(e.getStatus())),
+];
+
+function classify(error: unknown): Classified {
+  for (const rule of rules) {
+    const classified = rule(error);
+    if (classified) return classified;
   }
-  if (error instanceof HttpException) return fromHttpException(error.getStatus());
-  return { status: 500, code: "internal", headers: {} };
+  return known(500, "internal");
 }
 
 // Replies with a stable code and the request id only. Messages, causes, stacks, and request data

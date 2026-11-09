@@ -2,6 +2,7 @@
 node scripts/git/conventions.mjs current || exit 1
 node scripts/checks/docs-check.mjs || exit 1
 node scripts/checks/tracked-files.mjs || exit 1
+node scripts/checks/structure-check.mjs || exit 1
 
 # Infrastructure steps run only against the isolated cv-test stack (docs/adr/0010). The caller
 # names the external env directory; there is no default and the repository's environment files are never used.

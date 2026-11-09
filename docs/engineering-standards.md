@@ -21,6 +21,16 @@ Shorter code is never a reason to weaken security, correctness, transactions, co
 - A test file should usually have fewer than 250 lines. 400 lines is the limit, and Biome fails the lint run above it. Split a long test file by behavior.
 - Split a file when it has more than one job, not to reach a number. Do not move code into a new file only to pass the limit.
 
+## Repository structure
+
+- Organise by feature first, then by role. A feature directory (`documents/`, `auth/`) owns everything for that feature; do not create directories named after a technology across features.
+- Inside an app feature, transport code (controllers, request parsing, error-to-status mapping, middleware) lives in `http/`. Providers, injection tokens and policies stay at the feature root. Middleware applied to one route belongs to that route's feature and is attached in the app module with `forRoutes` (`closeConnection` in `documents/http/`); only middleware for every route is app-wide.
+- Unit tests sit beside the file they test. Integration tests and the fixtures only they use sit together in an `integration/` directory owned by the feature (`documents/integration/`), optionally split by area (`integration/uploads/`). A flat `src/integration/` at a workspace root is a catch-all and is rejected; `src/integration/<area>/` is allowed. Browser tests stay in `apps/web/e2e/`.
+- A file used by one module lives in that module. Move it up only when a second module needs it, to the lowest directory both share.
+- Dependencies point inward: apps depend on packages, never the reverse; a package never imports an app; `packages/domain` imports no other workspace package. `.fallowrc.json` enforces the workspace zones (`pnpm run arch`).
+- Production code never imports from an `integration/` directory; Biome `noRestrictedImports` enforces it (tests and test-support files may).
+- `pnpm run structure` enforces integration test placement, the `.ts` extension, and the no-generic-names rule. `LEGACY_FILES` lists, file by file, the integration tests not yet moved. It may only shrink, and a stale entry fails the check.
+
 ## TypeScript
 
 The compiler runs in strict mode (see `tsconfig.base.json`). Do not relax these settings for one package.
@@ -35,7 +45,7 @@ The compiler runs in strict mode (see `tsconfig.base.json`). Do not relax these 
 | Thing | Convention | Example |
 | --- | --- | --- |
 | Files and directories | kebab-case, ASCII | `upload-document.ts` |
-| Test files | beside the code, `.unit.test.ts` or `.integration.test.ts` | `login-limiter.unit.test.ts` |
+| Test files | unit tests beside the code (`.unit.test.ts`); integration tests in the module's `integration/` directory (`.integration.test.ts`) | `login-limiter.unit.test.ts` |
 | Variables, functions | camelCase; functions start with a verb | `resolveSession` |
 | Booleans | read as a question | `isExpired`, `hasAccess` |
 | Classes, types, interfaces | PascalCase, named for the domain | `UploadRepository` |
@@ -66,6 +76,8 @@ Before you add a function, type or helper, search the repository. Reuse or exten
 | Branch names and commit titles | `scripts/git/conventions.mjs`, git hooks, CI |
 | No local-only files in the repository | `scripts/checks/tracked-files.mjs`, pre-commit hook, CI |
 | Broken links in documentation | `scripts/checks/docs-check.mjs` |
+| File placement and generic names | `scripts/checks/structure-check.mjs` (`pnpm run structure`), pre-push hook, CI |
+| Production code importing integration files | Biome `noRestrictedImports` (`biome.json`) |
 
 Code review covers the rest: whether an abstraction is needed, whether a comment explains why, whether a name fits the domain, and whether similar code already exists.
 

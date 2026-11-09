@@ -11,6 +11,7 @@ const ORDER = [
   "scripts/git/conventions.mjs",
   "scripts/checks/docs-check.mjs",
   "scripts/checks/tracked-files.mjs",
+  "scripts/checks/structure-check.mjs",
   "with-test-stack.mjs true",
   ...GATES.map((g) => `pnpm run ${g}`),
   "with-test-stack.mjs pnpm run db:migrate",

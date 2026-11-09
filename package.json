@@ -12,6 +12,7 @@
     "format": "biome format --write .",
     "lint": "biome check . && oxlint --type-aware",
     "lint:fix": "biome check --write . && oxlint --type-aware --fix",
+    "structure": "node scripts/checks/structure-check.mjs",
     "arch": "fallow architecture --config .fallowrc.json",
     "dead-code": "fallow dead-code --config .fallowrc.json",
     "typecheck": "pnpm -r run typecheck",

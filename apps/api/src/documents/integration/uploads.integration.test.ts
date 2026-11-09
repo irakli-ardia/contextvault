@@ -6,7 +6,7 @@ import {
   createTenantFixture,
   seedAccount,
   startApi,
-} from "../test-support";
+} from "../../test-support";
 import {
   captureLogs,
   listen,

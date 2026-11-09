@@ -4,14 +4,14 @@ import type { AddressInfo } from "node:net";
 import type { DocumentStore, StorageKey } from "@contextvault/domain";
 import { Logger } from "@nestjs/common";
 import { vi } from "vitest";
-import { DOCUMENT_STORE } from "../storage/tokens";
+import { DOCUMENT_STORE } from "../../storage/tokens";
 import {
   type Account,
   type Api,
   type createTenantFixture,
   loginAs,
   webOrigin,
-} from "../test-support";
+} from "../../test-support";
 
 type TenantFixture = Awaited<ReturnType<typeof createTenantFixture>>;
 

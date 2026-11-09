@@ -7,12 +7,12 @@ import {
   uploadDocument,
 } from "@contextvault/domain";
 import { Controller, Inject, Logger, Post, Req, Res } from "@nestjs/common";
-import { ApiError } from "../auth/api-error";
-import { CurrentActor, requestIdOf } from "../auth/request-state";
-import type { UploadTimeouts } from "./documents.providers";
+import { ApiError } from "../../auth/api-error";
+import { CurrentActor, requestIdOf } from "../../auth/request-state";
+import type { UploadTimeouts } from "../documents.providers";
+import { UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "../tokens";
+import { UploadLimiter } from "../upload-limiter";
 import { requestBody } from "./request-body";
-import { UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "./tokens";
-import { UploadLimiter } from "./upload-limiter";
 
 interface Reply {
   status(code: number): unknown;
