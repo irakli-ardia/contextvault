@@ -9,7 +9,12 @@
     "zones": [
       { "name": "web", "patterns": ["apps/web/**"] },
       { "name": "api", "patterns": ["apps/api/**"] },
-      { "name": "worker", "patterns": ["apps/worker/**"] },
+      { "name": "worker-queue", "patterns": ["apps/worker/src/queue/**"] },
+      { "name": "worker-ingestion", "patterns": ["apps/worker/src/ingestion/**"] },
+      {
+        "name": "worker",
+        "patterns": ["apps/worker/*", "apps/worker/src/*", "apps/worker/src/testing/**"]
+      },
       { "name": "auth", "patterns": ["packages/auth/**"] },
       { "name": "config", "patterns": ["packages/config/**"] },
       { "name": "contracts", "patterns": ["packages/contracts/**"] },
@@ -25,7 +30,18 @@
         "from": "api",
         "allow": ["auth", "config", "contracts", "db", "domain", "retrieval", "ai"]
       },
-      { "from": "worker", "allow": ["config", "db", "domain", "ingestion", "ai"] },
+      {
+        "from": "worker",
+        "allow": ["worker-queue", "worker-ingestion", "config", "db", "domain", "ingestion", "ai"]
+      },
+      {
+        "from": "worker-queue",
+        "allow": ["worker", "config", "db", "domain", "ingestion", "ai"]
+      },
+      {
+        "from": "worker-ingestion",
+        "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "ai"]
+      },
       { "from": "auth", "allow": ["domain"] },
       { "from": "config", "allow": [] },
       { "from": "contracts", "allow": [] },
