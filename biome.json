@@ -13,7 +13,9 @@
       "!.claude",
       "!.agents",
       "!benchmarks/orphan-discovery/results.json",
-      "!benchmarks/orphan-discovery/plans.json"
+      "!benchmarks/orphan-discovery/plans.json",
+      "!benchmarks/orphan-discovery/clustered-results.json",
+      "!benchmarks/orphan-discovery/clustered-plans.json"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },

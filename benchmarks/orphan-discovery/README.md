@@ -40,8 +40,8 @@ Measured recommendation, not yet applied:
 
 B-no-include read latency matched B at less than half the size. We do not claim `INCLUDE
 (dispatched_at)` newly prevents HOT updates: the existing partial indexes already reference
-`dispatched_at`. These remain recommendations until the clustered-backlog scenario below has run and
-migration 0013 is separately approved.
+`dispatched_at`. These remain recommendations: the clustered-backlog benchmark below has run and supports
+them, but migration 0013 still needs its own review and explicit approval.
 
 ## Not measured
 
@@ -71,12 +71,82 @@ A concentrated group of such candidates in one region of `(updated_at, id)` orde
 needed to fill a page whenever the cursor crosses that region. Where fresh uploads sit in that order
 depends on their timestamps, so the position of a cluster is not fixed.
 
-Before finalizing migration 0013, add a separate scenario (not implemented or run here) with
-concentrated live-outbox and cooldown candidates at different cursor positions (start, middle, end).
+The clustered-backlog benchmark below was added for exactly this case.
+
+## Clustered-backlog benchmark (implemented, completed)
+
+Run by `scripts/bench/orphan-clustered.mjs`; raw output in `clustered-results.json` and
+`clustered-plans.json`, generated report in `clustered-report.md`. None of these is edited by hand.
+Same image, tmpfs container, 500-row pages, 200k waiting versions per dataset, worker role
+(15 s `statement_timeout`), post-VACUUM only.
+
+**Configurations:** C0 baseline, C1 index A, C2 B-no-include, C3 A+B-no-include. C0/C1 run a reduced
+matrix (they cannot finish clustered pages).
+
+**Shape:** 5 datasets (control, live, cooldown, mixed, wide), 31 scenarios, 76 measurements. The
+control has uniformly spread ineligible rows; live/cooldown/mixed have two 20k-row clusters (F at the
+start, D at 110k-130k); wide has one 150k-row mixed cluster (10k-160k). Scenarios place the cursor at
+cluster entry, interior, exit and beyond. 12 of the 14 C0/C1 measurements hit the statement timeout
+(control page 1 and 50% for C0 and C1, plus the cluster-entry scenario of each clustered dataset for
+C0 and C1); the other two are the control's incomplete tail page (about 3.3-3.4 s).
+
+**Validation:** V1-V3 (dataset counts, cluster windows and returned pages checked against the seed's
+expected class map and an independent SQL oracle) found no problems in any dataset. V4 (C3 EXPLAIN
+accounting E/R1/Q/R2/O reconciled with the oracle) matched in all 30 comparable runs; the control tail
+is not applicable (incomplete page, no nested loop under the limit). Verdict: PASS.
+
+**Targets (predefined engineering targets, not guarantees) and outcomes:**
+
+| | Target | Outcome |
+|---|---|---|
+| P1 | C3 completes every scenario without timeout | PASS |
+| P2 | C3 plan has no outbox seq scan or other disallowed shape | PASS |
+| P3 | C3 page under 1500 ms (control under 10 ms) | PASS |
+| P4 | C3 per-candidate cost within 3x the control's (5.85 us, so 17.5 us) | PASS (clustered maximum 6.30 us) |
+| P5 | C3 vs C2: median ratio at most 1.1; no scenario above 1.5x and 10 ms | PASS (30 pairs, median 0.13, none slow) |
+| P6 | Informational | C3 control 3.94 ms against the committed 2.22-2.31 ms: 1.71-1.77x |
+
+- **Worst C3 page:** 820 ms (wide, cursor at entry), about 150k ineligible candidates examined
+  (150,704 examined, 150,676 reached the lateral lookup, 150,176 rejected after it), against the
+  1500 ms target. C2 maximum was 774 ms.
+- **C3 slower than C2 in two of 30 pairs, both in the wide dataset:** entry, C3 820 ms versus C2
+  774 ms (1.06x); interior, C3 430 ms versus C2 402 ms (1.07x). Both pass P5 (ratios under 1.5; the
+  differences are 46 ms and 28 ms).
+  When the cursor sits inside a huge cluster, index A saves little and its larger index walk costs a
+  little more. Everywhere else C3 was faster (best 0.05x).
+- **Why C2 is slower at most positions:** its planner chooses a parallel Gather Merge over a
+  sequential scan of `document_versions` and an external-merge sort that spills to disk (2.5-5.0 MB
+  in the recorded plans), instead of walking the ordered index. That cost is paid even when the
+  cursor is past the cluster (control and cluster-exit pages: 21-54 ms versus 0.8-4.4 ms for C3).
+- Without B, C0 and C1 time out on every complete page, as in the uniform benchmark.
+
+### Recommendation
+
+Create **A** and **B without `INCLUDE`**. The read-path evidence is: B is required (C0/C1 time out;
+C2 and C3 finish), and A removes the sort and sequential scan so C3 stays at 2-6 ms outside a cluster
+and scales roughly linearly (about 5-6 us per examined candidate) inside one. `INCLUDE (dispatched_at)`
+bought no measured read benefit at twice the size.
+
+### Measured, extrapolated, not measured
+
+- **Measured:** everything in the tables above, on this dataset family, warm cache, one PostgreSQL
+  build, tmpfs.
+- **Extrapolated, not measured:** larger clusters than 150k would grow roughly in proportion to the
+  per-candidate cost; a cluster that does not fit the cursor positions tried is not covered.
+- **Not measured (operational costs):** write throughput and index-maintenance overhead of A and B,
+  HOT-update behaviour, lock duration, `lockOrphan` under load, concurrent writes, cold cache, index
+  build time and locking on a large production table, and autovacuum on (it was off).
+
+### Open items
+
+- Migration 0013 stays subject to separate review and explicit approval; this benchmark does not
+  authorize it.
+- Terminalizing deleted-document versions remains a separate sweeper prerequisite. Neither index
+  fixes it: those rows still occupy discovery slots and are only rejected later by `lockOrphan`.
 
 ## Hygiene and what to commit
 
-`results.json`, `plans.json` and `report.md` were checked for credentials, connection strings,
+`results.json`, `plans.json`, `report.md` and the three `clustered-*` outputs were checked for credentials, connection strings,
 usernames and absolute paths: none present. They contain only `127.0.0.1`, an ephemeral port, the
 pinned image digest, Postgres settings and plan data. Recommended to commit for reproducibility:
 `scripts/bench/*`, this README, `report.md` (human-readable) and `results.json`. `plans.json`

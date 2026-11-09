@@ -28,7 +28,7 @@ const LADDER = SMOKE ? [1000] : [2000, 5000, 10_000];
 const PRIVILEGED_TIMEOUT_MS = 60_000;
 const log = (...args) => console.error(new Date().toISOString().slice(11, 19), ...args);
 
-async function environmentOf(bench, clients) {
+export async function environmentOf(bench, clients) {
   const { admin, worker } = clients;
   const { rows } = await admin.query(`select name, setting from pg_settings where name in
     ('shared_buffers','work_mem','random_page_cost','effective_cache_size',

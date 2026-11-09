@@ -11,13 +11,51 @@
 // `updated_at` is a bijective permutation of i (7919 is coprime with N = 200000), so heap order does
 // not follow keyset order, as after real status churn; five rows share each timestamp (id tiebreak).
 // Noise: 32.5% more versions that are not waiting (ready, parsing, failed), one entry each.
+//
+// Clusters (orphan-clustered.mjs) override the class of every waiting row whose r = i * 7919 mod N
+// falls in [lo, hi): live -> 60, cooldown -> 75, mixed -> 60 for even i, else 75. Because five rows
+// share each timestamp and r is a bijection, a window whose bounds are multiples of 5 covers whole
+// timestamp groups, so it is exactly the waiting rows ranked lo..hi-1 in (updated_at, id) order.
+// Exhausted and deleted rows therefore never occur inside a window, so their totals in a clustered
+// dataset are lower than in the control (the window overrides them). No clusters: unchanged seed.
 
 const WORKSPACES = 20;
+const CLUSTER_CLASS = {
+  live: "60",
+  cooldown: "75",
+  mixed: "case when i % 2 = 0 then 60 else 75 end",
+};
 
-export async function seed(admin, waiting) {
+function assertWindow({ lo, hi, kind }, waiting) {
+  const aligned = Number.isInteger(lo) && Number.isInteger(hi) && lo % 5 === 0 && hi % 5 === 0;
+  if (!aligned || lo < 0 || hi <= lo || hi > waiting || !(kind in CLUSTER_CLASS)) {
+    throw new RangeError(
+      "cluster must be a known kind with 0 <= lo < hi <= waiting, both multiples of 5",
+    );
+  }
+}
+
+function classExpression(waiting, clusters) {
+  const sorted = [...clusters].sort((a, b) => a.lo - b.lo);
+  for (const window of sorted) assertWindow(window, waiting);
+  if (sorted.some((w, k) => k > 0 && w.lo < sorted[k - 1].hi)) {
+    throw new RangeError("clusters must not overlap");
+  }
+  if (sorted.length > 0 && waiting % 5 !== 0)
+    throw new RangeError("clusters need waiting % 5 === 0");
+  const windows = sorted.map(
+    ({ lo, hi, kind }) =>
+      `when i <= ${waiting} and ((i::bigint * 7919) % ${waiting})::int >= ${lo}
+        and ((i::bigint * 7919) % ${waiting})::int < ${hi} then ${CLUSTER_CLASS[kind]}`,
+  );
+  return windows.length === 0 ? "i % 100" : `case ${windows.join(" ")} else i % 100 end`;
+}
+
+export async function seed(admin, waiting, clusters = []) {
   if (!Number.isInteger(waiting) || waiting < 1000 || waiting > 200_000) {
     throw new RangeError("waiting must be an integer in 1000..200000");
   }
+  const classOf = classExpression(waiting, clusters);
   const total = waiting + Math.round(waiting * 0.325);
   await admin.query(`
     begin;
@@ -28,7 +66,7 @@ export async function seed(admin, waiting) {
 
     create temp table plan on commit drop as
     with t as (select now() as t0), base as (
-      select i, i % 100 as c, (i / 100) % ${WORKSPACES} as w, i <= ${waiting} as waiting,
+      select i, ${classOf} as c, (i / 100) % ${WORKSPACES} as w, i <= ${waiting} as waiting,
         ((i::bigint * 7919) % ${waiting})::int as r
       from generate_series(1, ${total}) i)
     select b.i, b.c, b.w, b.waiting,
