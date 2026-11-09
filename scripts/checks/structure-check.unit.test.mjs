@@ -151,6 +151,8 @@ describe("production code never imports integration or testing files", () => {
     ["apps/worker/src/a.ts", "./testing/redis-proxy-test-support"],
     ["apps/worker/src/queue/a.ts", "../testing/redis-proxy-test-support"],
     ["apps/worker/src/queue/a.ts", "../testing"],
+    ["apps/api/src/documents/a-support.ts", "../testing/test-support"],
+    ["apps/api/src/a-support.ts", "./testing/test-support"],
     ["packages/auth/src/a.ts", "./integration/x"],
     ["packages/domain/src/a.ts", "./integration/x"],
     ["packages/contracts/src/a.ts", "./integration/x"],
@@ -162,7 +164,7 @@ describe("production code never imports integration or testing files", () => {
     ["apps/api/src/documents/b.ts", "./tokens"],
     ["apps/api/src/documents/integration/a.integration.test.ts", "./upload-support"],
     ["apps/api/src/documents/a.unit.test.ts", "./integration/upload-support"],
-    ["apps/api/src/test-support.ts", "./documents/integration/upload-support"],
+    ["apps/api/src/a-test-support.ts", "./documents/integration/upload-support"],
     [
       "apps/worker/src/queue/integration/a.integration.test.ts",
       "../../testing/redis-proxy-test-support",

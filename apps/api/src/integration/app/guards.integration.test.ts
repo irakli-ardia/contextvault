@@ -14,7 +14,7 @@ import {
   seedAccount,
   startApi,
   webOrigin,
-} from "../../test-support";
+} from "../../testing/test-support";
 import { WorkspacesController } from "../../workspaces/workspaces.controller";
 
 const fx = await createTenantFixture(4);

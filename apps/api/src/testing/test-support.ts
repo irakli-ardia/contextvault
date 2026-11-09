@@ -6,8 +6,8 @@ import { parsePassword, type UserId } from "@contextvault/domain";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
-import { AppModule } from "./app.module";
-import { configureApp } from "./configure-app";
+import { AppModule } from "../app.module";
+import { configureApp } from "../configure-app";
 
 function s3Settings(): Record<string, string> {
   const { NODE_ENV: _, ...s3 } = loadS3Env();

@@ -9,19 +9,15 @@
     "zones": [
       { "name": "web", "patterns": ["apps/web/**"] },
       { "name": "api-http", "patterns": ["apps/api/src/http/**"] },
-
+      { "name": "api-testing", "patterns": ["apps/api/src/testing/**"] },
+      { "name": "api-auth", "patterns": ["apps/api/src/auth/**"] },
+      { "name": "api-documents", "patterns": ["apps/api/src/documents/**"] },
+      { "name": "api-storage", "patterns": ["apps/api/src/storage/**"] },
+      { "name": "api-health", "patterns": ["apps/api/src/health/**"] },
+      { "name": "api-workspaces", "patterns": ["apps/api/src/workspaces/**"] },
       {
         "name": "api",
-        "patterns": [
-          "apps/api/*",
-          "apps/api/src/*",
-          "apps/api/src/auth/**",
-          "apps/api/src/documents/**",
-          "apps/api/src/health/**",
-          "apps/api/src/integration/**",
-          "apps/api/src/storage/**",
-          "apps/api/src/workspaces/**"
-        ]
+        "patterns": ["apps/api/*", "apps/api/src/*", "apps/api/src/integration/**"]
       },
       { "name": "worker-queue", "patterns": ["apps/worker/src/queue/**"] },
       { "name": "worker-ingestion", "patterns": ["apps/worker/src/ingestion/**"] },
@@ -42,8 +38,44 @@
       { "from": "web", "allow": ["config", "contracts"] },
       {
         "from": "api",
-        "allow": ["api-http", "auth", "config", "contracts", "db", "domain", "retrieval", "ai"]
+        "allow": [
+          "api-http",
+          "api-testing",
+          "api-auth",
+          "api-documents",
+          "api-storage",
+          "api-health",
+          "api-workspaces",
+          "auth",
+          "config",
+          "contracts",
+          "db",
+          "domain",
+          "retrieval",
+          "ai"
+        ]
       },
+      { "from": "api-testing", "allow": ["api", "auth", "config", "db", "domain"] },
+      {
+        "from": "api-auth",
+        "allow": ["api-http", "api-testing", "auth", "config", "db", "domain"]
+      },
+      {
+        "from": "api-documents",
+        "allow": [
+          "api-http",
+          "api-testing",
+          "api-auth",
+          "api-storage",
+          "config",
+          "contracts",
+          "db",
+          "domain"
+        ]
+      },
+      { "from": "api-storage", "allow": ["api-auth", "config", "contracts", "domain"] },
+      { "from": "api-health", "allow": ["api-auth", "api-testing"] },
+      { "from": "api-workspaces", "allow": ["api-auth", "db", "domain"] },
       {
         "from": "worker",
         "allow": ["worker-queue", "worker-ingestion", "config", "db", "domain", "ingestion", "ai"]

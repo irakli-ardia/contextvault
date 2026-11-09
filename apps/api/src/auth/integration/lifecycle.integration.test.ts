@@ -9,7 +9,7 @@ import {
   startApi,
   tokenOf,
   webOrigin,
-} from "../../test-support";
+} from "../../testing/test-support";
 
 const fx = await createTenantFixture(4);
 let api: Api;

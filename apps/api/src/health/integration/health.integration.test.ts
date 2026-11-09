@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type Api, startApi } from "../../test-support";
+import { type Api, startApi } from "../../testing/test-support";
 
 // In-process: the real AppModule behind a real HTTP server on an ephemeral port. The database
 // pool connects lazily, so health needs no query.

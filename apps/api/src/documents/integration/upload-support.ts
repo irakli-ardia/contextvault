@@ -11,7 +11,7 @@ import {
   type createTenantFixture,
   loginAs,
   webOrigin,
-} from "../../test-support";
+} from "../../testing/test-support";
 
 type TenantFixture = Awaited<ReturnType<typeof createTenantFixture>>;
 

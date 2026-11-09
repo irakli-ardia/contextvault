@@ -5,7 +5,7 @@ import {
   createTenantFixture,
   seedAccount,
   startApi,
-} from "../../test-support";
+} from "../../testing/test-support";
 import { listen, pdfBytes, purge, rows, signedIn, startUpload, upload } from "./upload-support";
 
 const fx = await createTenantFixture(4);

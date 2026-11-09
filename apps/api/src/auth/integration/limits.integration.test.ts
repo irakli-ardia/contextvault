@@ -8,7 +8,7 @@ import {
   seedAccount,
   startApi,
   webOrigin,
-} from "../../test-support";
+} from "../../testing/test-support";
 
 // A hasher with no cost and no clock: "correct" is string equality with the test password, and
 // `busy` simulates a full hashing queue, so limits are tested without sleeps or real hashing.
