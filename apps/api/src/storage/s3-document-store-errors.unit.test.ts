@@ -1,7 +1,7 @@
 import { StorageError } from "@contextvault/domain";
 import { describe, expect, it } from "vitest";
-import { SECRET } from "./fake-s3";
-import { chunks, codeOf, newKey, ok, rejection, setup, status } from "./test-support";
+import { SECRET } from "./testing/fake-s3";
+import { chunks, codeOf, newKey, ok, rejection, setup, status } from "./testing/test-support";
 
 describe("failures", () => {
   it.each([

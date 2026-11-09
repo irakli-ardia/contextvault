@@ -8,8 +8,8 @@ import {
   StorageError,
 } from "@contextvault/domain";
 import { afterEach } from "vitest";
+import { createS3DocumentStore } from "../s3-document-store";
 import { type FakeS3, type Handler, SECRET, startFakeS3 } from "./fake-s3";
-import { createS3DocumentStore } from "./s3-document-store";
 
 export const MAX = 64 * 1024 * 1024;
 export const newKey = () =>

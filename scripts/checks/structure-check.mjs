@@ -22,13 +22,7 @@ import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-export const LEGACY_FILES = new Set([
-  "apps/api/src/raw-body-transport.integration.test.ts",
-  "apps/api/src/storage/s3-document-store-deadline.integration.test.ts",
-  "apps/api/src/storage/s3-document-store-guarantees.integration.test.ts",
-  "apps/api/src/storage/s3-document-store-incomplete.integration.test.ts",
-  "apps/api/src/storage/s3-document-store.integration.test.ts",
-]);
+export const LEGACY_FILES = new Set([]);
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/(.+)$/;
 const BANNED_NAME = /^(utils?|helpers?|common|misc|manager|shared)$/;

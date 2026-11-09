@@ -105,7 +105,7 @@ pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
 pnpm run test               # unit, offline
 pnpm run db:check           # committed migrations match the Drizzle schema
-pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation (needs `infra:up`, `db:migrate`, `.env`, `.env.test`)
+pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation. Locally run it only as `CV_TEST_ENV_DIR=<dir> node scripts/checks/with-test-stack.mjs pnpm run test:integration`: the wrapper takes its env files from the isolated test environment and verifies that stack first. The S3 and Redis test guards refuse a bare local run so the tests cannot reach the development S3 bucket or Redis; they accept only the verified stack, or GitHub Actions with a loopback service
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine

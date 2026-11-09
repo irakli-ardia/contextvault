@@ -55,7 +55,7 @@
           "ai"
         ]
       },
-      { "from": "api-testing", "allow": ["api", "auth", "config", "db", "domain"] },
+      { "from": "api-testing", "allow": ["api", "api-storage", "auth", "config", "db", "domain"] },
       {
         "from": "api-auth",
         "allow": ["api-http", "api-testing", "auth", "config", "db", "domain"]

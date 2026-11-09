@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { createS3DocumentStore } from "./s3-document-store";
+import { createS3DocumentStore } from "../s3-document-store";
+import { abortable, chunks, rejection } from "../testing/test-support";
 import { env, exists, MAX_OBJECT, read, sha256, store, trackedKey } from "./seaweed-support";
-import { abortable, chunks, rejection } from "./test-support";
 
 describe("SeaweedFS", () => {
   it.each([1, 65_536, MAX_OBJECT])(

@@ -7,7 +7,7 @@ import { Controller, Module, Post, Req } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { configureApp } from "./configure-app";
+import { configureApp } from "../../configure-app";
 
 // The upload endpoint arrives in M1.3e. This probe lives only in this test and answers one
 // question about the real NestJS/Express stack the endpoint will sit on: does a raw body with a

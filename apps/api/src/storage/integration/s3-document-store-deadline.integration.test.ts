@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunks, newKey, rejection, setup } from "./test-support";
+import { chunks, newKey, rejection, setup } from "../testing/test-support";
 
 // A provider that takes the whole body and then never answers: the caller's deadline is the only
 // way out, and the outcome is unknown (the object may or may not exist).

@@ -8,9 +8,12 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 import { AppModule } from "../app.module";
 import { configureApp } from "../configure-app";
+import { testS3Env } from "../storage/testing/test-s3-env";
 
-function s3Settings(): Record<string, string> {
-  const { NODE_ENV: _, ...s3 } = loadS3Env();
+// Refuses an unverified run before the app is built, so no S3 operation can reach a non-test bucket.
+export function s3Settings(): Record<string, string> {
+  // biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
+  const { NODE_ENV: _, ...s3 } = testS3Env(loadS3Env(), process.env);
   return s3;
 }
 

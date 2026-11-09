@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { createS3DocumentStore } from "./s3-document-store";
+import { createS3DocumentStore } from "../s3-document-store";
+import { chunks, rejection } from "../testing/test-support";
 import { env, exists, store, trackedKey } from "./seaweed-support";
-import { chunks, rejection } from "./test-support";
 
 // The upload use case withholds the final declared byte until the whole body is verified, and
 // treats "the put failed before that" as "no object". These pin the provider side of that premise

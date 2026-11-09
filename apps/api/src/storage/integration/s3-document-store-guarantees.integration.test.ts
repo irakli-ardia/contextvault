@@ -2,9 +2,9 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { CreateBucketCommand, DeleteBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { describe, expect, it } from "vitest";
-import { createS3DocumentStore } from "./s3-document-store";
+import { createS3DocumentStore } from "../s3-document-store";
+import { chunks, rejection } from "../testing/test-support";
 import { env, MAX_OBJECT, raw, read, sha256, store, trackedKey } from "./seaweed-support";
-import { chunks, rejection } from "./test-support";
 
 describe("SeaweedFS guarantees", () => {
   it("is create-only: a second put to the same key fails and keeps the first bytes", async () => {

@@ -9,11 +9,14 @@ import {
   type StorageKey,
 } from "@contextvault/domain";
 import { afterAll } from "vitest";
-import { createS3DocumentStore } from "./s3-document-store";
+import { createS3DocumentStore } from "../s3-document-store";
+import { testS3Env } from "../testing/test-s3-env";
 
-// Runs against the Compose SeaweedFS and the bucket `pnpm run infra:up` creates. Keys are random, so concurrent runs
+// Runs against the isolated test stack's SeaweedFS (with-test-stack.mjs) or the GitHub Actions service. Keys are random, so concurrent runs
 // never collide; every object a test makes is deleted in afterAll, even after a failure.
-export const env: S3Env = loadS3Env();
+// Fails closed before the client or store exists, so no S3 operation can reach an unverified endpoint.
+// biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
+export const env: S3Env = testS3Env(loadS3Env(), process.env);
 export const MAX_OBJECT = 10 * 1024 * 1024;
 export const store = createS3DocumentStore(env, { maxBytes: MAX_OBJECT });
 export const raw = new S3Client({

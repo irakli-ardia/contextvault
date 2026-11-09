@@ -2,8 +2,17 @@ import { randomBytes } from "node:crypto";
 import { addAbortSignal, PassThrough } from "node:stream";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { SECRET } from "./fake-s3";
-import { abortable, chunks, codeOf, MAX, newKey, ok, rejection, setup } from "./test-support";
+import { SECRET } from "./testing/fake-s3";
+import {
+  abortable,
+  chunks,
+  codeOf,
+  MAX,
+  newKey,
+  ok,
+  rejection,
+  setup,
+} from "./testing/test-support";
 
 // An AbortSignal that fires after `ms`, the way a request pipeline would cancel the body.
 const controllerSignal = (ms: number): AbortSignal => AbortSignal.timeout(ms);
