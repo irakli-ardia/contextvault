@@ -23,10 +23,6 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 export const LEGACY_FILES = new Set([
-  "apps/api/src/auth/auth-flow.integration.test.ts",
-  "apps/api/src/auth/guards.integration.test.ts",
-  "apps/api/src/auth/lifecycle.integration.test.ts",
-  "apps/api/src/auth/limits.integration.test.ts",
   "apps/api/src/raw-body-transport.integration.test.ts",
   "apps/api/src/storage/s3-document-store-deadline.integration.test.ts",
   "apps/api/src/storage/s3-document-store-guarantees.integration.test.ts",

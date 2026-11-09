@@ -32,6 +32,7 @@ const tree = (http, extra = {}) => ({
   [`${a}auth/a.ts`]: 'import "../http/h";\nexport const a = 1;\n',
   [`${a}documents/d.ts`]: 'import "../http/h";\nimport "../auth/a";\n',
   [`${a}documents/http/c.ts`]: 'import "../../http/h";\n',
+  [`${a}integration/app/g.test.ts`]: 'import "../../auth/a";\nimport "../../documents/d";\n',
   [`${a}health/x.ts`]: 'import "../http/h";\n',
   [`${a}storage/s.ts`]: "export const s = 1;\n",
   [`${a}workspaces/w.ts`]: 'import "../http/h";\n',

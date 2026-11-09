@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { UploadsController } from "../documents/http/uploads.controller";
-import { HealthController } from "../health/health.controller";
+import { AuthController } from "../../auth/auth.controller";
+import { isPublicKey } from "../../auth/public.decorator";
+import { UploadsController } from "../../documents/http/uploads.controller";
+import { HealthController } from "../../health/health.controller";
 import {
   type Account,
   type Api,
@@ -12,10 +14,8 @@ import {
   seedAccount,
   startApi,
   webOrigin,
-} from "../test-support";
-import { WorkspacesController } from "../workspaces/workspaces.controller";
-import { AuthController } from "./auth.controller";
-import { isPublicKey } from "./public.decorator";
+} from "../../test-support";
+import { WorkspacesController } from "../../workspaces/workspaces.controller";
 
 const fx = await createTenantFixture(4);
 let api: Api;
