@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -35,14 +34,23 @@ setTimeout(() => process.exit(1), 20000);
   );
 
   // What tsdown does on a rebuild (executeOnSuccess): run the command in a shell, and on abort
-  // tree-kill it, which signals every descendant by parent pid. "rebuild" on stdin is the abort.
+  // kill its process tree, i.e. SIGTERM every descendant by parent pid, then the shell. tsdown's
+  // own helper (tree-kill, later tinyps) is a private dependency that changes between releases,
+  // so the same behaviour is written out here. "rebuild" on stdin is the abort.
   rebuild = join(root, "rebuild.mjs");
   writeFileSync(
     rebuild,
-    `import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
-const [command, treeKillPath] = process.argv.slice(2);
-const treeKill = createRequire(import.meta.url)(treeKillPath);
+    `import { execFileSync, spawn } from "node:child_process";
+const [command] = process.argv.slice(2);
+const treeKill = (root) => {
+  const rows = execFileSync("/bin/ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" })
+    .trim().split("\\n").map((line) => line.trim().split(/\\s+/).map(Number));
+  const order = [root];
+  for (const pid of order) for (const [p, pp] of rows) if (pp === pid) order.push(p);
+  for (const pid of order.reverse()) {
+    try { process.kill(pid, "SIGTERM"); } catch (error) { if (error.code !== "ESRCH") throw error; }
+  }
+};
 const child = spawn(command, { shell: true, stdio: "inherit" });
 process.stdin.once("data", () => treeKill(child.pid));
 child.on("exit", () => process.exit(0));
@@ -204,13 +212,11 @@ describe("launcher", () => {
       expectGone(pid);
     }));
 
-  // tsdown tree-kills the on-success command on every rebuild, signalling every descendant by
+  // tsdown kills the on-success command's tree on every rebuild, signalling every descendant by
   // parent pid; the entry must still see one SIGTERM and finish closing.
   it("a tsdown rebuild gives a once-only entry one SIGTERM and it exits 0", async () => {
-    const tsdown = createRequire(new URL("../apps/api/", import.meta.url)).resolve("tsdown");
-    const treeKill = createRequire(tsdown).resolve("tree-kill");
     const command = `${process.execPath} ${join(root, "scripts/launcher.mjs")} worker ${probe} once SIGTERM`;
-    const harness = spawn(process.execPath, [rebuild, command, treeKill], {
+    const harness = spawn(process.execPath, [rebuild, command], {
       env: BASE,
       stdio: ["pipe", "pipe", "inherit"],
     });
