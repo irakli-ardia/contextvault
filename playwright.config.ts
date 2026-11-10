@@ -29,7 +29,7 @@ export default defineConfig({
       // `env` over the runner's, so only an allowlist can keep other variables out. The log file
       // lets the tests prove no secret reaches it.
       command:
-        "mkdir -p playwright-report && node scripts/run-with-env.mjs api apps/api/dist/main.mjs > playwright-report/api.log 2>&1",
+        "mkdir -p playwright-report && node scripts/launcher/run-with-env.mjs api apps/api/dist/main.mjs > playwright-report/api.log 2>&1",
       cwd: ".",
       env: {
         NODE_ENV: "development",
@@ -47,7 +47,7 @@ export default defineConfig({
     {
       // Next's own entry through the launcher (web allowlist, no `.env`), not `pnpm exec`: a wrapper
       // reports its own SIGTERM as a failure and can outlive the run.
-      command: `node ../../scripts/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port} > ../../playwright-report/web.log 2>&1`,
+      command: `node ../../scripts/launcher/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port} > ../../playwright-report/web.log 2>&1`,
       cwd: "apps/web",
       // The verified stack's NODE_ENV is test; `next start` keeps its production default.
       env: { NODE_ENV: "production" },
@@ -61,7 +61,7 @@ export default defineConfig({
       // transport can be exercised before the API endpoint exists. The upload route reads
       // API_INTERNAL_URL at runtime; the baked rewrite destination is irrelevant to it.
       command:
-        "node ../../scripts/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3101 > ../../playwright-report/web-upload.log 2>&1",
+        "node ../../scripts/launcher/run-with-env.mjs web node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3101 > ../../playwright-report/web-upload.log 2>&1",
       cwd: "apps/web",
       env: { NODE_ENV: "production", API_INTERNAL_URL: "http://127.0.0.1:3199" },
       url: "http://127.0.0.1:3101",

@@ -18,24 +18,18 @@ const SKIPPED_FILES = new Set([
 export const CALLER_DIR = {
   "playwright.config.ts": "apps/web",
   "scripts/playwright-config.unit.test.mjs": "apps/web",
-  "scripts/dev.mjs": "apps/api",
+  "scripts/launcher/dev.mjs": "apps/api",
 };
 
 // Script names a test invents inside a temporary tree, keyed by the only files allowed to name
 // them. Everywhere else the name is an ordinary reference. Update a key when its file moves; a
 // stale key, or a name its file no longer contains, fails.
-const LAUNCHER_TESTS = [
-  "scripts/run-with-env.unit.test.mjs",
-  "scripts/run-with-env.web.unit.test.mjs",
-  "scripts/run-with-env.lifecycle.unit.test.mjs",
-];
 export const FIXTURES = {
   "scripts/checks/structure-check.unit.test.mjs": ["scripts/utils.mjs"],
   "scripts/checks/tracked-files.unit.test.mjs": [
     "scripts/skills/index.mjs",
     "scripts/checks/agent-stop.mjs",
   ],
-  ...Object.fromEntries(LAUNCHER_TESTS.map((file) => [file, ["scripts/launcher.mjs"]])),
 };
 
 const REF = /(?<![\w./-])((?:\.\.\/)*)(scripts\/[\w./-]*[\w-]\.mjs)(?![\w-])/g;

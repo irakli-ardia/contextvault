@@ -18,6 +18,9 @@ import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
+// The repo-root `.env`, two directories above this file; exported so a test pins the depth.
+export const ENV_FILE = fileURLToPath(new URL("../../.env", import.meta.url));
+
 const S3 = ["S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"];
 
 // Keep in step with the loaders in packages/config (apiEnvSchema, workerEnvSchema, webEnvSchema).
@@ -59,8 +62,8 @@ export const buildEnv = (app, file, parent) => {
   return env;
 };
 
-const fileValues = (app, parent, envFile) =>
-  app === "web" || parent.CV_TEST_STACK_VERIFIED === "1" ? {} : readDotEnv(envFile);
+const fileValues = (app, parent) =>
+  app === "web" || parent.CV_TEST_STACK_VERIFIED === "1" ? {} : readDotEnv(ENV_FILE);
 
 const run = (argv) => {
   const [app, entry, ...args] = argv;
@@ -70,11 +73,10 @@ const run = (argv) => {
     console.error("usage: run-with-env.mjs <api|worker|web> <entry.mjs> [args...]");
     process.exit(2);
   }
-  const envFile = fileURLToPath(new URL("../.env", import.meta.url));
   try {
     // biome-ignore lint/style/noProcessEnv: the launcher is the one place that decides what of the parent environment a runtime process may see
     const parent = process.env;
-    const env = buildEnv(app, fileValues(app, parent, envFile), parent);
+    const env = buildEnv(app, fileValues(app, parent), parent);
     process.execve(process.execPath, [process.execPath, entry, ...args], env);
   } catch (error) {
     // A bad env value's error text quotes the whole environment, so only the error code is shown.

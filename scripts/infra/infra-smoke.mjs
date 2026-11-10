@@ -80,7 +80,7 @@ step("s3 round trip and access control", () => {
 await new Promise((resolve, reject) => {
   const worker = spawn(
     "node",
-    ["scripts/run-with-env.mjs", "worker", "apps/worker/dist/main.mjs"],
+    ["scripts/launcher/run-with-env.mjs", "worker", "apps/worker/dist/main.mjs"],
     {
       stdio: ["ignore", "pipe", "inherit"],
     },

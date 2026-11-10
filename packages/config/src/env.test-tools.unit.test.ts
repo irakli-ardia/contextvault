@@ -110,7 +110,7 @@ describe("loading boundaries", () => {
       "infra:mark:ci",
     ]);
     for (const file of [
-      "scripts/dev.mjs",
+      "scripts/launcher/dev.mjs",
       "packages/db/package.json",
       "scripts/infra/infra-smoke.mjs",
     ]) {

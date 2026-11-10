@@ -16,8 +16,11 @@ let rebuild;
 let appDir;
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "run-with-env-lifecycle-"));
-  mkdirSync(join(root, "scripts"));
-  copyFileSync(new URL("./run-with-env.mjs", import.meta.url), join(root, "scripts/launcher.mjs"));
+  mkdirSync(join(root, "scripts/launcher"), { recursive: true });
+  copyFileSync(
+    new URL("./run-with-env.mjs", import.meta.url),
+    join(root, "scripts/launcher/run-with-env.mjs"),
+  );
   probe = join(root, "probe.mjs");
   // `wait` announces its pid and idles until a signal ends it. `once <signal>` does the same but
   // closes gracefully (exit 0, reported as "exited 0") on the first such signal; a second one finds
@@ -62,11 +65,11 @@ setTimeout(() => process.exit(1), 20000);
   // it started. dist/main.mjs closes gracefully on the first SIGTERM only.
   const tree = join(root, "dev");
   appDir = join(tree, "apps/api");
-  mkdirSync(join(tree, "scripts"), { recursive: true });
+  mkdirSync(join(tree, "scripts/launcher"), { recursive: true });
   mkdirSync(join(appDir, "node_modules/.bin"), { recursive: true });
   mkdirSync(join(appDir, "dist"));
   for (const file of ["dev.mjs", "run-with-env.mjs"]) {
-    copyFileSync(new URL(`./${file}`, import.meta.url), join(tree, "scripts", file));
+    copyFileSync(new URL(`./${file}`, import.meta.url), join(tree, "scripts/launcher", file));
   }
   const tsdown = join(appDir, "node_modules/.bin/tsdown");
   writeFileSync(
@@ -159,11 +162,15 @@ const supervise = async (child, group, body) => {
 // The launcher as its own process group leader (as tsdown's group is in dev.mjs) over a probe.
 const withLauncher = (app, probeArgs, body) =>
   supervise(
-    spawn(process.execPath, [join(root, "scripts/launcher.mjs"), app, probe, ...probeArgs], {
-      env: BASE,
-      stdio: ["ignore", "pipe", "inherit"],
-      detached: true,
-    }),
+    spawn(
+      process.execPath,
+      [join(root, "scripts/launcher/run-with-env.mjs"), app, probe, ...probeArgs],
+      {
+        env: BASE,
+        stdio: ["ignore", "pipe", "inherit"],
+        detached: true,
+      },
+    ),
     true,
     async (watched) => body({ ...watched, pid: await watched.ready() }),
   );
@@ -215,7 +222,7 @@ describe("launcher", () => {
   // tsdown kills the on-success command's tree on every rebuild, signalling every descendant by
   // parent pid; the entry must still see one SIGTERM and finish closing.
   it("a tsdown rebuild gives a once-only entry one SIGTERM and it exits 0", async () => {
-    const command = `${process.execPath} ${join(root, "scripts/launcher.mjs")} worker ${probe} once SIGTERM`;
+    const command = `${process.execPath} ${join(root, "scripts/launcher/run-with-env.mjs")} worker ${probe} once SIGTERM`;
     const harness = spawn(process.execPath, [rebuild, command], {
       env: BASE,
       stdio: ["pipe", "pipe", "inherit"],
@@ -232,7 +239,7 @@ describe("launcher", () => {
 });
 
 describe("dev loop", () => {
-  const dev = (app) => [join(root, "dev/scripts/dev.mjs"), app];
+  const dev = (app) => [join(root, "dev/scripts/launcher/dev.mjs"), app];
 
   it("runs the entry through the launcher and stops it gracefully, once, on SIGTERM", async () => {
     const loop = spawn(process.execPath, dev("api"), {

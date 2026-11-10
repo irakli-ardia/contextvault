@@ -48,11 +48,11 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 ## Environment
 
 `api` and `worker` read their variables through `packages/config`, the only module that touches `process.env`.
-`.env.example` is the committed contract. `.env` (gitignored) is read by `scripts/run-with-env.mjs` for api and worker, and separately by administrative and test tooling (`infra:*`, `db:migrate`, `user:create`, `test:integration`, among others), which is outside the launcher.
+`.env.example` is the committed contract. `.env` (gitignored) is read by `scripts/launcher/run-with-env.mjs` for api and worker, and separately by administrative and test tooling (`infra:*`, `db:migrate`, `user:create`, `test:integration`, among others), which is outside the launcher.
 
 **Launcher.** The api and worker dev loops (`dev.mjs`) and the servers Playwright starts (api and both Next.js servers) run through the launcher, which replaces itself with `node <entry>` (`process.execve`).
 
-- The entry receives only the variables on that app's allowlist, plus `PATH` and `TMPDIR`; `scripts/run-with-env.mjs` is the source of truth for the lists.
+- The entry receives only the variables on that app's allowlist, plus `PATH` and `TMPDIR`; `scripts/launcher/run-with-env.mjs` is the source of truth for the lists.
 - For api and worker, each value comes from the parent environment if set (an empty string counts) and otherwise from the root `.env`.
 - Web mode never reads `.env`: its values come only from the parent environment. Neither does any mode when `CV_TEST_STACK_VERIFIED=1` (set by `with-test-stack.mjs`).
 - Every other inherited variable (including `NODE_OPTIONS`, `AWS_*` and `HOME`) and the rest of `.env` are not forwarded, so the bootstrap, owner, fixture and migration credentials never reach launcher-started processes. Allowlisted runtime credentials such as `DATABASE_URL`, `S3_*` and `REDIS_URL` are passed.

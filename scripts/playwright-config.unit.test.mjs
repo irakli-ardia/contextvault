@@ -28,10 +28,12 @@ describe("playwright webServer", () => {
   });
 
   it("starts every server through the launcher with the matching mode", () => {
-    expect(api.command).toContain("node scripts/run-with-env.mjs api apps/api/dist/main.mjs");
+    expect(api.command).toContain(
+      "node scripts/launcher/run-with-env.mjs api apps/api/dist/main.mjs",
+    );
     for (const server of [web, upload]) {
       expect(server.command).toContain(
-        "node ../../scripts/run-with-env.mjs web node_modules/next/dist/bin/next start",
+        "node ../../scripts/launcher/run-with-env.mjs web node_modules/next/dist/bin/next start",
       );
     }
     expect([api.cwd, web.cwd, upload.cwd]).toEqual([".", "apps/web", "apps/web"]);

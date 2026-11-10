@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { parseWebEnv } from "../packages/config/src/env.ts";
+import { parseWebEnv } from "../../packages/config/src/env.ts";
 import { ALLOWLISTS, buildEnv, PLATFORM } from "./run-with-env.mjs";
 
 // Web mode of run-with-env.mjs: the allowlist comes from the parent only, `.env` is never read.
@@ -47,10 +47,10 @@ describe("web child process", () => {
   let probe;
   beforeAll(() => {
     root = mkdtempSync(join(tmpdir(), "run-with-env-web-"));
-    mkdirSync(join(root, "scripts"));
+    mkdirSync(join(root, "scripts/launcher"), { recursive: true });
     copyFileSync(
       new URL("./run-with-env.mjs", import.meta.url),
-      join(root, "scripts/launcher.mjs"),
+      join(root, "scripts/launcher/run-with-env.mjs"),
     );
     probe = join(root, "probe.mjs");
     // Prints its sorted environment names (macOS adds __CF_USER_TEXT_ENCODING itself) and the URL.
@@ -64,10 +64,14 @@ console.log(JSON.stringify({ names, url: process.env.API_INTERNAL_URL }));
   afterAll(() => rmSync(root, { recursive: true, force: true }));
 
   const launch = (parent) => {
-    const run = spawnSync(process.execPath, [join(root, "scripts/launcher.mjs"), "web", probe], {
-      env: parent,
-      encoding: "utf8",
-    });
+    const run = spawnSync(
+      process.execPath,
+      [join(root, "scripts/launcher/run-with-env.mjs"), "web", probe],
+      {
+        env: parent,
+        encoding: "utf8",
+      },
+    );
     return { status: run.status, ...JSON.parse(run.stdout || "{}") };
   };
 

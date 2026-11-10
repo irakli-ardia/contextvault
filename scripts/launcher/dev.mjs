@@ -16,7 +16,7 @@ if (app !== "api" && app !== "worker") {
 // pnpm exec would put tsdown in a group of its own, out of reach of the group kill below.
 const loop = spawn(
   "./node_modules/.bin/tsdown",
-  ["--watch", "--on-success", `node ../../scripts/run-with-env.mjs ${app} dist/main.mjs`],
+  ["--watch", "--on-success", `node ../../scripts/launcher/run-with-env.mjs ${app} dist/main.mjs`],
   { stdio: "inherit", detached: true },
 );
 

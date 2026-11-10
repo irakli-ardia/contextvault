@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { parseApiEnv, parseWorkerEnv } from "../packages/config/src/env.ts";
+import { parseApiEnv, parseWorkerEnv } from "../../packages/config/src/env.ts";
 import { ALLOWLISTS, buildEnv, PLATFORM, readDotEnv } from "./run-with-env.mjs";
 
 const API = [
@@ -38,12 +38,14 @@ const dotEnv = (values) =>
 
 // The launcher finds `.env` next to its own directory's parent, so a copy inside a temp tree reads
 // that tree's `.env` and never the real one.
+// Two directories below the temp root, like the real file below the repository root.
+const LAUNCHER = "scripts/launcher/run-with-env.mjs";
 let root;
 let probe;
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "run-with-env-"));
-  mkdirSync(join(root, "scripts"));
-  copyFileSync(new URL("./run-with-env.mjs", import.meta.url), join(root, "scripts/launcher.mjs"));
+  mkdirSync(join(root, "scripts/launcher"), { recursive: true });
+  copyFileSync(new URL("./run-with-env.mjs", import.meta.url), join(root, LAUNCHER));
   probe = join(root, "probe.mjs");
   // Reports only PASS or FAIL: `env <json>` checks the exact name/value set, `exit <n>` exits.
   // Signal behaviour is tested in run-with-env.lifecycle.unit.test.mjs.
@@ -64,7 +66,7 @@ else process.exit(64);
 });
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-const launcher = () => join(root, "scripts/launcher.mjs");
+const launcher = () => join(root, LAUNCHER);
 const setDotEnv = (values) => {
   if (values === null) rmSync(join(root, ".env"), { force: true });
   else writeFileSync(join(root, ".env"), dotEnv(values));
@@ -102,7 +104,7 @@ describe("allowlists", () => {
 
 // .env.example is the committed contract: its placeholder values are fake and `.env` is never read.
 describe("contract", () => {
-  const example = parseEnv(readFileSync(new URL("../.env.example", import.meta.url), "utf8"));
+  const example = parseEnv(readFileSync(new URL("../../.env.example", import.meta.url), "utf8"));
 
   it.each(["api", "worker"])("every %s name is declared in .env.example", (app) => {
     for (const name of ALLOWLISTS[app]) expect(example).toHaveProperty(name);

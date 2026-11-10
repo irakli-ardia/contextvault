@@ -23,20 +23,13 @@ import {
 
 const repo = join(import.meta.dirname, "..", "..");
 
-// Root-level scripts still waiting for their move (6c launcher, 6d test-stack). Each of
-// those slices deletes its entries and lowers CEILING in the same change: the size must equal
+// Root-level scripts still waiting for their move (6d test-stack). 6d deletes its entry and
+// lowers CEILING in the same change: the size must equal
 // CEILING, so a removal that leaves CEILING behind fails, and a stale entry fails. The list, CEILING
 // and this exception are deleted after 6d. Known limit: swapping an entry for a new root-level name
 // at the same size passes here; review catches it, the original six are the ones listed below.
-const CEILING = 6;
-const ROOT_LEGACY = new Set([
-  "scripts/dev.mjs",
-  "scripts/playwright-config.unit.test.mjs",
-  "scripts/run-with-env.lifecycle.unit.test.mjs",
-  "scripts/run-with-env.mjs",
-  "scripts/run-with-env.unit.test.mjs",
-  "scripts/run-with-env.web.unit.test.mjs",
-]);
+const CEILING = 1;
+const ROOT_LEGACY = new Set(["scripts/playwright-config.unit.test.mjs"]);
 
 const refs = (tree) => referenceProblems(Object.keys(tree), (file) => tree[file]);
 
@@ -64,21 +57,24 @@ describe("script paths in this repository", () => {
 });
 
 describe("script references", () => {
-  const real = { "scripts/dev.mjs": "", "scripts/checks/docs-check.mjs": "" };
+  const real = {
+    "scripts/launcher/dev.mjs": "",
+    "scripts/launcher/run-with-env.mjs": "",
+    "scripts/checks/docs-check.mjs": "",
+  };
 
   it.each([
     [".github/workflows/ci.yml", "run: node scripts/checks/docs-check.mjs"],
     [".githooks/pre-push", "node scripts/checks/docs-check.mjs || exit 1"],
-    ["apps/api/package.json", '"dev": "node ../../scripts/dev.mjs api"'],
-    ["playwright.config.ts", "node ../../scripts/dev.mjs web"],
-    ["docs/setup.md", "[dev](../scripts/dev.mjs)"],
+    ["apps/api/package.json", '"dev": "node ../../scripts/launcher/dev.mjs api"'],
+    ["playwright.config.ts", "node ../../scripts/launcher/dev.mjs web"],
+    ["docs/setup.md", "[dev](../scripts/launcher/dev.mjs)"],
     ["vitest.config.ts", 'include: ["scripts/**/*.unit.test.mjs"]'],
     ["tracked.mjs", "/^scripts\\/checks\\/gone\\.mjs$/"],
     [
       "README.md",
       "scripts/bench/ scripts/checks/gone.sh scripts/gone.mjsx vendor/scripts/gone.mjs",
     ],
-    ["scripts/run-with-env.unit.test.mjs", 'join(root, "scripts/launcher.mjs")'],
   ])("accepts %s: %s", (file, text) => {
     expect(refs({ ...real, [file]: text })).toEqual([]);
   });
@@ -99,19 +95,19 @@ describe("script references", () => {
     [
       "a wrong relative path",
       "apps/api/package.json",
-      "node ../scripts/dev.mjs",
-      "resolves to apps/scripts/dev.mjs",
+      "node ../scripts/launcher/dev.mjs",
+      "resolves to apps/scripts/launcher/dev.mjs",
     ],
     [
       "a path leaving the repository",
       "docs/setup.md",
-      "[d](../../scripts/dev.mjs)",
-      "resolves to ../scripts/dev.mjs",
+      "[d](../../scripts/launcher/dev.mjs)",
+      "resolves to ../scripts/launcher/dev.mjs",
     ],
     [
       "Playwright path from the root",
       "playwright.config.ts",
-      "x\nnode ../scripts/dev.mjs",
+      "x\nnode ../scripts/launcher/dev.mjs",
       "playwright.config.ts:2",
     ],
     ["a hook", ".githooks/pre-push", "\nnode scripts/git/gone.mjs", ".githooks/pre-push:2"],
@@ -124,7 +120,6 @@ describe("script references", () => {
   it.each([
     ["scripts/utils.mjs", "scripts/checks/structure-check.unit.test.mjs"],
     ["scripts/skills/index.mjs", "scripts/checks/tracked-files.unit.test.mjs"],
-    ["scripts/launcher.mjs", "scripts/run-with-env.unit.test.mjs"],
   ])("skips %s only in %s", (name, owner) => {
     expect(refs({ [owner]: name })).toEqual([]);
     expect(refs({ "README.md": name, "scripts/checks/other.unit.test.mjs": name })).toHaveLength(2);
@@ -145,15 +140,15 @@ describe("script references", () => {
       exemptionProblems(keys, (file) =>
         file === owner
           ? "scripts/utils.mjs"
-          : "scripts/launcher.mjs scripts/skills/index.mjs scripts/checks/agent-stop.mjs",
+          : "scripts/skills/index.mjs scripts/checks/agent-stop.mjs",
       ),
     ).toEqual([]);
   });
 
   it("resolves the dev loop's path from the app directory, so a move that forgets it fails", () => {
-    const dev = { "scripts/dev.mjs": "node ../../scripts/run-with-env.mjs" };
-    expect(refs({ ...dev, "scripts/run-with-env.mjs": "" })).toEqual([]);
-    expect(refs({ ...dev, "scripts/launcher/run-with-env.mjs": "" })).toHaveLength(1);
+    const dev = { "scripts/launcher/dev.mjs": "node ../../scripts/launcher/run-with-env.mjs" };
+    expect(refs({ ...dev, "scripts/launcher/run-with-env.mjs": "" })).toEqual([]);
+    expect(refs({ ...dev, "scripts/run-with-env.mjs": "" })).toHaveLength(1);
   });
 });
 
@@ -177,10 +172,12 @@ describe("script directory ownership", () => {
   });
 
   it("fails a stale allowlist entry once its file moved", () => {
-    const files = [...ROOT_LEGACY].filter((file) => file !== "scripts/dev.mjs");
-    expect(own([...files, "scripts/launcher/dev.mjs"], ROOT_LEGACY)).toEqual([
-      "scripts/dev.mjs: stale ROOT_LEGACY entry, remove it",
-    ]);
+    const files = [...ROOT_LEGACY].filter(
+      (file) => file !== "scripts/playwright-config.unit.test.mjs",
+    );
+    expect(
+      own([...files, "scripts/test-stack/playwright-config.unit.test.mjs"], ROOT_LEGACY),
+    ).toEqual(["scripts/playwright-config.unit.test.mjs: stale ROOT_LEGACY entry, remove it"]);
   });
 });
 
