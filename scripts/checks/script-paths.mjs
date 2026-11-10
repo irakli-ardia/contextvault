@@ -17,7 +17,7 @@ const SKIPPED_FILES = new Set([
 // stale key fails.
 export const CALLER_DIR = {
   "playwright.config.ts": "apps/web",
-  "scripts/playwright-config.unit.test.mjs": "apps/web",
+  "scripts/test-stack/playwright-config.unit.test.mjs": "apps/web",
   "scripts/launcher/dev.mjs": "apps/api",
 };
 
@@ -85,27 +85,21 @@ export function exemptionProblems(files, read) {
   return problems;
 }
 
-export function ownershipProblems(files, legacy) {
+export function ownershipProblems(files) {
   const problems = [];
   for (const file of files) {
     const [top, dir, rest] = file.split("/");
     if (top !== "scripts") continue;
-    if (rest === undefined && !legacy.has(file)) {
-      problems.push(`${file}: no new root-level scripts; use ${OWNED_DIRS.join(", ")}`);
+    if (rest === undefined) {
+      problems.push(`${file}: no root-level scripts; use ${OWNED_DIRS.join(", ")}`);
     } else if (rest !== undefined && !OWNED_DIRS.includes(dir)) {
       problems.push(`${file}: unapproved scripts/ directory "${dir}"`);
     }
   }
-  for (const entry of legacy) {
-    if (!files.includes(entry)) problems.push(`${entry}: stale ROOT_LEGACY entry, remove it`);
-  }
   return problems;
 }
 
-export function scan(root, legacy) {
+export function scan(root) {
   const files = listFiles(root);
-  return [
-    ...ownershipProblems(files, legacy),
-    ...referenceProblems(files, (file) => readText(root, file)),
-  ];
+  return [...ownershipProblems(files), ...referenceProblems(files, (file) => readText(root, file))];
 }

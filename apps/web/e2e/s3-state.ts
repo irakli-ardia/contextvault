@@ -3,7 +3,7 @@ import { curlQuote, verifiedValue as need } from "./stack-env";
 
 // Looks at the private bucket the way an operator would: signed `curl`, credentials on stdin (never
 // in the process list). Test code only; the API's own adapter is covered by its integration tests.
-// The values are the verified stack's, injected by scripts/checks/with-test-stack.mjs, which also
+// The values are the verified stack's, injected by scripts/test-stack/with-test-stack.mjs, which also
 // sets CV_TEST_STACK_VERIFIED. Without it nothing here runs: `.env` is never read, so cleanup
 // cannot reach the development bucket.
 const S3_ENDPOINT = need("S3_ENDPOINT");

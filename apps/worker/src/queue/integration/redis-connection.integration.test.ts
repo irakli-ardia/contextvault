@@ -3,7 +3,7 @@ import { Redis } from "ioredis";
 import { afterEach, describe, expect, it } from "vitest";
 import { testRedisUrl } from "../../testing/test-redis-url";
 
-// Runs only against the verified isolated test Redis (scripts/checks/with-test-stack.mjs) or
+// Runs only against the verified isolated test Redis (scripts/test-stack/with-test-stack.mjs) or
 // GitHub Actions' loopback Redis; a bare local run is refused.
 // biome-ignore lint/style/noProcessEnv: launch flags set by the wrapper or the CI runner, not config
 const flags = process.env;

@@ -116,7 +116,7 @@ describe("loading boundaries", () => {
     ]) {
       expect(read(file)).not.toContain(".env.test");
     }
-    // E2E helpers take the stack verified by scripts/checks/with-test-stack.mjs from the process
+    // E2E helpers take the stack verified by scripts/test-stack/with-test-stack.mjs from the process
     // environment; naming an env file would let the repository's development values in.
     for (const file of ["apps/web/e2e/support.ts", "apps/web/e2e/upload-api-support.ts"]) {
       expect(read(file)).not.toContain("--env-file");

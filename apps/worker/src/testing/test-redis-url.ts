@@ -19,6 +19,6 @@ export function testRedisUrl(redisUrl: string, flags: LaunchFlags): URL {
     return url;
   }
   throw new Error(
-    "Redis integration test refused: run through scripts/checks/with-test-stack.mjs (or GitHub Actions with a loopback Redis)",
+    "Redis integration test refused: run through scripts/test-stack/with-test-stack.mjs (or GitHub Actions with a loopback Redis)",
   );
 }

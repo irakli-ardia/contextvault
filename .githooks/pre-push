@@ -10,7 +10,7 @@ if [ -z "${CV_TEST_ENV_DIR:-}" ]; then
   echo "pre-push: CV_TEST_ENV_DIR is required. See docs/local-setup.md (Pre-push hook)." >&2
   exit 1
 fi
-stack="node scripts/checks/with-test-stack.mjs"
+stack="node scripts/test-stack/with-test-stack.mjs"
 
 # Non-mutating preflight: validates the external files and the database marker before the slow checks.
 $stack true || exit 1

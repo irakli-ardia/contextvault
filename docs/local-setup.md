@@ -61,7 +61,7 @@ is unreachable; the API connects to PostgreSQL at boot and exits if the role is 
 
 `process.execve` is experimental in Node 24 and does not exist on Windows or IBM i, so this workflow requires Node 24.22.1 on macOS or Linux. The launcher is not available elsewhere, and if the exec itself fails Node aborts the process.
 
-**Test credentials.** They live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` loads (the e2e helpers and account tooling read only the process environment, set by `scripts/checks/with-test-stack.mjs` and refused without `CV_TEST_STACK_VERIFIED=1`; [ADR 0010](adr/0010-isolated-test-stack.md)); dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
+**Test credentials.** They live in a separate gitignored `.env.test` (contract: `.env.test.example`), which only `test:integration` loads (the e2e helpers and account tooling read only the process environment, set by `scripts/test-stack/with-test-stack.mjs` and refused without `CV_TEST_STACK_VERIFIED=1`; [ADR 0010](adr/0010-isolated-test-stack.md)); dev scripts, `infra:*`, `db:migrate`, `user:create`, and every app never do. `test:integration` needs it: the fixture seeds and cleans up test data on `DATABASE_FIXTURE_URL`, and the catalog security tests inspect PostgreSQL on `DATABASE_BOOTSTRAP_URL`. Both are required and neither falls back to `DATABASE_URL` or to the other, so a missing one fails naming the variable.
 
 Copy it once: `cp .env.test.example .env.test`. The values are the same development-only placeholders as `.env.example`, matching the Compose stack.
 
@@ -105,11 +105,11 @@ pnpm run dead-code      # fallow: unused files, exports, dependencies
 pnpm run typecheck
 pnpm run test               # unit, offline
 pnpm run db:check           # committed migrations match the Drizzle schema
-pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation. Locally run it only as `CV_TEST_ENV_DIR=<dir> node scripts/checks/with-test-stack.mjs pnpm run test:integration`: the wrapper takes its env files from the isolated test environment and verifies that stack first. The S3 and Redis test guards refuse a bare local run so the tests cannot reach the development S3 bucket or Redis; they accept only the verified stack, or GitHub Actions with a loopback service
+pnpm run test:integration   # API in-process, Redis, and PostgreSQL tenant isolation. Locally run it only as `CV_TEST_ENV_DIR=<dir> node scripts/test-stack/with-test-stack.mjs pnpm run test:integration`: the wrapper takes its env files from the isolated test environment and verifies that stack first. The S3 and Redis test guards refuse a bare local run so the tests cannot reach the development S3 bucket or Redis; they accept only the verified stack, or GitHub Actions with a loopback service
 pnpm run build
 pnpm run infra:smoke        # needs `infra:up` and a worker build
 pnpm exec playwright install --with-deps --only-shell chromium   # once per machine
-pnpm run test:e2e           # only through scripts/checks/with-test-stack.mjs (bare Playwright refuses to start); needs a `build` made with the stack's API_INTERNAL_URL; serves web on 127.0.0.1:3100 and the built API on the stack's API_PORT (never 3001), each through the launcher
+pnpm run test:e2e           # only through scripts/test-stack/with-test-stack.mjs (bare Playwright refuses to start); needs a `build` made with the stack's API_INTERNAL_URL; serves web on 127.0.0.1:3100 and the built API on the stack's API_PORT (never 3001), each through the launcher
 node scripts/checks/docs-check.mjs
 node scripts/checks/tracked-files.mjs   # no local-only or sensitive file is tracked or referenced
 pnpm run structure                      # integration test placement and generic file names
@@ -289,7 +289,7 @@ CV_TEST_ENV_DIR=/path/to/cv-test-env git push
 
 - Without `CV_TEST_ENV_DIR` the hook fails right after the cheap documentation checks, before anything mutates.
 - A preflight (`with-test-stack.mjs true`) then validates the files and the PostgreSQL identity marker; the slow checks start only if it passes.
-- Migrations, integration and E2E run through `scripts/checks/with-test-stack.mjs`, in that order. The hook never starts, stops or resets containers: if the test stack is unavailable or fails verification, the push is blocked; start it yourself, then push again.
+- Migrations, integration and E2E run through `scripts/test-stack/with-test-stack.mjs`, in that order. The hook never starts, stops or resets containers: if the test stack is unavailable or fails verification, the push is blocked; start it yourself, then push again.
 - `build` alone gets `NODE_ENV=production` (`env NODE_ENV=production pnpm run build`), because the test environment's `NODE_ENV` makes `next build` fail. Other steps keep the test environment, and the external files are unchanged.
 - Development migrations stay a separate, deliberate `pnpm run db:migrate` against `.env`; the hook never runs them.
 

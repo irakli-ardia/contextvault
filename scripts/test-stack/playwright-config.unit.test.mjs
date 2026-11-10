@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 // The build manifest is an artifact; its check has its own test (e2e-stack-env.unit.test.mjs).
 const assertBuiltFor = vi.hoisted(() => vi.fn());
-vi.mock("../apps/web/e2e/stack-env.ts", async (original) => ({
+vi.mock("../../apps/web/e2e/stack-env.ts", async (original) => ({
   ...(await original()),
   assertBuiltFor,
 }));
@@ -14,7 +14,7 @@ const VERIFIED = {
 const load = async (env) => {
   vi.resetModules();
   for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
-  return (await import("../playwright.config.ts")).default;
+  return (await import("../../playwright.config.ts")).default;
 };
 const config = await load(VERIFIED);
 const [api, web, upload] = config.webServer;

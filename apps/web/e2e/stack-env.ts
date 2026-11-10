@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-// The one place E2E code reads the verified stack. scripts/checks/with-test-stack.mjs sets
+// The one place E2E code reads the verified stack. scripts/test-stack/with-test-stack.mjs sets
 // CV_TEST_STACK_VERIFIED after its checks and injects the values; the flag is a launch convention,
 // not a credential (a shell can forge it). The guarantees live in the wrapper's endpoint checks
 // and PostgreSQL identity marker. This module only makes a bare `playwright test` fail before
@@ -16,7 +16,7 @@ export function verifiedValue(name: string): string {
   const { [name]: value, CV_TEST_STACK_VERIFIED: verified } = env;
   if (verified !== "1" || !value) {
     throw new Error(
-      `${name} is not set by a verified stack: run through scripts/checks/with-test-stack.mjs`,
+      `${name} is not set by a verified stack: run through scripts/test-stack/with-test-stack.mjs`,
     );
   }
   return value;

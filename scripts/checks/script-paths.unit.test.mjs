@@ -23,19 +23,11 @@ import {
 
 const repo = join(import.meta.dirname, "..", "..");
 
-// Root-level scripts still waiting for their move (6d test-stack). 6d deletes its entry and
-// lowers CEILING in the same change: the size must equal
-// CEILING, so a removal that leaves CEILING behind fails, and a stale entry fails. The list, CEILING
-// and this exception are deleted after 6d. Known limit: swapping an entry for a new root-level name
-// at the same size passes here; review catches it, the original six are the ones listed below.
-const CEILING = 1;
-const ROOT_LEGACY = new Set(["scripts/playwright-config.unit.test.mjs"]);
-
 const refs = (tree) => referenceProblems(Object.keys(tree), (file) => tree[file]);
 
 describe("script paths in this repository", () => {
   it("every referenced script exists and every script sits in an approved directory", () => {
-    expect(scan(repo, ROOT_LEGACY)).toEqual([]);
+    expect(scan(repo)).toEqual([]);
   });
 
   it("scans the hooks, workflows and package scripts", () => {
@@ -43,11 +35,6 @@ describe("script paths in this repository", () => {
     for (const file of [".githooks/pre-push", ".github/workflows/ci.yml", "package.json"]) {
       expect(files).toContain(file);
     }
-  });
-
-  it("pins the root-level allowlist: root files only, size exactly CEILING", () => {
-    expect(ROOT_LEGACY.size).toBe(CEILING);
-    for (const entry of ROOT_LEGACY) expect(entry).toMatch(/^scripts\/[^/]+$/);
   });
 
   it("has no stale CALLER_DIR or FIXTURES exemption", () => {
@@ -153,7 +140,7 @@ describe("script references", () => {
 });
 
 describe("script directory ownership", () => {
-  const own = (files, legacy = new Set()) => ownershipProblems(files, legacy);
+  const own = ownershipProblems;
 
   it.each(OWNED_DIRS)("accepts scripts/%s, nested or not", (dir) => {
     expect(own([`scripts/${dir}/a.mjs`, `scripts/${dir}/deep/b.mjs`])).toEqual([]);
@@ -163,21 +150,11 @@ describe("script directory ownership", () => {
     expect(own(["apps/api/scripts/x.mjs", "scripts.md", "docs/scripts/x.mjs"])).toEqual([]);
   });
 
-  it("rejects a new root-level script and an unapproved directory", () => {
-    const legacy = [...ROOT_LEGACY];
-    expect(own(["scripts/new.mjs", ...legacy], ROOT_LEGACY)).toEqual([
-      expect.stringContaining("scripts/new.mjs: no new root-level scripts"),
+  it("rejects a root-level script and an unapproved directory", () => {
+    expect(own(["scripts/new.mjs"])).toEqual([
+      expect.stringContaining("scripts/new.mjs: no root-level scripts"),
     ]);
     expect(own(["scripts/misc/a.mjs", "scripts/Checks/a.mjs"])).toHaveLength(2);
-  });
-
-  it("fails a stale allowlist entry once its file moved", () => {
-    const files = [...ROOT_LEGACY].filter(
-      (file) => file !== "scripts/playwright-config.unit.test.mjs",
-    );
-    expect(
-      own([...files, "scripts/test-stack/playwright-config.unit.test.mjs"], ROOT_LEGACY),
-    ).toEqual(["scripts/playwright-config.unit.test.mjs: stale ROOT_LEGACY entry, remove it"]);
   });
 });
 
@@ -198,7 +175,7 @@ describe("working-tree existence", () => {
 
   it("counts an untracked destination created by a move", () => {
     const root = repoWith({ "README.md": "scripts/infra/new.mjs", "scripts/infra/new.mjs": "" });
-    expect(scan(root, new Set())).toEqual([]);
+    expect(scan(root)).toEqual([]);
   });
 
   it("does not count an ignored file, which CI would not have", () => {
@@ -206,13 +183,13 @@ describe("working-tree existence", () => {
       { "README.md": "scripts/infra/local.mjs", "scripts/infra/local.mjs": "" },
       "scripts/infra/local.mjs\n",
     );
-    expect(scan(root, new Set())).toEqual([expect.stringContaining("README.md:1:")]);
+    expect(scan(root)).toEqual([expect.stringContaining("README.md:1:")]);
   });
 
   it("does not count a file removed from disk but still in the index", () => {
     const root = repoWith({ "README.md": "scripts/checks/old.mjs", "scripts/checks/old.mjs": "" });
     execFileSync("git", ["-C", root, "add", "-A"]);
     rmSync(join(root, "scripts/checks/old.mjs"));
-    expect(scan(root, new Set())).toEqual([expect.stringContaining("README.md:1:")]);
+    expect(scan(root)).toEqual([expect.stringContaining("README.md:1:")]);
   });
 });

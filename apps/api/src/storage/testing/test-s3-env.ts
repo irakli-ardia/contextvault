@@ -22,6 +22,6 @@ export function testS3Env<T extends { S3_ENDPOINT: string }>(s3: T, flags: Launc
     return s3;
   }
   throw new Error(
-    "S3 integration test refused: run through scripts/checks/with-test-stack.mjs (or GitHub Actions with a loopback SeaweedFS)",
+    "S3 integration test refused: run through scripts/test-stack/with-test-stack.mjs (or GitHub Actions with a loopback SeaweedFS)",
   );
 }
