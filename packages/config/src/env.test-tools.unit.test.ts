@@ -112,7 +112,7 @@ describe("loading boundaries", () => {
     for (const file of [
       "scripts/dev.mjs",
       "packages/db/package.json",
-      "scripts/checks/infra-smoke.mjs",
+      "scripts/infra/infra-smoke.mjs",
     ]) {
       expect(read(file)).not.toContain(".env.test");
     }

@@ -53,7 +53,7 @@ services:
   s3:
     image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8
     # -s3.autoCreateBucket=false: a PutObject to a missing bucket fails (NoSuchBucket) instead of
-    # silently creating it; buckets are created only by scripts/infra-bucket.mjs.
+    # silently creating it; buckets are created only by scripts/infra/infra-bucket.mjs.
     command:
       - server
       - -dir=/data

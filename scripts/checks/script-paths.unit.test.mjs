@@ -23,17 +23,14 @@ import {
 
 const repo = join(import.meta.dirname, "..", "..");
 
-// Root-level scripts still waiting for their move (6b infra, 6c launcher, 6d test-stack). Each of
+// Root-level scripts still waiting for their move (6c launcher, 6d test-stack). Each of
 // those slices deletes its entries and lowers CEILING in the same change: the size must equal
 // CEILING, so a removal that leaves CEILING behind fails, and a stale entry fails. The list, CEILING
 // and this exception are deleted after 6d. Known limit: swapping an entry for a new root-level name
-// at the same size passes here; review catches it, the original nine are the ones listed below.
-const CEILING = 9;
+// at the same size passes here; review catches it, the original six are the ones listed below.
+const CEILING = 6;
 const ROOT_LEGACY = new Set([
   "scripts/dev.mjs",
-  "scripts/infra-bucket.mjs",
-  "scripts/infra-roles.mjs",
-  "scripts/infra-roles.unit.test.mjs",
   "scripts/playwright-config.unit.test.mjs",
   "scripts/run-with-env.lifecycle.unit.test.mjs",
   "scripts/run-with-env.mjs",

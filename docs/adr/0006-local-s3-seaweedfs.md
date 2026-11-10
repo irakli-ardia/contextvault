@@ -8,7 +8,7 @@ Development and tests need a private S3-compatible store in Docker Compose. MinI
 
 ## Decision
 
-Run `chrislusf/seaweedfs` as a single container in S3 mode, pinned by digest, bound to loopback, with credentials from `.env`. `scripts/checks/infra-smoke.mjs` verifies a signed PUT, GET, range read, and delete, and that anonymous and wrong-secret requests are refused. Production storage is whatever S3-compatible provider is configured; the application depends only on the S3 protocol behind a port.
+Run `chrislusf/seaweedfs` as a single container in S3 mode, pinned by digest, bound to loopback, with credentials from `.env`. `scripts/infra/infra-smoke.mjs` verifies a signed PUT, GET, range read, and delete, and that anonymous and wrong-secret requests are refused. Production storage is whatever S3-compatible provider is configured; the application depends only on the S3 protocol behind a port.
 
 ## Consequences
 
