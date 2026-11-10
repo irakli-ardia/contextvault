@@ -12,8 +12,7 @@ import type { Executor } from "../../client";
 // Idle time is `now()` minus the later of `updated_at` and the MAX of `dispatched_at` over every
 // outbox row of the version, an aggregate that does not rely on `created_at` order. The row count
 // is capped afterwards with `least`, so the cap never decides which rows feed the maximum.
-// ponytail: without an index on outbox (workspace_id, version_id) the aggregate scans the outbox;
-// the history index belongs to the discovery/indexing slice.
+// The aggregate relies on the outbox (workspace_id, version_id) history index (migration 0013).
 export function createOrphanRepository(
   executor: Executor,
   workspaceId: WorkspaceId,

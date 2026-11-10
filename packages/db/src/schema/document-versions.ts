@@ -53,6 +53,10 @@ export const documentVersions = pgTable(
     index("document_versions_running_updated_idx")
       .on(table.updatedAt)
       .where(sql`${table.status} in ('parsing', 'chunking')`),
+    // Orphan discovery: waiting versions in `(updated_at, id)` keyset order.
+    index("document_versions_waiting_updated_idx")
+      .on(table.updatedAt, table.id)
+      .where(sql`${table.status} in ('uploaded', 'queued')`),
     check("document_versions_version_no", sql`${table.versionNo} >= 1`),
     check(
       "document_versions_status",

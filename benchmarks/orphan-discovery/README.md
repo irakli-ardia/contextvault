@@ -31,17 +31,16 @@ medians of three runs, except runs over 5 s, which were measured **once** (no me
 - Heap fetches with B: 2120-2132 pre-VACUUM (stale visibility map), 0 post-VACUUM. Post-VACUUM
   is the steady state with autovacuum on; the benchmark ran with autovacuum off.
 
-## Recommendation (pending)
+## Recommendation (applied as migration 0013)
 
-Measured recommendation, not yet applied:
+Measured recommendation, applied by migration 0013:
 
 - **Index A**: `document_versions (updated_at, id) WHERE status IN ('uploaded', 'queued')`.
 - **Index B**: `outbox (workspace_id, version_id)`, **without** `INCLUDE`.
 
 B-no-include read latency matched B at less than half the size. We do not claim `INCLUDE
 (dispatched_at)` newly prevents HOT updates: the existing partial indexes already reference
-`dispatched_at`. These remain recommendations: the clustered-backlog benchmark below has run and supports
-them, but migration 0013 still needs its own review and explicit approval.
+`dispatched_at`. The clustered-backlog benchmark below supports them; migration 0013 creates both.
 
 ## Not measured
 
@@ -139,9 +138,9 @@ bought no measured read benefit at twice the size.
 
 ### Open items
 
-- Migration 0013 stays subject to separate review and explicit approval; this benchmark does not
+- Migration 0013 was reviewed and approved separately; this benchmark does not
   authorize it.
-- Terminalizing deleted-document versions remains a separate sweeper prerequisite. Neither index
+- Terminalizing deleted-document versions is done by the M1.7 delete command (see the plan). Neither index
   fixes it: those rows still occupy discovery slots and are only rejected later by `lockOrphan`.
 
 ## Hygiene and what to commit

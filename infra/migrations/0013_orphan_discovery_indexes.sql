@@ -1,0 +1,2 @@
+CREATE INDEX "document_versions_waiting_updated_idx" ON "document_versions" USING btree ("updated_at","id") WHERE "document_versions"."status" in ('uploaded', 'queued');--> statement-breakpoint
+CREATE INDEX "outbox_workspace_version_idx" ON "outbox" USING btree ("workspace_id","version_id");

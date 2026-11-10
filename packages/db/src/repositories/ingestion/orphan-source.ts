@@ -28,8 +28,8 @@ import type { Database } from "../../client";
 // Pagination is the keyset `(updated_at, id)` over eligible rows (the filter is in WHERE), as text:
 // PostgreSQL keeps microseconds that a JavaScript Date would drop, which would re-list the row.
 // Keyset pages are not a snapshot.
-// ponytail: the per-version outbox aggregate has no (workspace_id, version_id) history index and
-// runs for every waiting row scanned; measure and index in Slice 5.
+// The per-version outbox aggregate runs for every waiting row scanned; it depends on the
+// (workspace_id, version_id) history index of migration 0013.
 const separator = "|";
 
 export function createOrphanSource(db: Database): OrphanSource {

@@ -42,6 +42,9 @@ export const outbox = pgTable(
     index("outbox_pending_available_idx")
       .on(table.availableAt)
       .where(sql`${table.dispatchedAt} is null`),
+    // History lookups per version (recovery discovery and `lockOrphan` count and max over every
+    // row, dispatched or not). No INCLUDE: measured as fast at less than half the size.
+    index("outbox_workspace_version_idx").on(table.workspaceId, table.versionId),
     check("outbox_kind", sql`${table.kind} in ('process_version')`),
     // The row must belong to the workspace in context, for a member, and point at a version of that
     // workspace that is still `uploaded`: the application cannot queue other states.
