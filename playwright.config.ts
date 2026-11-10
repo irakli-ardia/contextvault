@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { assertBuiltFor, verifiedApi } from "./apps/web/e2e/stack-env";
+import { assertBuiltFor, verifiedApi } from "./apps/web/e2e/support/stack-env";
 
 // Fail closed before any server starts: a bare `playwright test` has no verified stack, and the
 // API endpoint comes from it alone (never the development default 3001). The web build froze the
@@ -57,7 +57,7 @@ export default defineConfig({
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },
     {
-      // Same build, pointed at a test-only upstream (apps/web/e2e/upload-stub.ts) so the upload
+      // Same build, pointed at a test-only upstream (apps/web/e2e/support/upload-stub.ts) so the upload
       // transport can be exercised before the API endpoint exists. The upload route reads
       // API_INTERNAL_URL at runtime; the baked rewrite destination is irrelevant to it.
       command:

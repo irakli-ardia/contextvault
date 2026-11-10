@@ -13,7 +13,7 @@ const STACK = {
 const load = async (env) => {
   vi.resetModules();
   for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
-  return import("../../apps/web/e2e/s3-state.ts");
+  return import("../../apps/web/e2e/support/s3-state.ts");
 };
 
 // The E2E S3 helper deletes objects, so it runs only for a stack that with-test-stack.mjs verified.

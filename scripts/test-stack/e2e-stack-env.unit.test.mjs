@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertBuiltFor, curlQuote, verifiedApi } from "../../apps/web/e2e/stack-env.ts";
+import { assertBuiltFor, curlQuote, verifiedApi } from "../../apps/web/e2e/support/stack-env.ts";
 
 const OK = {
   CV_TEST_STACK_VERIFIED: "1",

@@ -1,6 +1,6 @@
 import { MAX_UPLOAD_BYTES } from "@contextvault/contracts";
 import { expect, test } from "@playwright/test";
-import { createStub } from "./upload-stub";
+import { createStub } from "./support/upload-stub";
 
 const stub = createStub(3199);
 const web = "http://127.0.0.1:3101";

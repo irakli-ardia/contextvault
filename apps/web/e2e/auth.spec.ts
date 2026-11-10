@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { browserApi, expect, firstWorkspaceId, signIn, test } from "./support";
+import { browserApi, expect, firstWorkspaceId, signIn, test } from "./support/support";
 
 const sessionCookie = "cv_session";
 

@@ -1,5 +1,5 @@
-import { verifiedApi } from "./stack-env";
-import { expect, header, signIn, test } from "./support";
+import { verifiedApi } from "./support/stack-env";
+import { expect, header, signIn, test } from "./support/support";
 
 const origin = "http://127.0.0.1:3100";
 const internal = `127.0.0.1:${verifiedApi().port}`;

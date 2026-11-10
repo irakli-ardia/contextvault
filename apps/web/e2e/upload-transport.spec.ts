@@ -1,7 +1,7 @@
 import { MAX_UPLOAD_BYTES } from "@contextvault/contracts";
 import { expect, test } from "@playwright/test";
-import { pattern, raw, send, sha256, uploadPath, workspace } from "./upload-client";
-import { createStub } from "./upload-stub";
+import { pattern, raw, send, sha256, uploadPath, workspace } from "./support/upload-client";
+import { createStub } from "./support/upload-stub";
 
 const stub = createStub(3199);
 test.beforeAll(() => stub.start());

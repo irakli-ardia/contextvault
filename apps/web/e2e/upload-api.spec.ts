@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { MAX_UPLOAD_BYTES } from "@contextvault/contracts";
-import { anonymousStatus, listKeys, objectState, S3_SECRET_ACCESS_KEY } from "./s3-state";
-import { browserApi, expect, firstWorkspaceId, signIn, test } from "./support";
+import { anonymousStatus, listKeys, objectState, S3_SECRET_ACCESS_KEY } from "./support/s3-state";
+import { browserApi, expect, firstWorkspaceId, signIn, test } from "./support/support";
 import {
   browserUpload,
   hold,
@@ -12,7 +12,7 @@ import {
   sha,
   stored,
   web,
-} from "./upload-api-support";
+} from "./support/upload-api-support";
 
 // Real Chromium -> real Next -> real NestJS -> real PostgreSQL -> private SeaweedFS.
 const secretName = "payroll-2026-confidential";
