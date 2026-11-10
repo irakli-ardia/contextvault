@@ -8,11 +8,6 @@
 //   5. an `integration/` file imports only its own area's files or files outside any integration
 //      area (shared support belongs in the workspace's `testing/`); see importProblems
 //
-// LEGACY_FILES is the exact list of misplaced integration tests still waiting for their slice.
-// A file leaves the list in the slice that moves it, and a stale entry fails the check, so the
-// list can only shrink. Never add to it: move the new test instead (structure-check.unit.test.mjs
-// pins the ceiling).
-//
 // Reads the working tree (tracked and untracked, minus ignored), so uncommitted moves count.
 // Usage: structure-check.mjs [root]. The default root is the repository holding this script.
 
@@ -21,8 +16,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-
-export const LEGACY_FILES = new Set([]);
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/(.+)$/;
 const BANNED_NAME = /^(utils?|helpers?|common|misc|manager|shared)$/;
@@ -35,7 +28,7 @@ function placementFault(sourcePath) {
   return null;
 }
 
-function fileProblems(file, sourcePath, legacy) {
+function fileProblems(file, sourcePath) {
   const problems = [];
   if (file.split("/").some((s) => BANNED_NAME.test(s.replace(/\..*$/, "")))) {
     problems.push(`${file}: generic name (utils, helpers, common, misc, manager, shared)`);
@@ -46,27 +39,14 @@ function fileProblems(file, sourcePath, legacy) {
     return problems;
   }
   const fault = placementFault(sourcePath);
-  if (fault && !legacy.has(file)) problems.push(`${file}: ${fault}`);
+  if (fault) problems.push(`${file}: ${fault}`);
   return problems;
 }
 
-function staleProblem(entry, present) {
-  if (!present.has(entry)) return `${entry}: stale LEGACY_FILES entry, file is gone: remove it`;
-  const match = SOURCE.exec(entry);
-  if (match && !placementFault(match[2]))
-    return `${entry}: stale LEGACY_FILES entry, now placed correctly: remove it`;
-  return undefined;
-}
-
-export function findProblems(files, legacy = LEGACY_FILES) {
-  const present = new Set(files);
+export function findProblems(files) {
   const scanned = files.filter((file) => SOURCE.test(file));
-  const problems = scanned.flatMap((file) => fileProblems(file, SOURCE.exec(file)[2], legacy));
+  const problems = scanned.flatMap((file) => fileProblems(file, SOURCE.exec(file)[2]));
   if (scanned.length === 0) problems.push("no source files scanned: wrong root or empty checkout");
-  for (const entry of legacy) {
-    const stale = staleProblem(entry, present);
-    if (stale) problems.push(stale);
-  }
   return problems;
 }
 

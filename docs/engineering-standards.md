@@ -30,7 +30,7 @@ Shorter code is never a reason to weaken security, correctness, transactions, co
 - Dependencies point inward: apps depend on packages, never the reverse; a package never imports an app; `packages/domain` imports no other workspace package. `.fallowrc.json` enforces the workspace zones (`pnpm run arch`).
 - Production code never imports from an `integration/` directory, and in `packages/db` and `apps/*` never from `testing/` (test-only support; some files back the `@contextvault/db/testing*` entries); Biome `noRestrictedImports` enforces it (tests and test-support files may).
 - An integration test imports only its own area's files and files outside integration areas. Support shared by two or more areas goes in the workspace's `testing/` (in `packages/db`, only some of it backs the `@contextvault/db/testing*` exports). `pnpm run structure` fails a relative import into another area.
-- `pnpm run structure` also enforces integration test placement, the `.ts` extension, and the no-generic-names rule. `LEGACY_FILES` lists, file by file, the integration tests not yet moved. It may only shrink, and a stale entry fails the check.
+- `pnpm run structure` also enforces integration test placement, the `.ts` extension, and the no-generic-names rule. There is no exemption list: a misplaced integration test fails the check.
 
 ## TypeScript
 

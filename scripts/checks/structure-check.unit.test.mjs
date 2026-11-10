@@ -4,11 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { findProblems, LEGACY_FILES } from "./structure-check.mjs";
+import { findProblems } from "./structure-check.mjs";
 
 const repo = fileURLToPath(new URL("../..", import.meta.url));
 const script = join(repo, "scripts/checks/structure-check.mjs");
-const none = new Set();
 const OK = "apps/api/src/documents/integration/a.integration.test.ts";
 
 describe("findProblems", () => {
@@ -18,61 +17,53 @@ describe("findProblems", () => {
       "apps/api/src/documents/integration/uploads/b.integration.test.ts",
       "packages/db/src/integration/rls/c.integration.test.ts",
     ];
-    expect(findProblems(files, none)).toEqual([]);
+    expect(findProblems(files)).toEqual([]);
   });
 
   it("rejects an integration test beside source", () => {
-    const problems = findProblems([OK, "apps/api/src/documents/a.integration.test.ts"], none);
+    const problems = findProblems([OK, "apps/api/src/documents/a.integration.test.ts"]);
     expect(problems).toHaveLength(1);
   });
 
   it("rejects a flat catch-all integration directory at the workspace root", () => {
-    const problems = findProblems([OK, "apps/api/src/integration/a.integration.test.ts"], none);
+    const problems = findProblems([OK, "apps/api/src/integration/a.integration.test.ts"]);
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("catch-all");
   });
 
   it("rejects integration tests that vitest would never run", () => {
     const files = [OK, "apps/web/src/integration/ui/a.integration.test.tsx"];
-    expect(findProblems(files, none)).toHaveLength(1);
+    expect(findProblems(files)).toHaveLength(1);
   });
 
-  it("tolerates only the exact legacy files", () => {
-    const listed = "packages/db/src/a.integration.test.ts";
-    const files = [OK, listed, "packages/db/src/b.integration.test.ts"];
-    const problems = findProblems(files, new Set([listed]));
-    expect(problems).toEqual([expect.stringContaining("packages/db/src/b.integration.test.ts")]);
-  });
-
-  it("rejects stale legacy entries: file gone, or already placed correctly", () => {
-    const legacy = new Set(["packages/db/src/gone.integration.test.ts", OK]);
-    const problems = findProblems([OK], legacy);
+  it("has no exemption: every misplaced integration test is rejected", () => {
+    const files = [
+      OK,
+      "packages/db/src/a.integration.test.ts",
+      "packages/db/src/b.integration.test.ts",
+    ];
+    const problems = findProblems(files);
     expect(problems).toHaveLength(2);
-    expect(problems.join("\n")).toContain("file is gone");
-    expect(problems.join("\n")).toContain("now placed correctly");
+    expect(problems.join("\n")).toContain("packages/db/src/a.integration.test.ts");
+    expect(problems.join("\n")).toContain("packages/db/src/b.integration.test.ts");
   });
 
   it("rejects generic names for files and directories", () => {
     const files = [OK, "apps/api/src/utils/a.ts", "packages/db/src/helpers.ts"];
-    expect(findProblems(files, none)).toHaveLength(2);
+    expect(findProblems(files)).toHaveLength(2);
   });
 
   it("allows names that merely contain a generic word", () => {
     expect(
-      findProblems([OK, "apps/api/src/session-manager.ts", "apps/api/src/shared-types.ts"], none),
+      findProblems([OK, "apps/api/src/session-manager.ts", "apps/api/src/shared-types.ts"]),
     ).toEqual([]);
   });
 
   it("fails when no source file is scanned", () => {
-    expect(
-      findProblems(["scripts/utils.mjs", "apps/web/e2e/a.integration.test.ts"], none),
-    ).toHaveLength(1);
-    expect(findProblems([], none)).toHaveLength(1);
-  });
-
-  it("never grows the legacy list", () => {
-    // Lower this number when a slice moves files. Raising it means a misplaced test was added.
-    expect(LEGACY_FILES.size).toBeLessThanOrEqual(0);
+    expect(findProblems(["scripts/utils.mjs", "apps/web/e2e/a.integration.test.ts"])).toHaveLength(
+      1,
+    );
+    expect(findProblems([])).toHaveLength(1);
   });
 });
 
