@@ -150,6 +150,13 @@ export {
   settleFailure,
 } from "./ingestion/settle-failure";
 export { StageFailure, type StageInput, type StageRunner } from "./ingestion/stage-runner";
+export {
+  fullySkipped,
+  type SweepBatch,
+  type SweepRecoveryDeps,
+  type SweepRecoveryResult,
+  sweepRecovery,
+} from "./ingestion/sweep-recovery";
 export { DomainError, TransactionOutcomeUnknown } from "./kernel/errors";
 export {
   type DocumentId,

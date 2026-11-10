@@ -21,6 +21,7 @@
       },
       { "name": "worker-queue", "patterns": ["apps/worker/src/queue/**"] },
       { "name": "worker-ingestion", "patterns": ["apps/worker/src/ingestion/**"] },
+      { "name": "worker-recovery", "patterns": ["apps/worker/src/recovery/**"] },
       {
         "name": "worker",
         "patterns": ["apps/worker/*", "apps/worker/src/*", "apps/worker/src/testing/**"]
@@ -78,7 +79,16 @@
       { "from": "api-workspaces", "allow": ["api-auth", "db", "domain"] },
       {
         "from": "worker",
-        "allow": ["worker-queue", "worker-ingestion", "config", "db", "domain", "ingestion", "ai"]
+        "allow": [
+          "worker-queue",
+          "worker-ingestion",
+          "worker-recovery",
+          "config",
+          "db",
+          "domain",
+          "ingestion",
+          "ai"
+        ]
       },
       {
         "from": "worker-queue",
@@ -88,6 +98,7 @@
         "from": "worker-ingestion",
         "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "ai"]
       },
+      { "from": "worker-recovery", "allow": ["worker", "worker-queue", "config", "db", "domain"] },
       { "from": "api-http", "allow": ["domain"] },
 
       { "from": "auth", "allow": ["domain"] },
