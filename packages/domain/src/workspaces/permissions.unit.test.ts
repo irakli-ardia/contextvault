@@ -9,6 +9,7 @@ const expected: Record<Action, Record<Role, boolean>> = {
   "document.read": { owner: true, admin: true, member: true },
   "document.upload": { owner: true, admin: true, member: true },
   "document.delete": { owner: true, admin: true, member: false },
+  "document.retry": { owner: true, admin: true, member: true },
 };
 const workspaceId = parseWorkspaceId("0b1c9d3e-5a7f-4c2d-8e1f-3a4b5c6d7e8f");
 const otherWorkspaceId = parseWorkspaceId("2b1c9d3e-5a7f-4c2d-8e1f-3a4b5c6d7e8f");

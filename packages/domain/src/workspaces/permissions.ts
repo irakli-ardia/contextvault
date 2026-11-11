@@ -9,6 +9,7 @@ export const actions = [
   "document.read",
   "document.upload",
   "document.delete",
+  "document.retry",
 ] as const;
 export type Action = (typeof actions)[number];
 
@@ -17,6 +18,7 @@ const allowed: Record<Action, readonly Role[]> = {
   "document.read": ["owner", "admin", "member"],
   "document.upload": ["owner", "admin", "member"],
   "document.delete": ["owner", "admin"],
+  "document.retry": ["owner", "admin", "member"],
 };
 
 export const can = (role: Role, action: Action): boolean => allowed[action].includes(role);

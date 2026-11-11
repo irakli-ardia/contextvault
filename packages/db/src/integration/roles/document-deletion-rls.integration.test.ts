@@ -112,7 +112,7 @@ describe("application role writes on document versions", () => {
     const doc = await seedDoc(h, wsA, "uploaded");
     expect(
       await sqlState(
-        h.fx.queryAs(as(userA, wsA), "update document_versions set attempt = 0 where id = $1", [
+        h.fx.queryAs(as(userA, wsA), "update document_versions set version_no = 2 where id = $1", [
           doc.versionId,
         ]),
       ),

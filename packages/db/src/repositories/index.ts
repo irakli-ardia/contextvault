@@ -1,6 +1,7 @@
 import type {
   DocumentDeletionRepository,
   DocumentRepository,
+  DocumentRetryRepository,
   UploadRepository,
   UserRepository,
   WorkspaceRepository,
@@ -8,6 +9,7 @@ import type {
 import type { Executor } from "../client";
 import { createDocumentDeletionRepository } from "./documents/document-deletion";
 import { createDocumentRepository } from "./documents/document-repository";
+import { createDocumentRetryRepository } from "./documents/document-retry";
 import { createUploadRepository } from "./documents/upload-repository";
 import { createUserRepository } from "./users/user-repository";
 import { createWorkspaceRepository } from "./workspaces/workspace-repository";
@@ -17,6 +19,7 @@ export interface Repositories {
   readonly workspaces: WorkspaceRepository;
   readonly documents: DocumentRepository;
   readonly documentDeletion: DocumentDeletionRepository;
+  readonly documentRetry: DocumentRetryRepository;
   readonly uploads: UploadRepository;
 }
 
@@ -26,6 +29,7 @@ export function createRepositories(executor: Executor): Repositories {
     workspaces: createWorkspaceRepository(executor),
     documents: createDocumentRepository(executor),
     documentDeletion: createDocumentDeletionRepository(executor),
+    documentRetry: createDocumentRetryRepository(executor),
     uploads: createUploadRepository(executor),
   };
 }

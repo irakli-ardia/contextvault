@@ -195,7 +195,7 @@ describe("writes", () => {
   it.each([
     ["update documents", "update documents set display_name = 'x'"],
     ["delete documents", "delete from documents"],
-    ["update document_versions", "update document_versions set attempt = 0"],
+    ["update document_versions", "update document_versions set version_no = 2"],
     ["delete document_versions", "delete from document_versions"],
     ["update pending_uploads", "update pending_uploads set declared_bytes = 1"],
     ["truncate documents", "truncate documents"],

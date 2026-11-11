@@ -56,6 +56,17 @@ export const outbox = pgTable(
         where v.workspace_id = ${table.workspaceId} and v.id = ${table.versionId}
           and v.status = 'uploaded')`,
     }),
+    // The retry command (M1.8b, migration 0019): the entry of a version that the same transaction
+    // just moved to `queued` with a fresh budget, of a live document. Insert only, no RETURNING.
+    pgPolicy("outbox_app_retry_insert", {
+      for: "insert",
+      to: appRole,
+      withCheck: sql`${inContextWorkspace(table.workspaceId)} and exists (
+        select 1 from "document_versions" v
+        join "documents" d on d.id = v.document_id and d.workspace_id = v.workspace_id
+        where v.workspace_id = ${table.workspaceId} and v.id = ${table.versionId}
+          and v.status = 'queued' and v.attempt = 0 and d.deleted_at is null)`,
+    }),
     pgPolicy("outbox_worker_discover", { for: "select", to: workerRole, using: sql`true` }),
     pgPolicy("outbox_worker_insert", {
       for: "insert",

@@ -4,6 +4,7 @@ import type { DocumentStore, UploadDocumentDeps } from "@contextvault/domain";
 import type { Provider } from "@nestjs/common";
 import { PERSISTENCE } from "../auth/tokens";
 import { DOCUMENT_STORE } from "../storage/tokens";
+import { RetryLimiter } from "./retry-limiter";
 import { UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "./tokens";
 import { UploadLimiter } from "./upload-limiter";
 
@@ -21,6 +22,7 @@ const defaultUploadTimeouts: UploadTimeouts = { idleMs: 15_000, totalMs: 120_000
 export function documentProviders(timeouts: UploadTimeouts = defaultUploadTimeouts): Provider[] {
   return [
     UploadLimiter,
+    { provide: RetryLimiter, useFactory: () => new RetryLimiter() },
     { provide: UPLOAD_TIMEOUTS, useValue: timeouts },
     {
       provide: UPLOAD_DEPS,

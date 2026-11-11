@@ -1,4 +1,5 @@
 import {
+  DocumentNotRetryable,
   HashingBusy,
   InvalidCredentials,
   PermissionDenied,
@@ -60,6 +61,7 @@ describe("ErrorFilter classification", () => {
     ["Unauthenticated", new Unauthenticated(), 401, "auth.unauthenticated"],
     ["PermissionDenied", new PermissionDenied("document.upload"), 403, "permission.denied"],
     ["WorkspaceAccessDenied", new WorkspaceAccessDenied(), 404, "not_found"],
+    ["DocumentNotRetryable", new DocumentNotRetryable(), 409, "document.not_retryable"],
     [
       "storage.unavailable",
       new StorageError("storage.unavailable", true),

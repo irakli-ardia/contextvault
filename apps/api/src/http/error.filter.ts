@@ -1,5 +1,6 @@
 import {
   DocumentNotFound,
+  DocumentNotRetryable,
   HashingBusy,
   InvalidCredentials,
   PermissionDenied,
@@ -59,6 +60,7 @@ const rules: readonly Rule[] = [
   // A non-member, a missing workspace, a malformed id, and an unknown route are one answer.
   when(WorkspaceAccessDenied, () => known(404, "not_found")),
   when(DocumentNotFound, () => known(404, "not_found")),
+  when(DocumentNotRetryable, (e) => known(409, e.code)),
   when(HashingBusy, () => ({ ...known(429, "auth.throttled"), headers: { "Retry-After": "1" } })),
   (error) => {
     const upload = uploadStatusOf(error);

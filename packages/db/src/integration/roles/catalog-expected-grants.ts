@@ -16,7 +16,8 @@ export const EXPECTED_GRANTS: Record<string, readonly string[]> = {
     "UPDATE(last_seen_at)",
     "UPDATE(revoked_at)",
   ],
-  // M1.7 delete command (migration 0017): the soft delete and the closing of the versions, nothing wider.
+  // M1.7 delete command (migration 0017): the soft delete and the closing of the versions; M1.8b
+  // retry (migration 0019) adds UPDATE(attempt) so a manual retry can reset the budget. Nothing wider.
   "public.documents": ["SELECT", "INSERT", "UPDATE(deleted_at)", "UPDATE(active_version_id)"],
   "public.document_versions": [
     "SELECT",
@@ -27,6 +28,7 @@ export const EXPECTED_GRANTS: Record<string, readonly string[]> = {
       "error_code",
       "error_retryable",
       "lease_generation",
+      "attempt",
       "updated_at",
     ].map((c) => `UPDATE(${c})`),
   ],

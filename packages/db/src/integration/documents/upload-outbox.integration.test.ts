@@ -142,8 +142,10 @@ describe("the application role's grant", () => {
   });
 
   it("denies a version that is no longer uploaded", async () => {
+    // A queued version with a fresh budget is the retry entry's case (policy outbox_app_retry_insert,
+    // migration 0019, pinned in document-retry-rls); a running one belongs to neither policy.
     const versionId = await bare();
-    await fx.fixture.query("update document_versions set status = 'queued' where id = $1", [
+    await fx.fixture.query("update document_versions set status = 'parsing' where id = $1", [
       versionId,
     ]);
     expect(await insert(inA, wsA, versionId)).toBe(DENIED);

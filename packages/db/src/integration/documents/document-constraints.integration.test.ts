@@ -147,6 +147,7 @@ describe("row security survives privileged migrations", () => {
       "document_versions:INSERT",
       "document_versions:SELECT",
       "document_versions:UPDATE", // the M1.7 closing (migration 0017)
+      "document_versions:UPDATE", // the M1.8b retry (migration 0019)
       "documents:INSERT",
       "documents:SELECT",
       "documents:UPDATE", // the M1.7 soft delete (migration 0017)

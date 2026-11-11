@@ -83,3 +83,10 @@ export class DocumentNotFound extends DomainError {
     super("document.not_found", "Document not found");
   }
 }
+
+/** The latest version is not a retryable failure (any other state, a non-retryable code, or a repeat). */
+export class DocumentNotRetryable extends DomainError {
+  constructor() {
+    super("document.not_retryable", "Document cannot be retried");
+  }
+}

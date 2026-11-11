@@ -92,6 +92,22 @@ export interface DocumentDeletionRepository {
   ): Promise<"deleted" | "already_deleted" | "not_found">;
 }
 
+export interface DocumentRetryRepository {
+  /**
+   * In the caller's transaction, in this order: locks the live document row (before any version
+   * row, the order every writer uses); moves its latest version from `failed` with a retryable
+   * error to `queued` (attempt 0, `lease_generation + 1`, no recorded failure) as one
+   * compare-and-set; inserts the outbox entry `outboxId` for it. `not_found` covers an absent,
+   * deleted or foreign document; `not_retryable` any other state of the latest version, including
+   * one already queued, and changes nothing.
+   */
+  retry(
+    workspaceId: WorkspaceId,
+    documentId: DocumentId,
+    outboxId: OutboxId,
+  ): Promise<"retried" | "not_found" | "not_retryable">;
+}
+
 /** Incremental SHA-256; the domain does not import `node:crypto`, so an adapter supplies it. */
 export interface Sha256 {
   update(chunk: Uint8Array): void;

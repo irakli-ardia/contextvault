@@ -18,6 +18,7 @@ export {
 } from "./documents/document";
 export {
   DocumentNotFound,
+  DocumentNotRetryable,
   type InterruptionReason,
   type ReservationState,
   StorageError,
@@ -53,6 +54,10 @@ export {
   maxListedDocuments,
   type ReadDocumentsDeps,
 } from "./documents/read-documents";
+export {
+  type RetryDocumentDeps,
+  retryDocument,
+} from "./documents/retry-document";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
 export {
   type UploadDocumentCommand,
@@ -63,6 +68,7 @@ export {
 export type {
   DocumentDeletionRepository,
   DocumentRepository,
+  DocumentRetryRepository,
   FinalizeResult,
   FinalizeUploadInput,
   PendingUpload,

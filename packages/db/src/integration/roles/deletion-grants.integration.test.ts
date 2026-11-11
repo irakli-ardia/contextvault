@@ -49,13 +49,15 @@ describe.each([ROLES.app, ROLES.worker])("%s holds no destructive document privi
 });
 
 describe("the application role's version columns", () => {
-  it("can UPDATE only the lifecycle columns the closing writes", async () => {
+  it("can UPDATE only the lifecycle columns the closing and the retry write", async () => {
+    // Migration 0017 granted the six lifecycle columns; 0019 adds attempt for the manual retry.
     const closing = [
       "status",
       "error_stage",
       "error_code",
       "error_retryable",
       "lease_generation",
+      "attempt",
       "updated_at",
     ];
     const columns = await pools.bootstrap.query<{ attname: string }>(
