@@ -4,6 +4,7 @@ export {
   deleteDocument,
 } from "./documents/delete-document";
 export {
+  type DocumentFailure,
   type DocumentMime,
   type DocumentSummary,
   documentMimes,
@@ -46,6 +47,12 @@ export {
   type PurgeUnitOfWork,
   purgePageLimit,
 } from "./documents/purge-ports";
+export {
+  getDocument,
+  listDocuments,
+  maxListedDocuments,
+  type ReadDocumentsDeps,
+} from "./documents/read-documents";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
 export {
   type UploadDocumentCommand,

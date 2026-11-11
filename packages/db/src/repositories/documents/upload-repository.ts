@@ -136,6 +136,7 @@ export function createUploadRepository(executor: Executor): UploadRepository {
             mime: input.mime,
             sizeBytes: input.sizeBytes,
             status: "uploaded",
+            error: null,
             createdAt: created.createdAt,
           },
         };

@@ -143,6 +143,7 @@ describe("finalization outcomes", () => {
       mime: "application/pdf",
       sizeBytes: 1,
       status: "uploaded",
+      error: null,
       createdAt: new Date(0),
       sha: "other",
       workspaceId: "00000000-0000-4000-8000-0000000000ff",

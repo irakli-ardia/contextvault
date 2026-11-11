@@ -163,14 +163,9 @@ export function fakeUpload() {
         return { outcome: "duplicate", document };
       }
       if (!reservations.delete(input.versionId)) throw new UploadReservationMissing();
-      const document = {
-        id: input.documentId,
-        displayName: input.displayName,
-        mime: input.mime,
-        sizeBytes: input.sizeBytes,
-        status: "uploaded" as const,
-        createdAt: new Date(0),
-      };
+      const { displayName, mime, sizeBytes } = input;
+      const common = { id: input.documentId, displayName, mime, sizeBytes, error: null };
+      const document = { ...common, status: "uploaded" as const, createdAt: new Date(0) };
       documents.set(input.documentId, { ...document, sha, workspaceId: input.workspaceId });
       if (faults.finalize === "throwAfterCommit") throw new Error("commit acknowledgement lost");
       return { outcome: "created", document };

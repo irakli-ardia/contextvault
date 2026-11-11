@@ -1,4 +1,5 @@
 import {
+  type DocumentFailure,
   type DocumentRepository,
   type DocumentSummary,
   isDocumentMime,
@@ -16,6 +17,13 @@ const latestStatus = sql<string | null>`(
   select v.status from "document_versions" v
   where v.document_id = "documents"."id" order by v.version_no desc limit 1)`;
 
+const latestErrorCode = sql<string | null>`(
+  select v.error_code from "document_versions" v
+  where v.document_id = "documents"."id" order by v.version_no desc limit 1)`;
+const latestErrorRetryable = sql<boolean | null>`(
+  select v.error_retryable from "document_versions" v
+  where v.document_id = "documents"."id" order by v.version_no desc limit 1)`;
+
 const columns = {
   id: documents.id,
   displayName: documents.displayName,
@@ -23,6 +31,8 @@ const columns = {
   sizeBytes: documents.sizeBytes,
   createdAt: documents.createdAt,
   status: latestStatus,
+  errorCode: latestErrorCode,
+  errorRetryable: latestErrorRetryable,
 };
 
 export function toSummary(row: {
@@ -32,6 +42,8 @@ export function toSummary(row: {
   sizeBytes: number;
   createdAt: Date;
   status: string | null;
+  errorCode: string | null;
+  errorRetryable: boolean | null;
 }): DocumentSummary {
   const { status, mime } = row;
   if (status === null || !isVersionStatus(status) || !isDocumentMime(mime)) {
@@ -43,8 +55,17 @@ export function toSummary(row: {
     mime,
     sizeBytes: row.sizeBytes,
     status,
+    error: status === "failed" ? toFailure(row.errorCode, row.errorRetryable) : null,
     createdAt: row.createdAt,
   };
+}
+
+// The code is written by the worker, a trusted but separate credential; anything that is not a
+// plain dotted identifier is reported as `internal` so no free text can reach a client.
+const stableCode = /^[a-z][a-z_]*(\.[a-z_]+)*$/;
+function toFailure(code: string | null, retryable: boolean | null): DocumentFailure {
+  const safe = code !== null && code.length <= 64 && stableCode.test(code);
+  return { code: safe ? code : "internal", retryable: safe && retryable === true };
 }
 
 export function createDocumentRepository(executor: Executor): DocumentRepository {

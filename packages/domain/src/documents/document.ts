@@ -20,13 +20,23 @@ export const isDocumentMime = (value: string): value is DocumentMime =>
 export const isVersionStatus = (value: string): value is VersionStatus =>
   versionStatuses.some((status) => status === value);
 
-/** A finalized document; `status` is the latest version's. Pending uploads never appear here. */
+/** The latest version's failure: a stable code (never document text) and the worker's verdict. */
+export interface DocumentFailure {
+  readonly code: string;
+  readonly retryable: boolean;
+}
+
+/**
+ * A finalized document; `status` and `error` are the latest version's (`error` only when it
+ * failed). Pending uploads never appear here.
+ */
 export interface DocumentSummary {
   readonly id: DocumentId;
   readonly displayName: string;
   readonly mime: DocumentMime;
   readonly sizeBytes: number;
   readonly status: VersionStatus;
+  readonly error: DocumentFailure | null;
   readonly createdAt: Date;
 }
 

@@ -6,6 +6,7 @@ import { type Role, roles } from "./workspace";
 
 const expected: Record<Action, Record<Role, boolean>> = {
   "workspace.read": { owner: true, admin: true, member: true },
+  "document.read": { owner: true, admin: true, member: true },
   "document.upload": { owner: true, admin: true, member: true },
   "document.delete": { owner: true, admin: true, member: false },
 };
