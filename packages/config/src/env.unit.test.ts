@@ -36,7 +36,12 @@ const API = {
   ...DATABASE,
   ...S3,
 };
-const WORKER = { NODE_ENV: "test", REDIS_URL: "redis://localhost:6379", ...WORKER_DATABASE };
+const WORKER = {
+  NODE_ENV: "test",
+  REDIS_URL: "redis://localhost:6379",
+  ...WORKER_DATABASE,
+  ...S3,
+};
 
 function messageOf(source: Record<string, string | undefined>): string {
   try {
@@ -203,14 +208,20 @@ describe("S3_ENDPOINT shape", () => {
 });
 
 describe("app schemas stay independent of what they do not read", () => {
-  it("the worker parses without DATABASE_URL or S3_*", () => {
-    expect(parseWorkerEnv(WORKER)).toEqual(WORKER);
+  it("the worker parses without DATABASE_URL", () => {
+    expect(parseWorkerEnv(WORKER)).toMatchObject({ REDIS_URL: WORKER.REDIS_URL });
   });
 
-  it("the worker ignores malformed DATABASE_URL and S3_* values", () => {
-    const bad = { DATABASE_URL: "nonsense", S3_ENDPOINT: "nonsense", S3_BUCKET: "" };
-    expect(() => parseWorkerEnv({ ...WORKER, ...bad })).not.toThrow();
+  it("the worker ignores a malformed DATABASE_URL", () => {
+    expect(() => parseWorkerEnv({ ...WORKER, DATABASE_URL: "nonsense" })).not.toThrow();
   });
+
+  it.each(["S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"])(
+    "the worker requires %s",
+    (name) => {
+      expect(() => parseWorkerEnv({ ...WORKER, [name]: undefined })).toThrow(name);
+    },
+  );
 
   it.each(["S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"])(
     "the api requires %s",

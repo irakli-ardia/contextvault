@@ -80,11 +80,11 @@ Never commit `.env.test` or put real credentials in `.env.test.example`; use the
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; `contextvault_owner`: owns the schema, not a superuser, bound by row-level security on forced tables. Never given to a running app |
 | `DATABASE_FIXTURE_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; `contextvault_fixture` (BYPASSRLS, data changes only): seeds and cleanup. Refused when `NODE_ENV=production`; never falls back to `DATABASE_URL` |
 | `DATABASE_BOOTSTRAP_URL` | test tooling (`.env.test`) | `postgres://` or `postgresql://` URL; the bootstrap superuser (`POSTGRES_USER`), for catalog probes only. Same rules as above |
-| `S3_ENDPOINT` | api | bare `http://` or `https://` origin (no path, query, or credentials); `https` in production |
-| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | api | non-empty |
-| `S3_REGION` | api | optional, defaults to `us-east-1` |
+| `S3_ENDPOINT` | api, worker | bare `http://` or `https://` origin (no path, query, or credentials); `https` in production |
+| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | api, worker | non-empty |
+| `S3_REGION` | api, worker | optional, defaults to `us-east-1` |
 
-The api requires `S3_*` at startup (the `DocumentStore` adapter, M1.3b); the worker needs nothing but Redis. `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
+The api and the worker require `S3_*` at startup (the `DocumentStore` adapter in `packages/storage`; the worker reads stored objects to parse them). `POSTGRES_*` (including `POSTGRES_APP_PASSWORD`) and `REDIS_PASSWORD` are read by Docker Compose only. A
 missing or malformed variable stops the process with a list of variable names and rules, never values:
 
 ```text

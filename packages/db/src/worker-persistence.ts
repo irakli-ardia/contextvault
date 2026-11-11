@@ -3,6 +3,7 @@ import type {
   OrphanSource,
   OrphanUnitOfWork,
   OutboxSource,
+  ParseSourceUnitOfWork,
   RecoverySource,
   RecoveryUnitOfWork,
 } from "@contextvault/domain";
@@ -12,6 +13,7 @@ import { createIngestionRepository } from "./repositories/ingestion/ingestion-re
 import { createOrphanRepository } from "./repositories/ingestion/orphan-repository";
 import { createOrphanSource } from "./repositories/ingestion/orphan-source";
 import { createOutboxSource } from "./repositories/ingestion/outbox-source";
+import { createParseSourceRepository } from "./repositories/ingestion/parse-source-repository";
 import { createRecoveryRepository } from "./repositories/ingestion/recovery-repository";
 import { createRecoverySource } from "./repositories/ingestion/recovery-source";
 import { runTransaction } from "./unit-of-work";
@@ -20,6 +22,7 @@ export interface WorkerPersistence {
   readonly unitOfWork: IngestionUnitOfWork;
   readonly recoveryUnitOfWork: RecoveryUnitOfWork;
   readonly orphanUnitOfWork: OrphanUnitOfWork;
+  readonly parseSourceUnitOfWork: ParseSourceUnitOfWork;
   readonly source: OutboxSource;
   readonly recoverySource: RecoverySource;
   readonly orphanSource: OrphanSource;
@@ -69,6 +72,15 @@ export function createWorkerPersistence(options: {
               orphan: createOrphanRepository(tx, context.workspaceId),
               ingestion: createIngestionRepository(tx, context.workspaceId),
             }),
+        ),
+    },
+    parseSourceUnitOfWork: {
+      run: (context, work, runOptions) =>
+        runTransaction(
+          db,
+          runOptions?.timeoutMs,
+          (tx) => establishWorkerContext(tx, context),
+          (tx) => work({ parseSource: createParseSourceRepository(tx, context.workspaceId) }),
         ),
     },
     source: createOutboxSource(db),

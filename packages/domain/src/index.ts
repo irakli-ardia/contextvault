@@ -117,6 +117,13 @@ export {
   processVersion,
 } from "./ingestion/process-version";
 export {
+  type ParseSourceRepository,
+  type ParseSourceUnitOfWork,
+  type ReadVersionBytesDeps,
+  type ReadVersionBytesInput,
+  readVersionBytes,
+} from "./ingestion/read-version-bytes";
+export {
   type RecoverExpiredLeaseDeps,
   type RecoverExpiredLeaseInput,
   type RecoverExpiredLeaseResult,

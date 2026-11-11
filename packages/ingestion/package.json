@@ -1,0 +1,21 @@
+{
+  "name": "@contextvault/ingestion",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./child": "./src/child-main.ts",
+    "./testing": "./src/pdf-test-support.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@contextvault/domain": "workspace:*",
+    "unpdf": "2.1.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2"
+  }
+}

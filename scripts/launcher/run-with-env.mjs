@@ -34,7 +34,7 @@ export const ALLOWLISTS = {
     "DATABASE_URL",
     ...S3,
   ],
-  worker: ["NODE_ENV", "REDIS_URL", "DATABASE_WORKER_URL"],
+  worker: ["NODE_ENV", "REDIS_URL", "DATABASE_WORKER_URL", ...S3],
   web: ["NODE_ENV", "API_INTERNAL_URL"],
 };
 

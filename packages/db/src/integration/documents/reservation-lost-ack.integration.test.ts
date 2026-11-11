@@ -95,7 +95,7 @@ describe("a reservation whose commit acknowledgement is lost", () => {
   it("is durable, is reported once, and nothing reaches storage", async () => {
     const put = vi.fn();
     const remove = vi.fn();
-    const store: DocumentStore = { put, head: vi.fn(), delete: remove };
+    const store: DocumentStore = { put, get: vi.fn(), head: vi.fn(), delete: remove };
     const onRetained = vi.fn();
     relay.arm();
     const result = await uploadDocument(

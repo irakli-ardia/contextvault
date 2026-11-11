@@ -1,8 +1,8 @@
 import type { ApiEnv } from "@contextvault/config";
 import { MAX_UPLOAD_BYTES } from "@contextvault/contracts";
 import type { DocumentStore } from "@contextvault/domain";
+import { createS3DocumentStore } from "@contextvault/storage";
 import type { Provider } from "@nestjs/common";
-import { createS3DocumentStore } from "./s3-document-store";
 import { DOCUMENT_STORE } from "./tokens";
 
 // Composition root for object storage; `main.ts` runs the bucket check before listening.

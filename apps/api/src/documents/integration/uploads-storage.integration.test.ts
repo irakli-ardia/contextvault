@@ -39,6 +39,7 @@ function faulty(mode: Mode, deleteFails = false): DocumentStore {
         else options?.signal?.addEventListener("abort", fail, { once: true });
       });
     },
+    get: (key, options) => real.get(key, options),
     head: (key) => {
       calls.push("head");
       return real.head(key);

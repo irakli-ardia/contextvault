@@ -84,8 +84,8 @@ describe("allowlists", () => {
     expect(buildEnv("api", fake(API), {})).toEqual(fake(API));
   });
 
-  it("worker is exactly NODE_ENV, REDIS_URL and DATABASE_WORKER_URL", () => {
-    const WORKER = ["NODE_ENV", "REDIS_URL", "DATABASE_WORKER_URL"];
+  it("worker is exactly NODE_ENV, REDIS_URL, DATABASE_WORKER_URL and S3_*", () => {
+    const WORKER = ["NODE_ENV", "REDIS_URL", "DATABASE_WORKER_URL", ...API.slice(-5)];
     expect(ALLOWLISTS.worker).toEqual(WORKER);
     const file = fake([...API, ...PRIVILEGED, "REDIS_URL", "DATABASE_WORKER_URL"]);
     expect(buildEnv("worker", file, {})).toEqual(fake(WORKER));

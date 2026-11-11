@@ -113,9 +113,11 @@ const webEnvSchema = z.object({
     .refine((url) => URL.canParse(url) && new URL(url).origin === url, "Must be a bare origin")
     .default("http://127.0.0.1:3001"),
 });
-const workerEnvSchema = workerDatabaseEnvSchema.extend({
-  REDIS_URL: z.url({ protocol: /^rediss?$/ }),
-});
+// Parsing reads the stored object, so the worker needs the same S3_* settings as the api.
+const workerEnvSchema = workerDatabaseEnvSchema
+  .extend(s3Fields)
+  .extend({ REDIS_URL: z.url({ protocol: /^rediss?$/ }) })
+  .superRefine(refineS3);
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;

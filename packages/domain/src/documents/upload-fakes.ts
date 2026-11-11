@@ -132,8 +132,8 @@ export function fakeUpload() {
         if (faults.deleteFails) throw new StorageError("storage.unavailable", true);
         objects.delete(key);
       }),
+    get: async (key) => objects.get(key) ?? null,
   };
-
   const uploads: UploadRepository = {
     async reserveUpload(input, quota) {
       if (faults.reserve === "rolledBack") throw new Error("deadlock detected");

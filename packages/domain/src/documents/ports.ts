@@ -39,6 +39,15 @@ export interface DocumentStore {
     length: number,
     options?: PutOptions,
   ): Promise<void>;
+  /**
+   * The whole object, or `null` when it does not exist. Never returns more than `maxBytes`: a
+   * longer object fails with `storage.too_large` before or while it is read. Aborting `signal`
+   * rejects with `storage.unavailable`.
+   */
+  get(
+    key: StorageKey,
+    options: { readonly maxBytes: number; readonly signal?: DeadlineSignal },
+  ): Promise<Uint8Array | null>;
   /** `null` when the object does not exist. */
   head(key: StorageKey): Promise<StoredObject | null>;
   /** Idempotent: deleting a missing object succeeds, so a failed delete can be repeated. */

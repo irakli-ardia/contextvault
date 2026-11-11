@@ -31,6 +31,7 @@
       { "name": "contracts", "patterns": ["packages/contracts/**"] },
       { "name": "domain", "patterns": ["packages/domain/**"] },
       { "name": "db", "patterns": ["packages/db/**"] },
+      { "name": "storage", "patterns": ["packages/storage/**"] },
       { "name": "ingestion", "patterns": ["packages/ingestion/**"] },
       { "name": "retrieval", "patterns": ["packages/retrieval/**"] },
       { "name": "ai", "patterns": ["packages/ai/**"] }
@@ -52,11 +53,15 @@
           "contracts",
           "db",
           "domain",
+          "storage",
           "retrieval",
           "ai"
         ]
       },
-      { "from": "api-testing", "allow": ["api", "api-storage", "auth", "config", "db", "domain"] },
+      {
+        "from": "api-testing",
+        "allow": ["api", "api-storage", "auth", "config", "db", "domain", "storage"]
+      },
       {
         "from": "api-auth",
         "allow": ["api-http", "api-testing", "auth", "config", "db", "domain"]
@@ -74,7 +79,7 @@
           "domain"
         ]
       },
-      { "from": "api-storage", "allow": ["config", "contracts", "domain"] },
+      { "from": "api-storage", "allow": ["config", "contracts", "domain", "storage"] },
       { "from": "api-health", "allow": ["api-auth", "api-testing"] },
       { "from": "api-workspaces", "allow": ["api-auth", "db", "domain"] },
       {
@@ -87,6 +92,7 @@
           "db",
           "domain",
           "ingestion",
+          "storage",
           "ai"
         ]
       },
@@ -96,7 +102,7 @@
       },
       {
         "from": "worker-ingestion",
-        "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "ai"]
+        "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "storage", "ai"]
       },
       { "from": "worker-recovery", "allow": ["worker", "worker-queue", "config", "db", "domain"] },
       { "from": "api-http", "allow": ["domain"] },
@@ -106,6 +112,8 @@
       { "from": "contracts", "allow": [] },
       { "from": "domain", "allow": [] },
       { "from": "db", "allow": ["auth", "config", "domain"] },
+      { "from": "storage", "allow": ["config", "domain"] },
+
       { "from": "ingestion", "allow": ["domain"] },
       { "from": "retrieval", "allow": ["domain"] },
       { "from": "ai", "allow": ["domain"] }

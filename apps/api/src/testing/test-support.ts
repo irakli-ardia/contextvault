@@ -3,12 +3,12 @@ import { createPasswordHasher } from "@contextvault/auth";
 import { loadDatabaseEnv, loadS3Env, parseApiEnv } from "@contextvault/config";
 import { createTenantFixture, type TenantFixture } from "@contextvault/db/testing";
 import { parsePassword, type UserId } from "@contextvault/domain";
+import { testS3Env } from "@contextvault/storage/testing";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 import { AppModule } from "../app.module";
 import { configureApp } from "../configure-app";
-import { testS3Env } from "../storage/testing/test-s3-env";
 
 // Refuses an unverified run before the app is built, so no S3 operation can reach a non-test bucket.
 export function s3Settings(): Record<string, string> {

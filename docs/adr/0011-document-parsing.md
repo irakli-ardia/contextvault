@@ -1,0 +1,22 @@
+# 0011 — Document parsing: unpdf, isolated child process, in-process hand-off
+
+Status: accepted — 2026-11-11
+
+## Context
+
+M1.5 turns stored bytes (TXT, Markdown, PDF) into a typed `ParsedDocument`. Documents are untrusted input, and PDF parsers are large attack surface. Three choices are hard to reverse: the PDF library, where parsing runs, and how its result reaches the next stage (M1.6 chunking) without a schema change.
+
+## Decision
+
+- **PDF library: `unpdf@2.1.0`** (MIT, no dependencies, serverless build of pdf.js, released 2026-10-30, past `minimumReleaseAge`). Text only: no rendering, OCR, canvas or native addon, so `allowBuilds` is untouched. Rejected: `pdfjs-dist` (optional native `@napi-rs/canvas`), `pdf-parse` (pins an old `pdfjs-dist`). Spike: extraction works under `node --permission` with a 128 MB heap; garbage and truncated input throw; `pdf.destroy()` is denied by the permission model, so the child never calls it and exits instead.
+- **Isolated child process.** The worker spawns `node --permission --allow-fs-read=<build directory> --max-old-space-size=192` with an empty environment and pipes. Bytes go in on stdin and one JSON line comes out on stdout. The build directory holds only our bundles (the entry and its chunks); the permission model denies file writes, other reads, child processes, workers and addons. The host kills the child (SIGKILL) on timeout (60 s), on cancellation, or when stdout passes the output cap, then waits for `close`. stderr is drained and discarded, never logged. The host re-validates the child's output with Zod against the limits, so a compromised child cannot return an oversized or malformed result. Residual risk: Node 24's permission model does not restrict network sockets; the child holds no secrets and has no network code, and OS-level sandboxing is a deployment concern (M5). `--max-old-space-size` bounds the JS heap only; input size is bounded by the 10 MiB limit before spawn.
+- **Hand-off by process memory, not storage.** `processVersion` always runs `parsing` then `chunking` in one delivery under one claim, and every recovery or retry returns to `queued` and restarts at `parsing`; no path resumes at `chunking`. A typed `ParsedDocument` therefore crosses the stage boundary through a worker-local `ParsedHandoff` keyed by `(versionId, leaseGeneration)`: the parsing stage `put`s it, the chunking stage `take`s it exactly once. The generation in the key stops a stale claim's result from being used by a newer one. Entries are removed on take, on re-parse of the same version, and by a size/age bound. Nothing is persisted, so no migration, no second copy of document text, and nothing to purge in M1.7. Rejected: a derived object in S3 (second location for document bodies, immutable-put conflicts on retry, purge work), a database column (migration), re-parsing in the chunking stage (twice the exposure and cost). Consequence: M1.6 must chunk in the same delivery; if it ever needs to retry chunking without re-parsing, it must decide persistence then.
+- **Shared storage package.** `packages/storage` holds the S3 `DocumentStore` adapter, used by the API and the worker (the worker is the second consumer). `DocumentStore.get(key, { maxBytes, signal })` returns the whole object or `null`, never more than `maxBytes`, and validates the key like every other method. Workspace isolation: the worker derives the key from ids loaded through the workspace-scoped (RLS) transaction, never from the job payload.
+- **Format and fields the worker cannot see.** The worker role is granted only ids and `deleted_at` on `documents` (migration 0008), not `mime`, `size_bytes` or `content_sha256`, and a grant needs a migration. So the child decides by signature (`%PDF-` is a PDF, anything else is strict UTF-8 text), Markdown and TXT are both `format: "text"` until M1.6 derives sections, and the content hash is not re-verified at parse time (the upload verified it; the object is immutable). Revisit with a grant migration if either is needed.
+- **Failures** are stable `parse.*` and `storage.*` codes carried by `StageFailure`; no message contains document text.
+
+## Consequences
+
+- One new runtime dependency (`unpdf`), bundled into the worker's child entry; `@aws-sdk/client-s3` moves from the API to `packages/storage`.
+- A worker restart loses a parsed result in flight; recovery re-runs the stage. Parsing is a pure function of the bytes, so the rerun is identical.
+- `parser_version` is not recorded (no column); revisit with M1.6.

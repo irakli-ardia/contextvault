@@ -3,13 +3,13 @@ import { assertArgon2Runtime } from "@contextvault/auth";
 import { EnvError, loadApiEnv } from "@contextvault/config";
 import { type Persistence, PrivilegeCheckFailed } from "@contextvault/db";
 import { StorageError } from "@contextvault/domain";
+import type { S3DocumentStore } from "@contextvault/storage";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import { PERSISTENCE } from "./auth/tokens";
 import { configureApp } from "./configure-app";
 import { fail, installProcessGuards } from "./process-guards";
-import type { S3DocumentStore } from "./storage/s3-document-store";
 import { DOCUMENT_STORE } from "./storage/tokens";
 
 async function bootstrap(): Promise<void> {

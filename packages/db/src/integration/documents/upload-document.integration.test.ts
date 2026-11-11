@@ -37,6 +37,7 @@ function memoryStore() {
       if (objects.has(key)) throw new StorageError("storage.conflict", false);
       objects.set(key, Buffer.concat(chunks));
     },
+    get: async (key) => objects.get(key) ?? null,
     head: async (key) => {
       const found = objects.get(key);
       return found === undefined ? null : { length: found.length };

@@ -9,8 +9,8 @@ import {
   type StorageKey,
 } from "@contextvault/domain";
 import { afterAll } from "vitest";
-import { createS3DocumentStore } from "../s3-document-store";
-import { testS3Env } from "../testing/test-s3-env";
+import { createS3DocumentStore } from "../../s3-document-store";
+import { testS3Env } from "../../testing/test-s3-env";
 
 // Runs against the isolated test stack's SeaweedFS (with-test-stack.mjs) or the GitHub Actions service. Keys are random, so concurrent runs
 // never collide; every object a test makes is deleted in afterAll, even after a failure.

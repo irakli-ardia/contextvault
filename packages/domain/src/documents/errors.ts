@@ -6,7 +6,8 @@ export type StorageErrorCode =
   | "storage.conflict"
   | "storage.invalid_key"
   | "storage.invalid_length"
-  | "storage.length_mismatch";
+  | "storage.length_mismatch"
+  | "storage.too_large";
 
 // Messages are fixed text and no cause is attached: provider errors can carry endpoints and
 // request details. `retryable` is true only when repeating the same call may succeed.

@@ -14,6 +14,7 @@
     "@contextvault/contracts": "workspace:*",
     "@contextvault/db": "workspace:*",
     "@contextvault/domain": "workspace:*",
+    "@contextvault/storage": "workspace:*",
     "@nestjs/common": "12.4.0",
     "@nestjs/core": "12.4.0",
     "@nestjs/platform-express": "12.4.0",
