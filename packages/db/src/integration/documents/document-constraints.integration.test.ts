@@ -146,8 +146,10 @@ describe("row security survives privileged migrations", () => {
     expect(policies.map((p) => `${p.tablename}:${p.cmd}`)).toEqual([
       "document_versions:INSERT",
       "document_versions:SELECT",
+      "document_versions:UPDATE", // the M1.7 closing (migration 0017)
       "documents:INSERT",
       "documents:SELECT",
+      "documents:UPDATE", // the M1.7 soft delete (migration 0017)
       "pending_uploads:DELETE",
       "pending_uploads:INSERT",
       "pending_uploads:SELECT",

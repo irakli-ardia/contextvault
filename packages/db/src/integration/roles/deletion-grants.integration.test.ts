@@ -2,11 +2,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { openRolePools, ROLES, scalar } from "./role-test-support";
 
 // Recovery discovery cannot see `documents` (worker RLS), so it cannot skip versions of deleted
-// documents. That is safe only while no application path can mark a document deleted without
-// closing its non-terminal versions (plan: m1-secure-document-ingestion, "HARD prerequisite").
-// Until the M1.7 delete command ships, nobody but the owner and fixture roles may write
-// `deleted_at` or remove a document. The M1.7 migration that grants the delete path must change
-// this test in the same commit, together with the atomic closing behaviour.
+// documents. That is safe only while every path that marks a document deleted also closes its
+// non-terminal versions in the same transaction (plan: m1-secure-document-ingestion, "Deleted-
+// document starvation"). M1.7 (migration 0017) grants that path to the application role and to
+// nobody else: the grants below are exactly the delete command's. Physical removal of rows is not
+// granted to anyone (purge is migration 0018, not built).
 const pools = openRolePools();
 afterAll(() => pools.close());
 
@@ -19,16 +19,18 @@ const can = (role: string, privilege: string, column?: string) =>
     column === undefined ? [role, privilege] : [role, privilege, column],
   );
 
-describe.each([ROLES.app, ROLES.worker])("%s cannot delete documents", (role) => {
+describe.each([ROLES.app, ROLES.worker])("%s holds no destructive document privilege", (role) => {
   it("cannot DELETE or TRUNCATE a document", async () => {
     expect(await can(role, "DELETE")).toBe(false);
     expect(await can(role, "TRUNCATE")).toBe(false);
   });
 
-  // The one reviewed exception: the worker's M1.6 activation sets active_version_id.
-  const updatable = role === ROLES.worker ? ["active_version_id"] : [];
-  it("cannot UPDATE any document column but the reviewed one, deleted_at included", async () => {
-    expect(await can(role, "UPDATE")).toBe(false);
+  // The reviewed exceptions: the worker's M1.6 activation sets active_version_id; the application
+  // role's delete command (M1.7) sets deleted_at and clears active_version_id.
+  const updatable =
+    role === ROLES.worker ? ["active_version_id"] : ["deleted_at", "active_version_id"];
+  it("can UPDATE only the reviewed document columns", async () => {
+    expect(await can(role, "UPDATE")).toBe(false); // no table-level grant
     const columns = await pools.bootstrap.query<{ attname: string }>(
       `select attname from pg_attribute
        where attrelid = 'public.documents'::regclass and attnum > 0 and not attisdropped`,
@@ -38,6 +40,32 @@ describe.each([ROLES.app, ROLES.worker])("%s cannot delete documents", (role) =>
       expect(await can(role, "UPDATE", attname), `UPDATE(${attname})`).toBe(
         updatable.includes(attname),
       );
+    }
+  });
+});
+
+describe("the application role's version columns", () => {
+  it("can UPDATE only the lifecycle columns the closing writes", async () => {
+    const closing = [
+      "status",
+      "error_stage",
+      "error_code",
+      "error_retryable",
+      "lease_generation",
+      "updated_at",
+    ];
+    const columns = await pools.bootstrap.query<{ attname: string }>(
+      `select attname from pg_attribute
+       where attrelid = 'public.document_versions'::regclass and attnum > 0 and not attisdropped`,
+    );
+    for (const { attname } of columns.rows) {
+      const granted = (
+        await pools.bootstrap.query<{ v: boolean }>(
+          "select has_column_privilege($1, 'public.document_versions', $2, 'UPDATE') as v",
+          [ROLES.app, attname],
+        )
+      ).rows[0]?.v;
+      expect(granted, `UPDATE(${attname})`).toBe(closing.includes(attname));
     }
   });
 });

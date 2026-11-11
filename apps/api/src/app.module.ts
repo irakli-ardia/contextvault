@@ -17,6 +17,7 @@ import { SessionCookies } from "./auth/session-cookies";
 import { WorkspaceGuard } from "./auth/workspace.guard";
 import { documentProviders, type UploadTimeouts } from "./documents/documents.providers";
 import { closeConnection } from "./documents/http/close-connection.middleware";
+import { DocumentsController } from "./documents/http/documents.controller";
 import { UploadsController } from "./documents/http/uploads.controller";
 import { HealthController } from "./health/health.controller";
 import { ErrorFilter } from "./http/error.filter";
@@ -36,7 +37,13 @@ export class AppModule implements NestModule {
   ): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, AuthController, WorkspacesController, UploadsController],
+      controllers: [
+        HealthController,
+        AuthController,
+        WorkspacesController,
+        UploadsController,
+        DocumentsController,
+      ],
       providers: [
         ...authProviders(env, options.hasher),
         ...storageProviders(env, options.store),

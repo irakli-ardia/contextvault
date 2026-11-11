@@ -76,3 +76,10 @@ export class UploadInterrupted extends DomainError {
     this.code = `upload.${reason}`;
   }
 }
+
+/** Absent, malformed id or another workspace's document: one answer, so ids cannot be probed. */
+export class DocumentNotFound extends DomainError {
+  constructor() {
+    super("document.not_found", "Document not found");
+  }
+}

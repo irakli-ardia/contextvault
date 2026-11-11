@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AuthController } from "../../auth/auth.controller";
 import { isPublicKey } from "../../auth/public.decorator";
+import { DocumentsController } from "../../documents/http/documents.controller";
 import { UploadsController } from "../../documents/http/uploads.controller";
 import { HealthController } from "../../health/health.controller";
 import {
@@ -45,6 +46,7 @@ describe("route inventory", () => {
       AuthController,
       WorkspacesController,
       UploadsController,
+      DocumentsController,
     ].flatMap((c) =>
       Object.getOwnPropertyNames(c.prototype)
         .map(

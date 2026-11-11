@@ -120,6 +120,13 @@
       "when": 1794378360192,
       "tag": "0016_derived_rows_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794380644803,
+      "tag": "0017_document_delete_path",
+      "breakpoints": true
     }
   ]
 }

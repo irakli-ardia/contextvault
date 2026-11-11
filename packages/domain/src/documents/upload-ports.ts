@@ -78,6 +78,20 @@ export interface DocumentRepository {
   findById(workspaceId: WorkspaceId, documentId: DocumentId): Promise<DocumentSummary | null>;
 }
 
+export interface DocumentDeletionRepository {
+  /**
+   * In the caller's transaction, in this order: locks the document row (before any version row,
+   * the order every writer uses); if live, sets `deleted_at`, clears `active_version_id`, and moves
+   * every non-terminal version to `failed` / `document.deleted` (not retryable, no stage) with
+   * `lease_generation + 1`, so a running worker loses its fence. `ready` versions are unchanged.
+   * `already_deleted` changes nothing; `not_found` covers an absent document or another workspace's.
+   */
+  softDelete(
+    workspaceId: WorkspaceId,
+    documentId: DocumentId,
+  ): Promise<"deleted" | "already_deleted" | "not_found">;
+}
+
 /** Incremental SHA-256; the domain does not import `node:crypto`, so an adapter supplies it. */
 export interface Sha256 {
   update(chunk: Uint8Array): void;

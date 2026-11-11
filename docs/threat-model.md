@@ -75,7 +75,7 @@ untrusted     one origin         auth, workspaces    app role, RLS       Redis o
 | Session theft or fixation | `HttpOnly` cookie, hashed tokens, new token per login, server-side revocation; no JavaScript access | M5 CSP and HSTS | HTTPS only, HSTS, and a Content Security Policy |
 | Cross-site request forgery | Exact `Origin` match on unsafe methods plus `SameSite=Lax` | Revisit if a second origin or a non-browser client appears | Production `WEB_ORIGIN` over HTTPS |
 | Other browser-facing hardening | Not built: CSP, HSTS, framing policy | M5 | Security headers beyond `nosniff` and `no-store` |
-| Retention and deletion | Not built | M1 delete path | Documented retention and export or deletion policy; audit logs for sensitive mutations |
+| Retention and deletion | Soft delete only (M1.7): `DELETE /workspaces/:id/documents/:id` for owners and admins hides the document, clears its active version and closes its in-flight versions. Stored objects, sections and chunks are NOT physically removed until the purge (migration 0018, not built) | M1.7 purge | Documented retention and export or deletion policy; audit logs for sensitive mutations |
 
 ## Known gaps in the current code
 

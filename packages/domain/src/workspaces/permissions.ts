@@ -4,12 +4,13 @@ import { WorkspaceAccessDenied } from "./errors";
 import type { Role } from "./workspace";
 
 // A row is added only when the endpoint that needs it exists.
-export const actions = ["workspace.read", "document.upload"] as const;
+export const actions = ["workspace.read", "document.upload", "document.delete"] as const;
 export type Action = (typeof actions)[number];
 
 const allowed: Record<Action, readonly Role[]> = {
   "workspace.read": ["owner", "admin", "member"],
   "document.upload": ["owner", "admin", "member"],
+  "document.delete": ["owner", "admin"],
 };
 
 export const can = (role: Role, action: Action): boolean => allowed[action].includes(role);

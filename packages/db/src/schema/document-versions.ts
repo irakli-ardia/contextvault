@@ -82,6 +82,21 @@ export const documentVersions = pgTable(
       to: appRole,
       withCheck: inContextWorkspace(table.workspaceId),
     }),
+    // The delete command closes the non-terminal versions of a document that is already deleted
+    // (documents are locked and updated first). The only admitted result is the closed state; the
+    // column grant (migration 0017) limits which columns can change.
+    pgPolicy("document_versions_app_close", {
+      for: "update",
+      to: appRole,
+      using: sql`${inContextWorkspace(table.workspaceId)}
+        and ${table.status} in ('uploaded', 'queued', 'parsing', 'chunking')
+        and exists (select 1 from "documents" d
+          where d.id = ${table.documentId} and d.workspace_id = ${table.workspaceId}
+            and d.deleted_at is not null)`,
+      withCheck: sql`${inContextWorkspace(table.workspaceId)} and ${table.status} = 'failed'
+        and ${table.errorCode} = 'document.deleted' and ${table.errorRetryable} = false
+        and ${table.errorStage} is null`,
+    }),
     // Discovery: every workspace's lifecycle metadata, nothing else (column grant, migration 0008).
     pgPolicy("document_versions_worker_discover", {
       for: "select",

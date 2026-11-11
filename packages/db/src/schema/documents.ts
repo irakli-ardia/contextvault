@@ -74,6 +74,15 @@ export const documents = pgTable(
       to: appRole,
       withCheck: sql`${inContextWorkspace(table.workspaceId)} and ${table.createdBy} = ${currentUserId}`,
     }),
+    // The delete command (M1.7, migration 0017): a live document becomes deleted and loses its
+    // active pointer in one step. Column grant: deleted_at and active_version_id only. The role
+    // check (owner or admin) is the application's; the database binds workspace and membership.
+    pgPolicy("documents_app_delete", {
+      for: "update",
+      to: appRole,
+      using: sql`${inContextWorkspace(table.workspaceId)} and ${table.deletedAt} is null`,
+      withCheck: sql`${inContextWorkspace(table.workspaceId)} and ${table.deletedAt} is not null and ${table.activeVersionId} is null`,
+    }),
     // Read-only recheck of `deleted_at` inside the job's workspace (column grant, migration 0008).
     pgPolicy("documents_worker_select", {
       for: "select",

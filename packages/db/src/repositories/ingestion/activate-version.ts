@@ -9,7 +9,7 @@ const chunkBatch = 1_000;
 /**
  * The fenced chunking -> ready transition and everything that goes with it, in the caller's
  * transaction. The version row is locked first (that decides ownership, so a stale or cancelled run
- * writes nothing), the derived rows are inserted while it is still `chunking` (the database refuses
+ * writes nothing; the document is locked before it, see below), the derived rows are inserted while it is still `chunking` (the database refuses
  * them otherwise), and only then does it become `ready`, which the database refuses without chunks.
  * Raw SQL for the same reason as `claim`: Drizzle leaves single-table column references
  * unqualified, which the correlated subqueries would capture.
@@ -26,14 +26,20 @@ export async function activateVersion(
   }
   const fence = sql`dv.id = ${versionId} and dv.workspace_id = ${workspaceId}
       and dv.lease_generation = ${leaseGeneration} and dv.status = 'chunking'`;
+  // Lock order is document, then version: the order of the delete command, so the two never wait
+  // on each other in a cycle. A deleted document is refused here, and once this lock is held no
+  // delete can commit before this transaction ends. Only the document row is locked; the version
+  // row is read, and locked by the next statement.
   const locked = await executor.execute<{ document_id: string }>(sql`
-    select dv.document_id from document_versions dv
-    where ${fence}
-      and exists (select 1 from documents d
-        where d.id = dv.document_id and d.workspace_id = dv.workspace_id and d.deleted_at is null)
-    for no key update of dv`);
+    select d.id as document_id from documents d
+    join document_versions dv on dv.document_id = d.id and dv.workspace_id = d.workspace_id
+    where dv.id = ${versionId} and dv.workspace_id = ${workspaceId} and d.deleted_at is null
+    for no key update of d`);
   const [version] = locked.rows;
   if (version === undefined) return false;
+  const owned = await executor.execute(sql`
+    select 1 from document_versions dv where ${fence} for no key update of dv`);
+  if (owned.rows.length === 0) return false;
 
   await executor
     .insert(sections)
@@ -57,17 +63,10 @@ export async function activateVersion(
   // The row is locked by this transaction, so a miss means the fence changed under it: undo it all.
   if (ready.rows.length === 0) throw new Error("Activation lost its version");
 
-  // Lock the document in its own statement first. Under READ COMMITTED a statement's subqueries
-  // use its start snapshot, so without this a newer version that commits while this waits for the
-  // row would be invisible to the guard below and the pointer would move backwards.
+  // Moves the pointer only forward. The document lock was taken before this statement started, so
+  // a newer version that committed while this waited is visible to the guard. The policy on
+  // documents refuses the same case, so this guard is not the only one.
   await executor.execute(sql`
-    select 1 from documents
-    where id = ${version.document_id} and workspace_id = ${workspaceId}
-    for no key update`);
-
-  // Moves the pointer only forward: when a newer version is already ready, this one is ready but
-  // not active. The policy on documents refuses the same case, so this guard is not the only one.
-  const activated = await executor.execute(sql`
     update documents d set active_version_id = ${versionId}
     where d.id = ${version.document_id} and d.workspace_id = ${workspaceId}
       and d.deleted_at is null
@@ -75,11 +74,6 @@ export async function activateVersion(
         where n.document_id = d.id and n.workspace_id = d.workspace_id and n.status = 'ready'
           and n.version_no > (select version_no from document_versions where id = ${versionId}))
     returning d.id`);
-  if (activated.rows.length > 0) return true;
-  const live = await executor.execute(sql`
-    select 1 from documents
-    where id = ${version.document_id} and workspace_id = ${workspaceId} and deleted_at is null`);
-  // Deleted between the statements: not a verdict, so undo everything and let recovery decide.
-  if (live.rows.length === 0) throw new Error("Activation lost its document");
+  // Zero rows means a newer version is already ready: this one is ready but not active.
   return true;
 }

@@ -1,4 +1,9 @@
 export {
+  type DeleteDocumentDeps,
+  type DeleteDocumentOutcome,
+  deleteDocument,
+} from "./documents/delete-document";
+export {
   type DocumentMime,
   type DocumentSummary,
   documentMimes,
@@ -11,6 +16,7 @@ export {
   versionStatuses,
 } from "./documents/document";
 export {
+  DocumentNotFound,
   type InterruptionReason,
   type ReservationState,
   StorageError,
@@ -31,6 +37,7 @@ export {
   uploadDocument,
 } from "./documents/upload-document";
 export type {
+  DocumentDeletionRepository,
   DocumentRepository,
   FinalizeResult,
   FinalizeUploadInput,
