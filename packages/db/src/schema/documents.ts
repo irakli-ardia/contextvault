@@ -34,6 +34,10 @@ export const documents = pgTable(
     mime: text("mime").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     contentSha256: bytea("content_sha256").notNull(),
+    // The version retrieval reads, set only by the worker's activation (column grant, 0015). Its
+    // foreign key to document_versions(document_id, id) is raw SQL in migration 0015: stating it
+    // here would make this file and document-versions.ts import each other.
+    activeVersionId: uuid("active_version_id"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdBy: uuid("created_by")
       .notNull()
@@ -75,6 +79,21 @@ export const documents = pgTable(
       for: "select",
       to: workerRole,
       using: inWorkerWorkspace(table.workspaceId),
+    }),
+    // Activation sets `active_version_id` and nothing else (column grant, migration 0015).
+    pgPolicy("documents_worker_activate", {
+      for: "update",
+      to: workerRole,
+      using: inWorkerWorkspace(table.workspaceId),
+      // The new pointer must name a ready version of this same, live document, and no other ready
+      // version of it may be newer: an older version finishing late cannot replace a newer one.
+      withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.deletedAt} is null and exists (
+        select 1 from "document_versions" v
+        where v.id = ${table.activeVersionId} and v.document_id = ${table.id}
+          and v.workspace_id = ${table.workspaceId} and v.status = 'ready'
+          and not exists (select 1 from "document_versions" n
+            where n.document_id = v.document_id and n.workspace_id = v.workspace_id
+              and n.status = 'ready' and n.version_no > v.version_no))`,
     }),
   ],
 ).enableRLS();

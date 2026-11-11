@@ -40,6 +40,7 @@ function setup(heartbeat: IngestionRepository["heartbeat"], stage: () => Promise
         claim: unused,
         transition: unused,
         failVersion: unused,
+        activate: unused,
         insertOutbox: unused,
         markDispatched: unused,
         heartbeat: (beat) => {
@@ -56,7 +57,11 @@ function setup(heartbeat: IngestionRepository["heartbeat"], stage: () => Promise
   };
   const onLost = vi.fn();
   const log = vi.fn();
-  const inner: StageRunner = { run: stage };
+  const inner: StageRunner = {
+    run: async () => {
+      await stage();
+    },
+  };
   const runner = withHeartbeat(inner, {
     uow,
     intervalMs: 1_000,

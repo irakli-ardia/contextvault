@@ -73,6 +73,7 @@ export {
   type SessionTokenHash,
   type SessionTokens,
 } from "./identity/tokens";
+export type { ChunkSet, NewChunk, NewSection } from "./ingestion/chunk-set";
 export {
   type DispatchFailure,
   type DispatchOutboxDeps,

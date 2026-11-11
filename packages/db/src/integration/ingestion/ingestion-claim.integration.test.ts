@@ -13,7 +13,7 @@ const { wsA, wsB, run } = h;
 
 afterAll(() => h.close());
 
-type Target = "queued" | "chunking" | "processed";
+type Target = "queued" | "chunking";
 
 const claim = (versionId: DocumentVersionId, ws: WorkspaceId = wsA) =>
   run(ws, (r) => r.claim({ versionId }));
@@ -144,24 +144,23 @@ describe("fenced steps", () => {
     return { id, gen: claimed.leaseGeneration };
   };
 
-  it("advances parsing to chunking to processed with the claimed generation", async () => {
+  it("advances parsing to chunking with the claimed generation", async () => {
     const { id, gen } = await running();
     expect(await step(id, gen, "parsing", "chunking")).toBe(true);
-    expect(await step(id, gen, "chunking", "processed")).toBe(true);
-    expect(await h.row(id)).toMatchObject({ status: "processed", lease_generation: gen });
+    expect(await h.row(id)).toMatchObject({ status: "chunking", lease_generation: gen });
   });
 
   it("refuses a stale generation, a wrong source status and another workspace", async () => {
     const { id, gen } = await running();
     expect(await step(id, gen + 1, "parsing", "chunking")).toBe(false);
-    expect(await step(id, gen, "chunking", "processed")).toBe(false);
+    expect(await step(id, gen, "chunking", "queued")).toBe(false);
     expect(await step(id, gen, "parsing", "chunking", wsB)).toBe(false);
     expect(await h.row(id)).toMatchObject({ status: "parsing" });
   });
 
   it("rejects an illegal transition before touching the row", async () => {
     const { id, gen } = await running();
-    await expect(step(id, gen, "parsing", "processed")).rejects.toThrow("Illegal transition");
+    await expect(step(id, gen, "queued", "chunking")).rejects.toThrow("Illegal transition");
     expect(await h.row(id)).toMatchObject({ status: "parsing" });
   });
 
@@ -182,7 +181,7 @@ describe("fenced steps", () => {
     expect(await beat(id, gen + 1)).toBe(false);
     expect(await beat(id, gen, wsB)).toBe(false);
     await step(id, gen, "parsing", "chunking");
-    await step(id, gen, "chunking", "processed");
+    await step(id, gen, "chunking", "queued");
     expect(await beat(id, gen)).toBe(false);
   });
 

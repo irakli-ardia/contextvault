@@ -59,6 +59,7 @@ async function bootstrap(): Promise<void> {
       ),
     parse: (bytes, signal) => parseInChild(bytes, signal, { childPath: parserChildPath }),
     handoff: createParsedHandoff(),
+    newId: randomUUID,
   });
   const consumer = await createIngestionConsumer({
     redisUrl: env.REDIS_URL,

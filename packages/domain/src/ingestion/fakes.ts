@@ -6,6 +6,7 @@ import {
   parseOutboxId,
   parseWorkspaceId,
 } from "../kernel/ids";
+import type { ChunkSet } from "./chunk-set";
 import { canTransition, type IngestionFailure, isRunning, maxAttempts } from "./lifecycle";
 import type {
   IngestionRepository,
@@ -47,6 +48,7 @@ export function fakeIngestion() {
     enqueue: false,
     listDue: false,
     transition: false,
+    activate: false,
     listDispatched: false,
     insertOutbox: false,
     /** Another worker claims the version between the read and the write. */
@@ -56,6 +58,8 @@ export function fakeIngestion() {
   };
   /** Versions whose enqueue always fails, while the queue works for the rest. */
   const poisoned = new Set<string>();
+  /** What activation persisted, by version. */
+  const activations = new Map<string, ChunkSet>();
   const log: string[] = [];
   let open = false;
 
@@ -114,6 +118,14 @@ export function fakeIngestion() {
       if (!row || row.status !== from || row.leaseGeneration !== leaseGeneration) return false;
       if (!canTransition(from, to)) throw new Error(`illegal transition ${from} -> ${to}`);
       versions.set(id, { ...row, status: to });
+      return true;
+    },
+    activate: async ({ versionId: id, leaseGeneration, chunkSet }) => {
+      if (faults.activate) throw new Error("connection lost");
+      const row = versions.get(id);
+      if (row?.status !== "chunking" || row.leaseGeneration !== leaseGeneration) return false;
+      versions.set(id, { ...row, status: "ready" });
+      activations.set(id, chunkSet);
       return true;
     },
     failVersion: async ({ versionId: id, leaseGeneration, from, failure }) => {
@@ -181,6 +193,7 @@ export function fakeIngestion() {
     jobs,
     log,
     versions,
+    activations,
     outbox,
     newId: () => uuid(++counter),
     addVersion(n: number, status: VersionStatus, over: Partial<IngestionVersion> = {}) {

@@ -16,10 +16,11 @@ import {
   parseWorkspaceId,
   processVersion,
   readVersionBytes,
+  type StageInput,
   type StorageKey,
   type WorkspaceId,
 } from "@contextvault/domain";
-import { parseInChild, parseLimits } from "@contextvault/ingestion";
+import { type ParsedDocument, parseInChild, parseLimits } from "@contextvault/ingestion";
 import { createS3DocumentStore } from "@contextvault/storage";
 import { testS3Env } from "@contextvault/storage/testing";
 import { createIngestionStages } from "../ingestion-stages";
@@ -74,6 +75,10 @@ export function pipeline(
   h: Harness,
   childPath: string,
   wrap: (s: DocumentStore) => DocumentStore = (s) => s,
+  parse: (bytes: Uint8Array, signal: StageInput["signal"]) => Promise<ParsedDocument> = (
+    bytes,
+    signal,
+  ) => parseInChild(bytes, signal, { childPath }),
 ) {
   const handoff = createParsedHandoff();
   const readStore = wrap(store);
@@ -83,8 +88,9 @@ export function pipeline(
         { uow: h.worker.parseSourceUnitOfWork, store: readStore },
         { ...input, maxBytes: parseLimits.maxInputBytes },
       ),
-    parse: (bytes, signal) => parseInChild(bytes, signal, { childPath }),
+    parse,
     handoff,
+    newId: randomUUID,
   });
   return {
     handoff,

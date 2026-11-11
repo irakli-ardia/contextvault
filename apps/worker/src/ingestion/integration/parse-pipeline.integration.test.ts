@@ -21,13 +21,100 @@ const run = async (body: Uint8Array | null, ws = wsA) => {
   return { ...seeded, result, row: await h.row(seeded.versionId) };
 };
 
+const storedChunks = async (versionId: string) =>
+  (
+    await h.fx.fixture.query<{
+      content: string;
+      start_offset: number;
+      end_offset: number;
+      page: number | null;
+    }>(
+      `select c.content, c.start_offset, c.end_offset, s.page from chunks c
+       join sections s on s.id = c.section_id where c.version_id = $1 order by c.ordinal`,
+      [versionId],
+    )
+  ).rows;
+const activeVersion = async (versionId: string) =>
+  (
+    await h.fx.fixture.query<{ a: string | null }>(
+      `select d.active_version_id as a from documents d
+       join document_versions v on v.document_id = d.id where v.id = $1`,
+      [versionId],
+    )
+  ).rows[0]?.a;
+
 describe("parsing through the worker", () => {
-  it("parses text and PDF to the terminal processed state", async () => {
+  it("parses text and PDF to the ready state, with chunks", async () => {
     const text = await run(utf8("გამარჯობა\r\nworld"));
     expect(text.result).toEqual({ outcome: "processed" });
-    expect(text.row).toMatchObject({ status: "processed", attempt: 1, error_code: null });
+    expect(text.row).toMatchObject({ status: "ready", attempt: 1, error_code: null });
     const pdf = await run(buildPdf(["Hello world", "Second page"]));
-    expect(pdf.row.status).toBe("processed");
+    expect(pdf.row.status).toBe("ready");
+
+    const chunks = await storedChunks(text.versionId);
+    expect(chunks).toEqual([
+      { content: "გამარჯობა\nworld", start_offset: 0, end_offset: 15, page: null },
+    ]);
+    expect((await storedChunks(pdf.versionId)).map((c) => [c.content, c.page])).toEqual([
+      ["Hello world", 1],
+      ["Second page", 2],
+    ]);
+    expect(await activeVersion(text.versionId)).toBe(text.versionId);
+  });
+
+  it("chunks a long text deterministically, with offsets that round-trip", async () => {
+    const body = "ქართული ტექსტი 😀 ".repeat(600);
+    const { versionId, row } = await run(utf8(body));
+    expect(row.status).toBe("ready");
+    const chunks = await storedChunks(versionId);
+    expect(chunks.length).toBeGreaterThan(2);
+    for (const c of chunks) expect(body.slice(c.start_offset, c.end_offset)).toBe(c.content);
+    expect(chunks.at(-1)?.end_offset).toBe(body.length);
+  });
+
+  it("persists every chunk of the largest supported document, without truncation", async () => {
+    const unit = "lorem ipsum dolor sit amet ";
+    const body = unit
+      .repeat(Math.ceil(parseLimits.maxChars / unit.length))
+      .slice(0, parseLimits.maxChars);
+    const { versionId, row } = await run(utf8(body));
+    expect(row.status).toBe("ready");
+    const chunks = await storedChunks(versionId);
+    expect(chunks.length).toBeGreaterThan(1_000);
+    expect(chunks.at(-1)?.end_offset).toBe(body.length);
+    chunks.forEach((c, i) => {
+      expect(c.start_offset).toBeLessThan(c.end_offset);
+      if (i > 0) expect(c.start_offset).toBeLessThanOrEqual(chunks[i - 1]?.end_offset ?? 0);
+    });
+    const { rows } = await h.fx.fixture.query<{ n: string; ords: string }>(
+      "select count(*) as n, count(distinct ordinal) as ords from chunks where version_id = $1",
+      [versionId],
+    );
+    expect(rows[0]).toEqual({ n: String(chunks.length), ords: String(chunks.length) });
+  }, 60_000);
+
+  it("fails a document the parser accepted but that holds no visible text, with chunk.no_content", async () => {
+    const seeded = await seedWithObject(h, wsA, utf8("x"));
+    const blank = async () => ({ format: "text" as const, text: " \n\t " });
+    const result = await pipeline(h, childPath, (s) => s, blank).process(wsA, seeded.versionId);
+    expect(result).toMatchObject({
+      outcome: "failed",
+      failure: { stage: "chunking", code: "chunk.no_content", retryable: false },
+    });
+    expect(await h.row(seeded.versionId)).toMatchObject({
+      status: "failed",
+      error_stage: "chunking",
+      error_code: "chunk.no_content",
+    });
+    expect(await storedChunks(seeded.versionId)).toEqual([]);
+    expect(await activeVersion(seeded.versionId)).toBeNull();
+  });
+
+  it("leaves no chunks and no active version when parsing fails", async () => {
+    const { versionId, row } = await run(new Uint8Array([0xc3, 0x28]));
+    expect(row.status).toBe("failed");
+    expect(await storedChunks(versionId)).toEqual([]);
+    expect(await activeVersion(versionId)).toBeNull();
   });
 
   it.each([
@@ -82,14 +169,14 @@ describe("parsing through the worker", () => {
     outage = false;
     await h.makeDue(versionId);
     expect(await flaky.process(wsA, versionId)).toEqual({ outcome: "processed" });
-    expect(await h.row(versionId)).toMatchObject({ status: "processed", attempt: 2 });
+    expect(await h.row(versionId)).toMatchObject({ status: "ready", attempt: 2 });
   });
 
   it("makes a repeated delivery of a finished version a no-op", async () => {
     const { versionId, row } = await run(utf8("once"));
     const again = await pipeline(h, childPath).process(wsA, versionId);
     expect(again).toEqual({ outcome: "refused" });
-    expect(await h.row(versionId)).toMatchObject({ attempt: row.attempt, status: "processed" });
+    expect(await h.row(versionId)).toMatchObject({ attempt: row.attempt, status: "ready" });
   });
 
   it("stops without writing when the job is cancelled, and leaves the lease to recovery", async () => {

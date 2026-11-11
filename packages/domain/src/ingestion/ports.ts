@@ -1,6 +1,7 @@
 import type { VersionStatus } from "../documents/document";
 import type { DocumentVersionId, OutboxId, WorkspaceId } from "../kernel/ids";
 import type { UnitOfWorkOptions } from "../kernel/unit-of-work";
+import type { ChunkSet } from "./chunk-set";
 import type { IngestionFailure } from "./lifecycle";
 
 /** The worker acts for no user: it asserts one workspace, and RLS confines the transaction to it. */
@@ -93,7 +94,18 @@ export interface IngestionRepository {
     readonly versionId: DocumentVersionId;
     readonly leaseGeneration: number;
     readonly from: VersionStatus;
-    readonly to: "queued" | "chunking" | "processed";
+    readonly to: "queued" | "chunking";
+  }): Promise<boolean>;
+  /**
+   * The only way a version becomes `ready`, in one statement chain and one transaction: the
+   * fenced `chunking` to `ready` transition (the document must not be deleted), the sections and
+   * chunks, and the document's `active_version_id`. `false` writes nothing: the generation or
+   * status moved on, or the document was deleted. A failure part-way rolls the transaction back.
+   */
+  activate(input: {
+    readonly versionId: DocumentVersionId;
+    readonly leaseGeneration: number;
+    readonly chunkSet: ChunkSet;
   }): Promise<boolean>;
   /** Same compare-and-set, ending in `failed` with the failure recorded. */
   failVersion(input: {

@@ -25,7 +25,9 @@ describe.each([ROLES.app, ROLES.worker])("%s cannot delete documents", (role) =>
     expect(await can(role, "TRUNCATE")).toBe(false);
   });
 
-  it("cannot UPDATE any document column, deleted_at included", async () => {
+  // The one reviewed exception: the worker's M1.6 activation sets active_version_id.
+  const updatable = role === ROLES.worker ? ["active_version_id"] : [];
+  it("cannot UPDATE any document column but the reviewed one, deleted_at included", async () => {
     expect(await can(role, "UPDATE")).toBe(false);
     const columns = await pools.bootstrap.query<{ attname: string }>(
       `select attname from pg_attribute
@@ -33,7 +35,9 @@ describe.each([ROLES.app, ROLES.worker])("%s cannot delete documents", (role) =>
     );
     expect(columns.rows.length).toBeGreaterThan(0);
     for (const { attname } of columns.rows) {
-      expect(await can(role, "UPDATE", attname), `UPDATE(${attname})`).toBe(false);
+      expect(await can(role, "UPDATE", attname), `UPDATE(${attname})`).toBe(
+        updatable.includes(attname),
+      );
     }
   });
 });

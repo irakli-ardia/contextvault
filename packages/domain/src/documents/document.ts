@@ -12,7 +12,7 @@ export const versionStatuses = [
   "ready",
   "failed",
 ] as const;
-// `processed` is a terminal, non-searchable end state until M1.6 activates `ready`.
+// `processed` is retired: M1.6 activation writes `ready`; the value stays valid for older rows.
 export type VersionStatus = (typeof versionStatuses)[number];
 
 export const isDocumentMime = (value: string): value is DocumentMime =>

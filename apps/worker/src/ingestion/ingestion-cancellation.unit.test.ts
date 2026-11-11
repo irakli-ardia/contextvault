@@ -6,6 +6,7 @@ import {
   TransactionOutcomeUnknown,
 } from "@contextvault/domain";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { chunkSetFixture } from "./chunk-set-test-support";
 import { handleIngestionJob } from "./ingestion-handler";
 
 const ws = "00000000-0000-4000-8000-000000000001";
@@ -43,6 +44,10 @@ function setup(
       transitions.push(`${versionId}:${to}`);
       return true;
     },
+    activate: async ({ versionId }) => {
+      transitions.push(`${versionId}:ready`);
+      return true;
+    },
     failVersion: async () => true,
     insertOutbox: async () => undefined,
     markDispatched: async () => true,
@@ -54,9 +59,10 @@ function setup(
   const deps = {
     uow,
     stages: {
-      run: (input: StageInput) => {
+      run: async (input: StageInput) => {
         signals[input.versionId] = input.signal;
-        return stage(input);
+        await stage(input);
+        return input.stage === "chunking" ? chunkSetFixture() : undefined;
       },
     },
     newId: () => "00000000-0000-4000-8000-0000000000aa",
@@ -93,7 +99,7 @@ describe("per-job cancellation", () => {
     await jobs;
     expect(t.signals[a]?.aborted).toBe(true);
     expect(t.signals[b]?.aborted).toBe(false);
-    expect(t.transitions).toEqual([`${b}:chunking`, `${b}:processed`]);
+    expect(t.transitions).toEqual([`${b}:chunking`, `${b}:ready`]);
     expect(t.codes().filter((code) => code === "INGESTION_LEASE_LOST")).toHaveLength(1);
     expect(t.log).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: "aborted", leaseLost: true }),
@@ -133,7 +139,7 @@ describe("per-job cancellation", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await job;
     expect(t.signals[a]?.aborted).toBe(false);
-    expect(t.transitions).toEqual([`${a}:chunking`, `${a}:processed`]);
+    expect(t.transitions).toEqual([`${a}:chunking`, `${a}:ready`]);
     expect(t.codes()).not.toContain("INGESTION_LEASE_LOST");
     expect(JSON.stringify(t.log.mock.calls)).not.toContain("secret-host");
   });

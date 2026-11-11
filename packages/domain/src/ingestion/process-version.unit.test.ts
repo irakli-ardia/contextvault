@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { DeadlineSignal } from "../documents/ports";
 import type { DocumentVersionId } from "../kernel/ids";
+import type { ChunkSet } from "./chunk-set";
 import { fakeIngestion, versionId, workspaceId } from "./fakes";
 import { maxAttempts } from "./lifecycle";
 import { processVersion } from "./process-version";
 import { StageFailure, type StageInput, type StageRunner } from "./stage-runner";
+
+const chunkSet: ChunkSet = {
+  strategyId: "fixed-window",
+  strategyVersion: 1,
+  sections: [],
+  chunks: [],
+};
 
 type Behaviour = (input: StageInput) => Promise<void> | void;
 
@@ -26,6 +34,7 @@ const newSignal = () => {
 const setup = (behaviour: Behaviour = () => undefined) => {
   const f = fakeIngestion();
   const ran: string[] = [];
+  const skipChunkSet = new Set<string>();
   const stages: StageRunner = {
     run: async (input) => {
       ran.push(input.stage);
@@ -36,25 +45,53 @@ const setup = (behaviour: Behaviour = () => undefined) => {
         versionId: input.versionId,
       });
       await behaviour(input);
+      return input.stage === "chunking" && !skipChunkSet.has(input.versionId)
+        ? chunkSet
+        : undefined;
     },
   };
   const run = (id: DocumentVersionId, signal: DeadlineSignal = newSignal().signal) =>
     processVersion({ uow: f.uow, newId: f.newId, stages }, { workspaceId, versionId: id, signal });
-  return { f, ran, run };
+  return { f, ran, run, skipChunkSet };
 };
 
 describe("processVersion claim", () => {
-  it("runs both stages outside transactions and ends processed", async () => {
+  it("runs both stages outside transactions and activates the version", async () => {
     const { f, ran, run } = setup();
     const id = f.addVersion(1, "queued");
 
     expect(await run(id)).toEqual({ outcome: "processed" });
     expect(ran).toEqual(["parsing", "chunking"]);
     expect(f.versions.get(id)).toMatchObject({
-      status: "processed",
+      status: "ready",
       attempt: 1,
       leaseGeneration: 1,
     });
+    expect(f.activations.get(id)).toBe(chunkSet);
+  });
+
+  it("does not activate when the chunking stage returns no chunk set", async () => {
+    const { f, run, skipChunkSet } = setup();
+    const id = f.addVersion(1, "queued");
+    skipChunkSet.add(id);
+
+    expect(await run(id)).toMatchObject({
+      outcome: "retry",
+      failure: { stage: "chunking", code: "stage.unexpected" },
+    });
+    expect(f.activations.size).toBe(0);
+  });
+
+  it("reports stale and writes nothing when ownership moved on during chunking", async () => {
+    const { f, run } = setup((i) => {
+      const row = f.versions.get(i.versionId);
+      if (i.stage === "chunking" && row)
+        f.versions.set(i.versionId, { ...row, leaseGeneration: 9 });
+    });
+    const id = f.addVersion(1, "queued");
+
+    expect(await run(id)).toEqual({ outcome: "stale" });
+    expect(f.activations.size).toBe(0);
   });
 
   it("passes the claimed generation to the runner", async () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   parseDocumentVersionId,
   parseWorkspaceId,
@@ -35,6 +36,7 @@ function setup(over: { parse?: () => Promise<ParsedDocument> } = {}) {
     },
     parse: over.parse ?? (async () => document),
     handoff,
+    newId: () => randomUUID(),
   });
   return { stages, handoff, calls };
 }
@@ -43,11 +45,21 @@ describe("ingestion stages", () => {
   it("parses, hands the document over, and the chunking stage takes it exactly once", async () => {
     const { stages, handoff } = setup();
     await stages.run(input("parsing"));
-    await stages.run(input("chunking"));
+    const chunkSet = await stages.run(input("chunking"));
+    expect(chunkSet?.chunks.map((c) => c.content)).toEqual(["hello"]);
     expect(handoff.take({ versionId, leaseGeneration: 1 })).toBeUndefined();
     await expect(stages.run(input("chunking"))).rejects.toMatchObject({
       code: "handoff.missing",
       retryable: true,
+    });
+  });
+
+  it("fails a document without visible text with a stable non-retryable code", async () => {
+    const { stages } = setup({ parse: async () => ({ format: "text", text: " \n " }) });
+    await stages.run(input("parsing"));
+    await expect(stages.run(input("chunking"))).rejects.toMatchObject({
+      code: "chunk.no_content",
+      retryable: false,
     });
   });
 

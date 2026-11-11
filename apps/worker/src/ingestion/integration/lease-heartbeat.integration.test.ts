@@ -39,7 +39,11 @@ const decorate = (
   log = vi.fn<(entry: Record<string, unknown>) => void>(),
 ) => {
   const onLost = vi.fn();
-  const inner: StageRunner = { run: () => stage(onLost) };
+  const inner: StageRunner = {
+    run: async () => {
+      await stage(onLost);
+    },
+  };
   const runner = withHeartbeat(inner, { uow, intervalMs, beatTimeoutMs: 5_000, onLost, log });
   return { runner, onLost, log };
 };

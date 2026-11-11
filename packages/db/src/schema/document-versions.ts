@@ -19,9 +19,9 @@ import { appRole, inContextWorkspace, inWorkerWorkspace, workerRole } from "./rl
 // foreign key makes a version of another workspace's document impossible, and the key check ties
 // the storage key to the three ids. Lifecycle columns start at their defaults; the worker role
 // alone may update them (migration 0008), and may read only non-sensitive columns across
-// workspaces. `processed` is a temporary, non-searchable end state until M1.6 activates `ready`,
-// which the worker's UPDATE policy refuses to write. M1.6 must change the status CHECK, that
-// policy and the pinned policy tests (worker-rls, catalog-invariants) together.
+// workspaces. `ready` is written only by the worker's activation transaction, together with the
+// version's sections and chunks and the document's `active_version_id`. `processed` is retired
+// (M1.5 end state) and stays valid for rows written before M1.6.
 export const documentVersions = pgTable(
   "document_versions",
   {
@@ -47,6 +47,8 @@ export const documentVersions = pgTable(
     }).onDelete("cascade"),
     unique("document_versions_document_id_version_no_unique").on(table.documentId, table.versionNo),
     unique("document_versions_workspace_id_id_unique").on(table.workspaceId, table.id),
+    // Target of documents.active_version_id: the active version must belong to that document.
+    unique("document_versions_document_id_id_unique").on(table.documentId, table.id),
     index("document_versions_workspace_document_idx").on(table.workspaceId, table.documentId),
     // Recovery discovery (M1.4 5B): oldest lease first, over the few rows in a running state, so
     // the sweep never scans the settled majority.
@@ -90,7 +92,9 @@ export const documentVersions = pgTable(
       for: "update",
       to: workerRole,
       using: inWorkerWorkspace(table.workspaceId),
-      withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.status} <> 'ready'`,
+      // `ready` only for a version that already has chunks (written while it was `chunking`).
+      withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and (${table.status} <> 'ready' or exists (
+        select 1 from "chunks" c where c.version_id = ${table.id} and c.workspace_id = ${table.workspaceId}))`,
     }),
   ],
 ).enableRLS();

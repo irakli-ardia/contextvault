@@ -191,7 +191,7 @@ describe("ingestion consumer shutdown", () => {
     release.resolve();
     expect(await closing).toBe("closed");
     expect(await state(job)).toBe("completed");
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     expect(t.codes()).not.toContain("INGESTION_SHUTDOWN_CANCELLING");
   });
 
@@ -250,8 +250,8 @@ describe("ingestion consumer shutdown", () => {
     const next = recordingStages();
     await start({ stages: next.stages });
     expect(await settled(secondJob)).toBe("completed");
-    expect(await h.row(second)).toMatchObject({ status: "processed", attempt: 1 });
-    expect(await h.row(first)).toMatchObject({ status: "processed", attempt: 1 });
+    expect(await h.row(second)).toMatchObject({ status: "ready", attempt: 1 });
+    expect(await h.row(first)).toMatchObject({ status: "ready", attempt: 1 });
   });
 
   it("leaves a job still running in another consumer alone", async () => {
@@ -269,7 +269,7 @@ describe("ingestion consumer shutdown", () => {
     expect(error).toBeInstanceOf(IngestionShutdownIncomplete);
     expect(staying.codes()).toEqual([]);
     hold.resolve();
-    await expect.poll(async () => (await h.row(kept)).status).toBe("processed");
+    await expect.poll(async () => (await h.row(kept)).status).toBe("ready");
     // The abandoned job's stage returned too late to write: its row is as the claim left it.
     expect(await h.row(stopped)).toMatchObject({ status: "parsing", lease_generation: 1 });
     await staying.consumer.close();

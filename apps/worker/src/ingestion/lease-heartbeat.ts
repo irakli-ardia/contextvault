@@ -109,7 +109,7 @@ export function withHeartbeat(stages: StageRunner, options: HeartbeatOptions): S
     async run(input) {
       const heartbeat = startHeartbeat(options, input);
       try {
-        await stages.run(input);
+        return await stages.run(input);
       } finally {
         await heartbeat.stop();
       }

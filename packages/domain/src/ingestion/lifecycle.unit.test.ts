@@ -24,7 +24,7 @@ describe("lifecycle", () => {
     ["parsing", "chunking"],
     ["parsing", "queued"],
     ["chunking", "queued"],
-    ["chunking", "processed"],
+    ["chunking", "ready"],
     ["chunking", "failed"],
   ] as const)("allows %s -> %s", (from, to) => {
     expect(canTransition(from, to)).toBe(true);
@@ -36,7 +36,8 @@ describe("lifecycle", () => {
     ["queued", "chunking"],
     ["failed", "queued"],
     ["ready", "queued"],
-    ["parsing", "processed"],
+    ["parsing", "ready"],
+    ["chunking", "processed"],
     ["queued", "processed"],
     ["processed", "queued"],
     ["processed", "ready"],

@@ -1,5 +1,6 @@
 import type { DeadlineSignal } from "../documents/ports";
 import type { DocumentVersionId, WorkspaceId } from "../kernel/ids";
+import type { ChunkSet } from "./chunk-set";
 import type { IngestionFailure, IngestionStage } from "./lifecycle";
 import type { IngestionUnitOfWork } from "./ports";
 import { type SettleFailureDeps, settleFailure } from "./settle-failure";
@@ -27,9 +28,9 @@ export type ProcessVersionResult =
   /** The signal fired. Nothing is written; the lease expires and recovery requeues the version. */
   | { readonly outcome: "aborted" };
 
-const stages: readonly { stage: IngestionStage; next: "chunking" | "processed" }[] = [
+const stages: readonly { stage: IngestionStage; next: "chunking" | "ready" }[] = [
   { stage: "parsing", next: "chunking" },
-  { stage: "chunking", next: "processed" },
+  { stage: "chunking", next: "ready" },
 ];
 
 const unexpected = { code: "stage.unexpected", retryable: true } as const;
@@ -54,8 +55,11 @@ async function runStage(
   { stage, next }: (typeof stages)[number],
 ): Promise<Stopped | null> {
   const { workspaceId, versionId, leaseGeneration, signal } = claim;
+  let chunkSet: ChunkSet | undefined;
   try {
-    await deps.stages.run({ stage, workspaceId, versionId, leaseGeneration, signal });
+    chunkSet = await deps.stages.run({ stage, workspaceId, versionId, leaseGeneration, signal });
+    if (next === "ready" && chunkSet === undefined)
+      throw new Error("chunking produced no chunk set");
   } catch (error) {
     if (signal.aborted) return { outcome: "aborted" };
     const failure = classify(stage, error);
@@ -67,7 +71,9 @@ async function runStage(
   }
   if (signal.aborted) return { outcome: "aborted" };
   const moved = await deps.uow.run({ workspaceId }, ({ ingestion }) =>
-    ingestion.transition({ versionId, leaseGeneration, from: stage, to: next }),
+    next === "ready" && chunkSet !== undefined
+      ? ingestion.activate({ versionId, leaseGeneration, chunkSet })
+      : ingestion.transition({ versionId, leaseGeneration, from: stage, to: "chunking" }),
   );
   return moved ? null : { outcome: "stale" };
 }

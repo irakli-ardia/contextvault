@@ -1,6 +1,7 @@
 import type { DeadlineSignal } from "../documents/ports";
 import { DomainError } from "../kernel/errors";
 import type { DocumentVersionId, WorkspaceId } from "../kernel/ids";
+import type { ChunkSet } from "./chunk-set";
 import type { IngestionStage } from "./lifecycle";
 
 export interface StageInput {
@@ -16,9 +17,10 @@ export interface StageInput {
 /**
  * Executes one stage outside any transaction. Resolves when the stage is done; throws a
  * `StageFailure` for a classified failure. Anything else thrown is treated as unexpected.
+ * The chunking stage resolves with what activation persists; parsing resolves with nothing.
  */
 export interface StageRunner {
-  run(input: StageInput): Promise<void>;
+  run(input: StageInput): Promise<ChunkSet | undefined>;
 }
 
 /** A classified stage failure. The message is the code, so nothing from the document can leak. */

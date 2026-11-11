@@ -195,7 +195,7 @@ describe("worker privileges (effective, PUBLIC included)", () => {
     expect(await has(`has_schema_privilege(${worker}, 'drizzle', 'USAGE,CREATE')`)).toBe(false);
   });
 
-  it("holds no sequence privilege and no table-level privilege beyond the outbox's", async () => {
+  it("holds no sequence privilege and no table-level privilege beyond the outbox and the insert-only derived tables'", async () => {
     const { rows } = await pools.bootstrap.query<{ rel: string }>(
       `select c.relname as rel from pg_class c join pg_namespace n on n.oid = c.relnamespace
        where n.nspname in ${APP_SCHEMAS} and c.relkind in ('r', 'p', 'S')
@@ -204,7 +204,7 @@ describe("worker privileges (effective, PUBLIC included)", () => {
            else has_table_privilege(${worker}, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN') end
        order by 1`,
     );
-    expect(rows.map((r) => r.rel)).toEqual(["outbox"]);
+    expect(rows.map((r) => r.rel)).toEqual(["chunks", "outbox", "sections"]);
   });
 });
 

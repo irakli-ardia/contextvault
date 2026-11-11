@@ -8,6 +8,7 @@ import {
 } from "@contextvault/domain";
 import { DelayedError } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
+import { chunkSetFixture } from "./chunk-set-test-support";
 import { handleIngestionJob, IngestionJobFailed } from "./ingestion-handler";
 
 const ws = "00000000-0000-4000-8000-000000000001";
@@ -36,6 +37,7 @@ function setup(over: Setup = {}) {
     claim: async () => ({ leaseGeneration: 1, attempt: 1 }),
     heartbeat: async () => true,
     transition: async () => true,
+    activate: async () => true,
     failVersion: async () => true,
     insertOutbox: async () => undefined,
     markDispatched: async () => true,
@@ -51,7 +53,12 @@ function setup(over: Setup = {}) {
     },
   };
   const stageRun = vi.fn(over.stage ?? (async () => undefined));
-  const stages: StageRunner = { run: stageRun };
+  const stages: StageRunner = {
+    run: async (input) => {
+      await stageRun();
+      return input.stage === "chunking" ? chunkSetFixture() : undefined;
+    },
+  };
   const log = vi.fn();
   const moveToDelayed = vi.fn(over.moveToDelayed ?? (async () => undefined));
   const deps = {

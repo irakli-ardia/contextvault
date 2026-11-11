@@ -5,6 +5,7 @@ import {
   type StageRunner,
   TransactionOutcomeUnknown,
 } from "@contextvault/domain";
+import { chunkSetFixture } from "../chunk-set-test-support";
 
 /** Fake stages: records `<version>:<stage>` per run and lets a test script the behaviour. */
 export function recordingStages(behaviour: (input: StageInput) => Promise<void> | void = () => {}) {
@@ -13,6 +14,7 @@ export function recordingStages(behaviour: (input: StageInput) => Promise<void> 
     run: async (input) => {
       calls.push(`${input.versionId}:${input.stage}`);
       await behaviour(input);
+      return input.stage === "chunking" ? chunkSetFixture() : undefined;
     },
   };
   return { stages, calls, of: (versionId: string) => calls.filter((c) => c.startsWith(versionId)) };

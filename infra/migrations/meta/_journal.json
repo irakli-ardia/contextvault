@@ -99,6 +99,27 @@
       "when": 1794330584424,
       "tag": "0013_orphan_discovery_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794375680525,
+      "tag": "0014_chunks_sections_activation",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794375703549,
+      "tag": "0015_chunks_sections_force_and_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794378360192,
+      "tag": "0016_derived_rows_integrity",
+      "breakpoints": true
     }
   ]
 }

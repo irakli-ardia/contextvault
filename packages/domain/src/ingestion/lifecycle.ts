@@ -17,13 +17,13 @@ export type FailureDecision =
   | { readonly action: "retry"; readonly delayMs: number }
   | { readonly action: "fail" };
 
-// `failed` and `processed` are terminal here; the manual retry transition arrives with its
-// endpoint, and `ready` with activation in M1.6.
+// `failed`, `processed` (a retired end state kept only for rows written before M1.6) and `ready`
+// are terminal here; the manual retry transition arrives with its endpoint.
 const transitions: Readonly<Record<VersionStatus, readonly VersionStatus[]>> = {
   uploaded: ["queued", "parsing", "failed"],
   queued: ["parsing", "failed"],
   parsing: ["chunking", "queued", "failed"],
-  chunking: ["processed", "queued", "failed"],
+  chunking: ["ready", "queued", "failed"],
   processed: [],
   ready: [],
   failed: [],

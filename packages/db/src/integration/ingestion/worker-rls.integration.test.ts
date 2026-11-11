@@ -92,14 +92,11 @@ describe("cross-workspace discovery", () => {
     expect(ids).toEqual(expect.arrayContaining([docA.versionId, docB.versionId]));
   });
 
-  it.each(["storage_key", "error_code", "version_no"])(
-    "cannot read document_versions.%s",
-    async (column) => {
-      expect(
-        await sqlState(asWorker(null, (q) => q(`select ${column} from document_versions`))),
-      ).toBe(DENIED);
-    },
-  );
+  it.each(["storage_key", "error_code"])("cannot read document_versions.%s", async (column) => {
+    expect(
+      await sqlState(asWorker(null, (q) => q(`select ${column} from document_versions`))),
+    ).toBe(DENIED);
+  });
 
   it.each(["workspaces", "memberships", "users", "pending_uploads", "sessions"])(
     "cannot read %s",
@@ -137,7 +134,7 @@ describe("version writes are tenant-scoped", () => {
     expect((await asWorker(null, (q) => q(advance(docA.versionId, "parsing")))).rowCount).toBe(0);
   });
 
-  it("cannot mark a version ready (only the M1.6 activation may)", async () => {
+  it("cannot mark a version ready without chunks (the full set of fences: worker-integrity)", async () => {
     expect(await sqlState(asWorker(wsA, (q) => q(advance(docA.versionId, "ready"))))).toBe(DENIED);
   });
 
@@ -237,6 +234,36 @@ describe("outbox", () => {
   it("refuses a version of a different workspace (composite foreign key)", async () => {
     expect(await sqlState(asWorker(wsA, (q) => q(insert(randomUUID(), wsA, docB.versionId))))).toBe(
       "23503",
+    );
+  });
+});
+
+describe("derived rows are tenant-scoped (M1.6)", () => {
+  const section = (id: string, workspaceId: string, versionId: string) =>
+    `insert into sections (id, workspace_id, version_id, ordinal, start_offset, end_offset)
+     values ('${id}', '${workspaceId}', '${versionId}', 0, 0, 1)`;
+
+  it("inserts a section for the asserted workspace only", async () => {
+    const ok = await asWorker(wsA, async (q) => {
+      await q(advance(docA.versionId, "chunking")); // derived rows are accepted only while chunking
+      return q(section(randomUUID(), wsA, docA.versionId));
+    });
+    expect(ok.rowCount).toBe(1);
+    expect(
+      await sqlState(asWorker(wsA, (q) => q(section(randomUUID(), wsB, docB.versionId)))),
+    ).toBe(DENIED);
+    expect(
+      await sqlState(asWorker(null, (q) => q(section(randomUUID(), wsA, docA.versionId)))),
+    ).toBe(DENIED);
+  });
+
+  it("cannot read chunk content, update or delete derived rows, or write deleted_at", async () => {
+    expect(await sqlState(asWorker(wsA, (q) => q("select content from chunks")))).toBe(DENIED);
+    expect((await asWorker(wsA, (q) => q("select id from chunks"))).rowCount).toBe(0);
+    expect(await sqlState(asWorker(wsA, (q) => q("update sections set page = 1")))).toBe(DENIED);
+    expect(await sqlState(asWorker(wsA, (q) => q("delete from chunks")))).toBe(DENIED);
+    expect(await sqlState(asWorker(wsA, (q) => q("update documents set deleted_at = now()")))).toBe(
+      DENIED,
     );
   });
 });

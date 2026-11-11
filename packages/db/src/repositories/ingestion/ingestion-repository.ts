@@ -10,6 +10,7 @@ import {
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Executor } from "../../client";
 import { documentVersions, outbox } from "../../schema/index";
+import { activateVersion } from "./activate-version";
 
 // Schedules are the database's `now()` plus a delay, never an application timestamp: no clock
 // but PostgreSQL's decides whether an entry is due or a delivery early.
@@ -117,6 +118,8 @@ export function createIngestionRepository(
         .returning({ id: documentVersions.id });
       return rows.length === 1;
     },
+
+    activate: (input) => activateVersion(executor, workspaceId, input),
 
     async failVersion({ versionId, leaseGeneration, from, failure }) {
       if (!canTransition(from, "failed") || !isRunning(from)) {

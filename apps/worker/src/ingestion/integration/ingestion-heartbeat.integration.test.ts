@@ -109,7 +109,7 @@ describe("ingestion consumer with the lease heartbeat", () => {
     });
     await start({ stages: run.stages });
     await completed(await send(id));
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     expect(codes("INGESTION_LEASE_LOST")).toBe(0);
     await stopAll();
     await pause(100);
@@ -136,7 +136,7 @@ describe("ingestion consumer with the lease heartbeat", () => {
     for (const job of jobs) await completed(job);
     expect(run.of(lost)).toEqual([`${lost}:parsing`]);
     expect(await h.row(lost)).toMatchObject({ status: "parsing", lease_generation: 9, attempt: 1 });
-    expect(await h.row(kept)).toMatchObject({ status: "processed", lease_generation: 1 });
+    expect(await h.row(kept)).toMatchObject({ status: "ready", lease_generation: 1 });
     expect(codes("INGESTION_LEASE_LOST")).toBe(1);
     await stopAll();
   });
@@ -167,7 +167,7 @@ describe("ingestion consumer with the lease heartbeat", () => {
     });
     await start({ stages: run.stages, uow });
     await completed(await send(id));
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     expect(codes("INGESTION_LEASE_LOST")).toBe(0);
     expect(codes("INGESTION_HEARTBEAT_FAILED")).toBe(1);
     expect(JSON.stringify(logs)).not.toContain("secret-host");
@@ -196,7 +196,7 @@ describe("ingestion consumer with the lease heartbeat", () => {
     });
     await start({ stages: run.stages, uow });
     await completed(await send(id));
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     // Its answer finally arrives, and says the lease is lost: too late to decide anything.
     await takeOver(id);
     release();

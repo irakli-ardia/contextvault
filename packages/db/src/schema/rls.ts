@@ -27,6 +27,12 @@ export const sessionTokenHash = sql`case
 export const inWorkerWorkspace = (workspaceId: AnyPgColumn): SQL =>
   sql`${workspaceId} = ${currentWorkspaceId}`;
 
+// Derived rows (sections, chunks) may be written only while their version is being chunked. The
+// subquery runs with the worker's own column grants on document_versions.
+export const versionInChunking = (workspaceId: AnyPgColumn, versionId: AnyPgColumn): SQL =>
+  sql`exists (select 1 from "document_versions" v
+    where v.id = ${versionId} and v.workspace_id = ${workspaceId} and v.status = 'chunking')`;
+
 // Document-side tables: the row's workspace must be the one in context (unset means no rows, unlike
 // the membership-driven tables above) and the asserted user must hold a membership in it.
 export const inContextWorkspace = (workspaceId: AnyPgColumn): SQL =>

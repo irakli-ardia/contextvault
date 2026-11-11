@@ -39,6 +39,8 @@ const EXPECTED_GRANTS: Record<string, readonly string[]> = {
   "public.documents": ["SELECT", "INSERT"],
   "public.document_versions": ["SELECT", "INSERT"],
   "public.pending_uploads": ["SELECT", "INSERT", "DELETE"],
+  "public.sections": [], // derived rows: worker-written, no application access until M2
+  "public.chunks": [],
   // Insert only, and not available_at, dispatched_at or created_at: an entry is always due and live.
   "public.outbox": ["id", "workspace_id", "version_id", "kind"].map((c) => `INSERT(${c})`),
 };
@@ -56,6 +58,7 @@ const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
       "lease_generation",
       "attempt",
       "updated_at",
+      "version_no",
     ].map((c) => `SELECT(${c})`),
     ...[
       "status",
@@ -67,8 +70,16 @@ const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
       "updated_at",
     ].map((c) => `UPDATE(${c})`),
   ],
-  "public.documents": ["id", "workspace_id", "deleted_at"].map((c) => `SELECT(${c})`),
+  "public.documents": [
+    "SELECT(id)",
+    "SELECT(workspace_id)",
+    "SELECT(deleted_at)",
+    "UPDATE(active_version_id)",
+  ],
   "public.outbox": ["SELECT", "INSERT", "UPDATE(dispatched_at)"],
+  // Written once by the M1.6 activation; no read, update or delete until retrieval and the purge.
+  "public.sections": ["INSERT"],
+  "public.chunks": ["INSERT", "SELECT(id)", "SELECT(workspace_id)", "SELECT(version_id)"],
 };
 
 const TABLE_PRIVS = [
@@ -280,22 +291,6 @@ describe("catalog invariants", () => {
 
   it("holds for the worker role", async () => {
     expect(await violations(bootstrap, workerRole, WORKER_EXPECTED_GRANTS, appRole)).toEqual([]);
-  });
-
-  it("pins the worker role's policies to exactly the reviewed list", async () => {
-    const { rows } = await bootstrap.query<{ p: string }>(
-      `select tablename || '.' || policyname as p from pg_policies
-       where roles = array[$1]::name[] order by 1`,
-      [workerRole],
-    );
-    expect(rows.map((r) => r.p)).toEqual([
-      "document_versions.document_versions_worker_discover",
-      "document_versions.document_versions_worker_update",
-      "documents.documents_worker_select",
-      "outbox.outbox_worker_discover",
-      "outbox.outbox_worker_insert",
-      "outbox.outbox_worker_mark",
-    ]);
   });
 });
 

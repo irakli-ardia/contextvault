@@ -1,6 +1,7 @@
 import type { IngestionRepository, IngestionUnitOfWork, StageInput } from "@contextvault/domain";
 import { DelayedError } from "bullmq";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { chunkSetFixture } from "./chunk-set-test-support";
 import { IngestionShutdownIncomplete } from "./consumer-shutdown";
 import { createIngestionConsumer, type IngestionConsumer } from "./ingestion-consumer";
 
@@ -116,6 +117,10 @@ async function setup(stage: (input: StageInput) => Promise<void>) {
       transitions.push(`${versionId}:${to}`);
       return true;
     },
+    activate: async ({ versionId }) => {
+      transitions.push(`${versionId}:ready`);
+      return true;
+    },
     failVersion: async () => true,
     insertOutbox: async () => undefined,
     markDispatched: async () => true,
@@ -126,9 +131,10 @@ async function setup(stage: (input: StageInput) => Promise<void>) {
     redisUrl: "redis://unused",
     uow,
     stages: {
-      run: (input) => {
+      run: async (input) => {
         signals.push(input.signal);
-        return stage(input);
+        await stage(input);
+        return input.stage === "chunking" ? chunkSetFixture() : undefined;
       },
     },
     newId: () => "00000000-0000-4000-8000-0000000000aa",
@@ -190,7 +196,7 @@ describe("ingestion consumer shutdown", () => {
     await job;
     expect(await closing).toBe("closed");
     expect(t.signals[0]?.aborted).toBe(false);
-    expect(t.transitions).toEqual([`${a}:chunking`, `${a}:processed`]);
+    expect(t.transitions).toEqual([`${a}:chunking`, `${a}:ready`]);
     expect(t.codes()).not.toContain("INGESTION_SHUTDOWN_CANCELLING");
     expect(t.worker.disconnects).toBe(0);
     expect(vi.getTimerCount()).toBe(0);

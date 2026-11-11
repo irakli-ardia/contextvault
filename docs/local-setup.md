@@ -157,7 +157,7 @@ PostgreSQL has five roles. The application role and the ingestion-worker role ar
 
 The worker's `app.workspace_id` is asserted by the worker process, not proved to the database. It stops bugs and forged job payloads from crossing workspaces; it does not protect against someone who holds the worker credential, who can assert any workspace and write there. Guard `DATABASE_WORKER_URL` like the application role's, and see the [threat model](threat-model.md).
 
-`processed` is a temporary, non-searchable end state: the worker's update policy refuses `ready` until M1.6 activates versions. M1.6 must change the status `CHECK`, that policy and the pinned policy tests together.
+Since M1.6 (migrations 0014–0015) the worker activates a version in one transaction: `ready`, its `sections` and `chunks`, and `documents.active_version_id`. `processed` is retired and stays valid only for rows written by M1.5.
 
 The application role owns no table, has no `BYPASSRLS`, and cannot run DDL. Row-level security policies scope every row to the user and workspace set for the current transaction. The owner is bound by `FORCE ROW LEVEL SECURITY` too (it sees no rows of a forced table), but it can still change policies and grants, so its credential belongs to `db:migrate` and `user:create` only. New tables created by the owner give the fixture role data access automatically and the application role nothing; new functions are not executable by `PUBLIC` until a migration grants it.
 

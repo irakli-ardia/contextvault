@@ -96,13 +96,13 @@ describe("ingestion consumer", () => {
     // No dispatcher ran: the job exists, the entry is live and the version is still `uploaded`.
     expect(await settled(await send(wsA, id))).toBe("completed");
     expect(run.of(id)).toEqual([`${id}:parsing`, `${id}:chunking`]);
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     expect((await h.outboxRows(id))[0]?.dispatched_at).not.toBeNull();
     // The dispatcher arriving late finds nothing left to mark.
     expect(
       await dispatchOutbox({ source: h.ownSource, queue: jobQueue, uow: h.worker.unitOfWork }, 50),
     ).toMatchObject({ failures: [] });
-    expect((await h.row(id)).status).toBe("processed");
+    expect((await h.row(id)).status).toBe("ready");
 
     await stopAll();
     await pause(100);
@@ -138,7 +138,7 @@ describe("ingestion consumer", () => {
     for (const id of ids) {
       expect(run.of(id)).toEqual([`${id}:parsing`, `${id}:chunking`]);
       expect(await h.row(id)).toMatchObject({
-        status: "processed",
+        status: "ready",
         attempt: 1,
         lease_generation: 1,
       });
@@ -157,7 +157,7 @@ describe("ingestion consumer", () => {
   });
 
   it.each<[string, VersionStatus, number]>([
-    ["processed", "processed", 1],
+    ["ready", "ready", 1],
     ["failed", "failed", 1],
     ["running elsewhere", "parsing", 1],
     ["attempts spent", "queued", 3],
@@ -196,7 +196,7 @@ describe("ingestion consumer", () => {
     const finished = await inspect.getJob(job);
     expect(finished?.attemptsStarted).toBe(4);
     expect(run.of(id)).toHaveLength(2);
-    expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1, lease_generation: 1 });
+    expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1, lease_generation: 1 });
     await stopAll();
   });
 
@@ -319,7 +319,7 @@ describe("ingestion consumer startup and Redis", () => {
       await proxy.setMode("forward");
       const id = await h.seed(wsA);
       expect(await settled(await send(wsA, id))).toBe("completed");
-      expect(await h.row(id)).toMatchObject({ status: "processed", attempt: 1 });
+      expect(await h.row(id)).toMatchObject({ status: "ready", attempt: 1 });
       expect(JSON.stringify(logs)).not.toContain(redisUrl.password || "\u0000");
     } finally {
       await stopAll();
