@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { EnvError, loadWorkerEnv } from "@contextvault/config";
 import { createWorkerPersistence } from "@contextvault/db";
 import {
+  createPurgeSweep,
   dispatchOutbox,
   leaseDurationMs,
   readVersionBytes,
@@ -16,6 +17,7 @@ import { createIngestionConsumer } from "./ingestion/ingestion-consumer";
 import { createIngestionStages } from "./ingestion/ingestion-stages";
 import { createParsedHandoff } from "./ingestion/parsed-handoff";
 import { fail, installProcessGuards } from "./process-guards";
+import { startPurgeSweeper } from "./purge/purge-sweeper";
 import { createJobQueue } from "./queue/bullmq-job-queue";
 import { startDispatcherLoop } from "./queue/dispatcher-loop";
 import { closeProducer, connectProducer } from "./queue/producer-connection";
@@ -23,12 +25,16 @@ import { startRecoverySweeper } from "./recovery/recovery-sweeper";
 
 const batchSize = 50;
 const sweepIntervalMs = 30_000;
+const purgeIntervalMs = 60_000;
+// Documents purged per sweep: each is a few short transactions plus one object delete per version.
+const purgeBatchSize = 10;
 const log = (entry: Record<string, unknown>): void => console.error(JSON.stringify(entry));
 
 // The built parser child sits next to this file (tsdown's second entry).
 const parserChildPath = fileURLToPath(new URL("./parse-child.mjs", import.meta.url));
 
-// The outbox dispatcher, the recovery sweeper and the BullMQ consumer that parses what they queue.
+// The outbox dispatcher, the recovery sweeper and the BullMQ consumer that parses what they queue,
+// and the purge of deleted documents.
 async function bootstrap(): Promise<void> {
   const env = loadWorkerEnv();
   const redis = await connectProducer(env.REDIS_URL);
@@ -74,13 +80,26 @@ async function bootstrap(): Promise<void> {
     log,
   });
 
+  const purgeSweep = createPurgeSweep({
+    uow: persistence.purgeUnitOfWork,
+    store,
+    source: persistence.purgeSource,
+    batchSize: purgeBatchSize,
+    retentionMs: env.PURGE_RETENTION_HOURS * 3_600_000,
+  });
+  const purger = startPurgeSweeper({
+    sweep: (signal) => purgeSweep(signal),
+    intervalMs: purgeIntervalMs,
+    log,
+  });
+
   let stopping = false;
   // Order matters: stop polling and let the work in flight finish before its dependencies close.
   const shutdown = (): void => {
     if (stopping) return;
     stopping = true;
     // The consumer goes first: jobs in flight finish (or are cancelled) before anything they use closes.
-    Promise.all([consumer.close(), loop.stop(), sweeper.stop()])
+    Promise.all([consumer.close(), loop.stop(), sweeper.stop(), purger.stop()])
       .then(() => queue.close())
       .then(() => closeProducer(redis))
       .then(() => store.onModuleDestroy())

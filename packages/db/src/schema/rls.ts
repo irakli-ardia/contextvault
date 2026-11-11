@@ -39,3 +39,12 @@ export const inContextWorkspace = (workspaceId: AnyPgColumn): SQL =>
   sql`${workspaceId} = ${currentWorkspaceId} and exists (
     select 1 from "memberships" m
     where m.workspace_id = ${workspaceId} and m.user_id = ${currentUserId})`;
+
+// Purge (migration 0018): derived rows may be removed only for a document that is deleted and not
+// yet purged. The subquery runs with the worker's own column grants on document_versions and
+// documents. Retention is the application's concern; the database ties removal to deletion.
+export const versionOfPurgeableDocument = (workspaceId: AnyPgColumn, versionId: AnyPgColumn): SQL =>
+  sql`exists (select 1 from "document_versions" v
+    join "documents" d on d.id = v.document_id and d.workspace_id = v.workspace_id
+    where v.id = ${versionId} and v.workspace_id = ${workspaceId}
+      and d.deleted_at is not null and d.purged_at is null)`;

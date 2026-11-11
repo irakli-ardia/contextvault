@@ -44,4 +44,19 @@ describe("document deletion path", () => {
       expect(source).toContain(required);
     }
   });
+
+  it("sets purged_at only in the purge repository, after the derived rows are removed", () => {
+    const purgeRepo = "packages/db/src/repositories/ingestion/purge-repository.ts";
+    const writesPurgedAt = /purged_at\s*=(?!=)|\.set\(\s*\{[^}]*purgedAt/i;
+    const files = ["apps", "packages"].flatMap((top) =>
+      readdirSync(join(root, top)).flatMap((pkg) => [...sources(join(root, top, pkg, "src"))]),
+    );
+    const offenders = files.filter((file) => writesPurgedAt.test(readFileSync(file, "utf8")));
+    expect(offenders.map((f) => f.slice(root.length))).toEqual([purgeRepo]);
+    const source = readFileSync(join(root, purgeRepo), "utf8");
+    expect(source.indexOf("delete from chunks")).toBeLessThan(source.indexOf("purged_at = now()"));
+    expect(source.indexOf("delete from sections")).toBeLessThan(
+      source.indexOf("purged_at = now()"),
+    );
+  });
 });

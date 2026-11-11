@@ -75,6 +75,7 @@ Never commit `.env.test` or put real credentials in `.env.test.example`; use the
 | `TRUSTED_PROXY_HOPS` | api | 0-3; 0 when the API is reached directly; mandatory in production (see [Proxy topology](#proxy-topology-and-cookies)) |
 | `API_INTERNAL_URL` | web (build **and** run time) | bare origin of the API; optional, defaults to `http://127.0.0.1:3001`. The `/api/*` rewrite takes it at `next build` (changing it needs a rebuild); the upload Route Handler reads it from the running server's environment (a restart is enough). Set the same value for both, see below |
 | `REDIS_URL` | worker | `redis://` or `rediss://` URL |
+| `PURGE_RETENTION_HOURS` | worker | whole hours a deleted document's object and chunks are kept before the purge; optional, default 168 (7 days); 0 (no grace period) is accepted only when `NODE_ENV=test` |
 | `DATABASE_URL` | api, `user:create` | `postgres://` or `postgresql://` URL; the application role `contextvault_app` |
 | `DATABASE_WORKER_URL` | worker, `test:integration` | `postgres://` or `postgresql://` URL; the ingestion-worker role `contextvault_worker` |
 | `DATABASE_MIGRATION_URL` | `db:migrate`, `user:create` | `postgres://` or `postgresql://` URL; `contextvault_owner`: owns the schema, not a superuser, bound by row-level security on forced tables. Never given to a running app |

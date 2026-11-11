@@ -13,7 +13,7 @@ import type { Database } from "../../client";
 
 // Cross-workspace discovery, outside any transaction and with no workspace context, through the
 // worker's existing SELECT grants only: ids, status, counters and times of document_versions, and
-// the outbox (migration 0008). It cannot see `documents`, so a deleted document's waiting version
+// the outbox (migration 0008). It cannot see live `documents` (only deleted, unpurged rows, for the purge: migration 0018), so a deleted document's waiting version
 // is still listed; `lockOrphan` rejects it under the workspace-scoped lock. HARD prerequisite
 // before 5B.4 activation or M1.7 deletion: terminalize those versions without widening this grant.
 // Until then the cursor still advances past them, but they are listed on every scan.

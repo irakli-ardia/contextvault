@@ -39,6 +39,10 @@ export const documents = pgTable(
     // here would make this file and document-versions.ts import each other.
     activeVersionId: uuid("active_version_id"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // Set once by the purge (M1.7, migration 0018) after the stored objects and derived rows are
+    // gone. The row itself stays as a tombstone: display_name and content_sha256 are kept until a
+    // future approved metadata-retention policy.
+    purgedAt: timestamp("purged_at", { withTimezone: true }),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -57,6 +61,13 @@ export const documents = pgTable(
     check(
       "documents_display_name_length",
       sql`octet_length(${table.displayName}) between 1 and 255`,
+    ),
+    index("documents_purge_pending_idx")
+      .on(table.deletedAt, table.id)
+      .where(sql`${table.deletedAt} is not null and ${table.purgedAt} is null`),
+    check(
+      "documents_purged_after_deleted",
+      sql`${table.purgedAt} is null or ${table.deletedAt} is not null`,
     ),
     check(
       "documents_mime",
@@ -89,11 +100,19 @@ export const documents = pgTable(
       to: workerRole,
       using: inWorkerWorkspace(table.workspaceId),
     }),
+    // Purge discovery (migration 0018): the ids of deleted, unpurged documents across workspaces,
+    // nothing else (column grant: id, workspace_id, deleted_at, purged_at). Live documents stay
+    // invisible without a workspace in context.
+    pgPolicy("documents_worker_discover_deleted", {
+      for: "select",
+      to: workerRole,
+      using: sql`${table.deletedAt} is not null and ${table.purgedAt} is null`,
+    }),
     // Activation sets `active_version_id` and nothing else (column grant, migration 0015).
     pgPolicy("documents_worker_activate", {
       for: "update",
       to: workerRole,
-      using: inWorkerWorkspace(table.workspaceId),
+      using: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.deletedAt} is null`,
       // The new pointer must name a ready version of this same, live document, and no other ready
       // version of it may be newer: an older version finishing late cannot replace a newer one.
       withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.deletedAt} is null and exists (
@@ -103,6 +122,23 @@ export const documents = pgTable(
           and not exists (select 1 from "document_versions" n
             where n.document_id = v.document_id and n.workspace_id = v.workspace_id
               and n.status = 'ready' and n.version_no > v.version_no))`,
+    }),
+    // Purge completion (migration 0018): a deleted, unpurged document becomes purged, and only when
+    // nothing is left to remove: no chunk, no version still running. USING of the two worker update
+    // policies is OR-ed, so activation is limited to live rows and this one to unpurged deleted
+    // rows: a purged tombstone matches neither and cannot change again.
+    pgPolicy("documents_worker_purge", {
+      for: "update",
+      to: workerRole,
+      using: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.deletedAt} is not null and ${table.purgedAt} is null`,
+      withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${table.deletedAt} is not null
+        and ${table.purgedAt} is not null and ${table.activeVersionId} is null
+        and not exists (select 1 from "document_versions" v
+          where v.document_id = ${table.id} and v.workspace_id = ${table.workspaceId}
+            and v.status in ('uploaded', 'queued', 'parsing', 'chunking'))
+        and not exists (select 1 from "chunks" c
+          join "document_versions" v on v.id = c.version_id and v.workspace_id = c.workspace_id
+          where v.document_id = ${table.id} and v.workspace_id = ${table.workspaceId})`,
     }),
   ],
 ).enableRLS();

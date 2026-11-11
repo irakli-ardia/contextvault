@@ -12,14 +12,19 @@ it("pins the worker role's policies to exactly the reviewed list", async () => {
   );
   expect(rows.map((r) => r.p)).toEqual([
     "chunks.chunks_worker_insert",
+    "chunks.chunks_worker_purge",
     "chunks.chunks_worker_select",
     "document_versions.document_versions_worker_discover",
     "document_versions.document_versions_worker_update",
     "documents.documents_worker_activate",
+    "documents.documents_worker_discover_deleted",
+    "documents.documents_worker_purge",
     "documents.documents_worker_select",
     "outbox.outbox_worker_discover",
     "outbox.outbox_worker_insert",
     "outbox.outbox_worker_mark",
     "sections.sections_worker_insert",
+    "sections.sections_worker_purge",
+    "sections.sections_worker_select",
   ]);
 });

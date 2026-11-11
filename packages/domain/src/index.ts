@@ -29,6 +29,23 @@ export {
 } from "./documents/errors";
 export { sanitizeFileName } from "./documents/filename";
 export type { DeadlineSignal, DocumentStore, PutOptions, StoredObject } from "./documents/ports";
+export {
+  createPurgeSweep,
+  type PurgeBatch,
+  type PurgeDocumentDeps,
+  type PurgeDocumentInput,
+  type PurgeDocumentOutcome,
+  type PurgeSweepDeps,
+  purgeDocument,
+} from "./documents/purge-documents";
+export {
+  type PurgeCandidate,
+  type PurgeCursor,
+  type PurgeRepository,
+  type PurgeSource,
+  type PurgeUnitOfWork,
+  purgePageLimit,
+} from "./documents/purge-ports";
 export { documentObjectKey, parseStorageKey, type StorageKey } from "./documents/storage-key";
 export {
   type UploadDocumentCommand,

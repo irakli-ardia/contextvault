@@ -6,7 +6,8 @@ import { openRolePools, ROLES, scalar } from "./role-test-support";
 // non-terminal versions in the same transaction (plan: m1-secure-document-ingestion, "Deleted-
 // document starvation"). M1.7 (migration 0017) grants that path to the application role and to
 // nobody else: the grants below are exactly the delete command's. Physical removal of rows is not
-// granted to anyone (purge is migration 0018, not built).
+// granted to anyone on documents, document_versions or the outbox: the purge (migration 0018)
+// removes only chunks and sections, and the document stays as a tombstone.
 const pools = openRolePools();
 afterAll(() => pools.close());
 
@@ -25,10 +26,13 @@ describe.each([ROLES.app, ROLES.worker])("%s holds no destructive document privi
     expect(await can(role, "TRUNCATE")).toBe(false);
   });
 
-  // The reviewed exceptions: the worker's M1.6 activation sets active_version_id; the application
-  // role's delete command (M1.7) sets deleted_at and clears active_version_id.
+  // The reviewed exceptions: the worker's M1.6 activation sets active_version_id and its M1.7
+  // purge sets purged_at; the application role's delete command sets deleted_at and clears
+  // active_version_id. Nobody writes deleted_at but the delete command.
   const updatable =
-    role === ROLES.worker ? ["active_version_id"] : ["deleted_at", "active_version_id"];
+    role === ROLES.worker
+      ? ["active_version_id", "purged_at"]
+      : ["deleted_at", "active_version_id"];
   it("can UPDATE only the reviewed document columns", async () => {
     expect(await can(role, "UPDATE")).toBe(false); // no table-level grant
     const columns = await pools.bootstrap.query<{ attname: string }>(

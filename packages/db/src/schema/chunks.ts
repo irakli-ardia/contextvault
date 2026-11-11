@@ -12,7 +12,12 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { documentVersions } from "./document-versions";
-import { inWorkerWorkspace, versionInChunking, workerRole } from "./rls";
+import {
+  inWorkerWorkspace,
+  versionInChunking,
+  versionOfPurgeableDocument,
+  workerRole,
+} from "./rls";
 import { sections } from "./sections";
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
@@ -74,6 +79,12 @@ export const chunks = pgTable(
       for: "select",
       to: workerRole,
       using: inWorkerWorkspace(table.workspaceId),
+    }),
+    // Purge (migration 0018): only the rows of a deleted, unpurged document.
+    pgPolicy("chunks_worker_purge", {
+      for: "delete",
+      to: workerRole,
+      using: sql`${inWorkerWorkspace(table.workspaceId)} and ${versionOfPurgeableDocument(table.workspaceId, table.versionId)}`,
     }),
   ],
 ).enableRLS();

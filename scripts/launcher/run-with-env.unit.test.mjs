@@ -84,11 +84,11 @@ describe("allowlists", () => {
     expect(buildEnv("api", fake(API), {})).toEqual(fake(API));
   });
 
-  it("worker is exactly NODE_ENV, REDIS_URL, DATABASE_WORKER_URL and S3_*", () => {
-    const WORKER = ["NODE_ENV", "REDIS_URL", "DATABASE_WORKER_URL", ...API.slice(-5)];
+  it("worker is exactly NODE_ENV, REDIS_URL, DATABASE_WORKER_URL, PURGE_RETENTION_HOURS, S3_*", () => {
+    const own = ["REDIS_URL", "DATABASE_WORKER_URL", "PURGE_RETENTION_HOURS"];
+    const WORKER = ["NODE_ENV", ...own, ...API.slice(-5)];
     expect(ALLOWLISTS.worker).toEqual(WORKER);
-    const file = fake([...API, ...PRIVILEGED, "REDIS_URL", "DATABASE_WORKER_URL"]);
-    expect(buildEnv("worker", file, {})).toEqual(fake(WORKER));
+    expect(buildEnv("worker", fake([...API, ...PRIVILEGED, ...own]), {})).toEqual(fake(WORKER));
   });
 
   it("excludes every privileged variable for both apps", () => {

@@ -116,8 +116,27 @@ const webEnvSchema = z.object({
 // Parsing reads the stored object, so the worker needs the same S3_* settings as the api.
 const workerEnvSchema = workerDatabaseEnvSchema
   .extend(s3Fields)
-  .extend({ REDIS_URL: z.url({ protocol: /^rediss?$/ }) })
-  .superRefine(refineS3);
+  .extend({
+    REDIS_URL: z.url({ protocol: /^rediss?$/ }),
+    // How long a deleted document's object and derived rows are kept before the purge (M1.7).
+    // Zero (no grace period) exists for isolated tests only.
+    PURGE_RETENTION_HOURS: z
+      .string()
+      .regex(/^\d{1,4}$/, "Must be whole hours")
+      .default("168")
+      .transform(Number)
+      .pipe(z.number().max(8_760)),
+  })
+  .superRefine(refineS3)
+  .superRefine((env, ctx) => {
+    if (env.PURGE_RETENTION_HOURS === 0 && env.NODE_ENV !== "test") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["PURGE_RETENTION_HOURS"],
+        message: "Zero is allowed only when NODE_ENV is test",
+      });
+    }
+  });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;

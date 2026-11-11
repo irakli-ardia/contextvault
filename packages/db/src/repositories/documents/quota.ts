@@ -19,7 +19,8 @@ interface Usage {
   readonly bytes: number;
 }
 
-// Live documents plus every reservation except `ownReservationId`, whatever its age.
+// Live documents count by number; bytes count until the purge completes (a deleted document's
+// object is still stored), plus every reservation except `ownReservationId`, whatever its age.
 async function usage(
   executor: Executor,
   workspaceId: WorkspaceId,
@@ -29,7 +30,7 @@ async function usage(
     (select count(*) from "documents" where workspace_id = ${workspaceId} and deleted_at is null)
     + (select count(*) from "pending_uploads" where workspace_id = ${workspaceId} and id <> ${ownReservationId})
       as documents,
-    (select coalesce(sum(size_bytes), 0) from "documents" where workspace_id = ${workspaceId} and deleted_at is null)
+    (select coalesce(sum(size_bytes), 0) from "documents" where workspace_id = ${workspaceId} and purged_at is null)
     + (select coalesce(sum(declared_bytes), 0) from "pending_uploads" where workspace_id = ${workspaceId} and id <> ${ownReservationId})
       as bytes`);
   const [row] = rows;

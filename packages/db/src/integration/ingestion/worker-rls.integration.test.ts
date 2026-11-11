@@ -105,9 +105,13 @@ describe("cross-workspace discovery", () => {
     },
   );
 
-  it("reads documents only inside the asserted workspace, and only deleted_at", async () => {
+  // Deleted, unpurged documents are the one exception, visible in every workspace for the purge
+  // (migration 0018, purge-grants.integration.test.ts), so live rows are what this isolates.
+  it("reads live documents only inside the asserted workspace, and only deleted_at", async () => {
     const seen = (ws: string | null) =>
-      asWorker(ws, async (q) => (await q("select id from documents")).rows.map((r) => r.id));
+      asWorker(ws, async (q) =>
+        (await q("select id from documents where deleted_at is null")).rows.map((r) => r.id),
+      );
     expect(await seen(wsA)).toEqual([docA.documentId]);
     expect(await seen(null)).toEqual([]);
     expect(await sqlState(asWorker(wsA, (q) => q("select display_name from documents")))).toBe(
@@ -257,11 +261,13 @@ describe("derived rows are tenant-scoped (M1.6)", () => {
     ).toBe(DENIED);
   });
 
-  it("cannot read chunk content, update or delete derived rows, or write deleted_at", async () => {
+  it("cannot read chunk content, update derived rows, delete them of a live document, or write deleted_at", async () => {
     expect(await sqlState(asWorker(wsA, (q) => q("select content from chunks")))).toBe(DENIED);
     expect((await asWorker(wsA, (q) => q("select id from chunks"))).rowCount).toBe(0);
     expect(await sqlState(asWorker(wsA, (q) => q("update sections set page = 1")))).toBe(DENIED);
-    expect(await sqlState(asWorker(wsA, (q) => q("delete from chunks")))).toBe(DENIED);
+    // DELETE is granted for the purge (0018) but its policy admits deleted documents only.
+    expect((await asWorker(wsA, (q) => q("delete from chunks"))).rowCount).toBe(0);
+    expect((await asWorker(wsA, (q) => q("delete from sections"))).rowCount).toBe(0);
     expect(await sqlState(asWorker(wsA, (q) => q("update documents set deleted_at = now()")))).toBe(
       DENIED,
     );

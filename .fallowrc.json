@@ -22,6 +22,7 @@
       { "name": "worker-queue", "patterns": ["apps/worker/src/queue/**"] },
       { "name": "worker-ingestion", "patterns": ["apps/worker/src/ingestion/**"] },
       { "name": "worker-recovery", "patterns": ["apps/worker/src/recovery/**"] },
+      { "name": "worker-purge", "patterns": ["apps/worker/src/purge/**"] },
       {
         "name": "worker",
         "patterns": ["apps/worker/*", "apps/worker/src/*", "apps/worker/src/testing/**"]
@@ -88,6 +89,7 @@
           "worker-queue",
           "worker-ingestion",
           "worker-recovery",
+          "worker-purge",
           "config",
           "db",
           "domain",
@@ -105,6 +107,7 @@
         "allow": ["worker", "worker-queue", "config", "db", "domain", "ingestion", "storage", "ai"]
       },
       { "from": "worker-recovery", "allow": ["worker", "worker-queue", "config", "db", "domain"] },
+      { "from": "worker-purge", "allow": ["worker", "domain"] },
       { "from": "api-http", "allow": ["domain"] },
 
       { "from": "auth", "allow": ["domain"] },

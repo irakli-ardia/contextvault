@@ -66,10 +66,13 @@ export const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
     "SELECT(id)",
     "SELECT(workspace_id)",
     "SELECT(deleted_at)",
+    "SELECT(purged_at)",
     "UPDATE(active_version_id)",
+    "UPDATE(purged_at)",
   ],
   "public.outbox": ["SELECT", "INSERT", "UPDATE(dispatched_at)"],
-  // Written once by the M1.6 activation; no read, update or delete until retrieval and the purge.
-  "public.sections": ["INSERT"],
-  "public.chunks": ["INSERT", "SELECT(id)", "SELECT(workspace_id)", "SELECT(version_id)"],
+  // Written once by the M1.6 activation and removed only by the M1.7 purge (migration 0018, rows of
+  // deleted documents); no update, and no read beyond what the policies and the DELETE predicate need.
+  "public.sections": ["INSERT", "DELETE", "SELECT(workspace_id)", "SELECT(version_id)"],
+  "public.chunks": ["INSERT", "DELETE", "SELECT(id)", "SELECT(workspace_id)", "SELECT(version_id)"],
 };

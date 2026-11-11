@@ -16,8 +16,8 @@ const defaultTransactionTimeoutMs = 10_000;
 
 /**
  * Soft delete in one transaction (the repository documents what it does). Idempotent: repeating it
- * answers `already_deleted`. Physical removal of objects and derived rows is not built (M1.7
- * purge, migration 0018): until then they remain stored but unreachable through the document.
+ * answers `already_deleted`. Objects and derived rows stay stored, unreachable through the
+ * document, until the worker's purge removes them after the retention period.
  */
 export async function deleteDocument(
   deps: DeleteDocumentDeps,

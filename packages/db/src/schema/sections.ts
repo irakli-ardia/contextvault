@@ -10,7 +10,12 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { documentVersions } from "./document-versions";
-import { inWorkerWorkspace, versionInChunking, workerRole } from "./rls";
+import {
+  inWorkerWorkspace,
+  versionInChunking,
+  versionOfPurgeableDocument,
+  workerRole,
+} from "./rls";
 
 // Derived data of one version, written once by the worker's activation transaction and never
 // updated. The worker may only INSERT, bound to the workspace its job asserted (migration 0015);
@@ -48,6 +53,18 @@ export const sections = pgTable(
       for: "insert",
       to: workerRole,
       withCheck: sql`${inWorkerWorkspace(table.workspaceId)} and ${versionInChunking(table.workspaceId, table.versionId)}`,
+    }),
+    // Purge (migration 0018): a DELETE ... WHERE also needs this read policy (column grant:
+    // workspace_id and version_id only), bound to the asserted workspace.
+    pgPolicy("sections_worker_select", {
+      for: "select",
+      to: workerRole,
+      using: inWorkerWorkspace(table.workspaceId),
+    }),
+    pgPolicy("sections_worker_purge", {
+      for: "delete",
+      to: workerRole,
+      using: sql`${inWorkerWorkspace(table.workspaceId)} and ${versionOfPurgeableDocument(table.workspaceId, table.versionId)}`,
     }),
   ],
 ).enableRLS();

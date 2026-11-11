@@ -179,6 +179,28 @@ describe("parseWorkerEnv", () => {
       expect(() => parseWorkerEnv({ ...WORKER, REDIS_URL: url })).not.toThrow(SECRET);
     },
   );
+
+  it("keeps deleted documents 7 days by default and accepts whole hours", () => {
+    expect(parseWorkerEnv(WORKER).PURGE_RETENTION_HOURS).toBe(168);
+    expect(parseWorkerEnv({ ...WORKER, PURGE_RETENTION_HOURS: "24" }).PURGE_RETENTION_HOURS).toBe(
+      24,
+    );
+  });
+
+  it.each(["-1", "1.5", "abc", "", "9000"])("rejects PURGE_RETENTION_HOURS=%j", (hours) => {
+    expect(() => parseWorkerEnv({ ...WORKER, PURGE_RETENTION_HOURS: hours })).toThrow(
+      /PURGE_RETENTION_HOURS/,
+    );
+  });
+
+  it("allows no grace period only in test", () => {
+    expect(parseWorkerEnv({ ...WORKER, PURGE_RETENTION_HOURS: "0" }).PURGE_RETENTION_HOURS).toBe(0);
+    for (const NODE_ENV of ["development", "production"]) {
+      expect(() => parseWorkerEnv({ ...WORKER, NODE_ENV, PURGE_RETENTION_HOURS: "0" })).toThrow(
+        /PURGE_RETENTION_HOURS/,
+      );
+    }
+  });
 });
 
 describe("S3_ENDPOINT shape", () => {
