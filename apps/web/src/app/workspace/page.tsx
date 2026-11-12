@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SessionNav } from "../../features/auth";
 import { requireSession } from "../../server/session.server";
 
@@ -17,7 +18,11 @@ export default async function WorkspacePage() {
         <ul className="mt-4 grid gap-4 sm:grid-cols-2">
           {workspaces.map((workspace) => (
             <li key={workspace.id} className="rounded-card border border-line bg-surface p-6">
-              <h2 className="font-semibold">{workspace.name}</h2>
+              <h2 className="font-semibold">
+                <Link href={`/workspace/${workspace.id}`} className="underline">
+                  {workspace.name}
+                </Link>
+              </h2>
               <p className="mt-1 text-sm text-muted">{workspace.role}</p>
             </li>
           ))}

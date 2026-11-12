@@ -17,14 +17,14 @@ const load = async (env) => {
   return (await import("../../playwright.config.ts")).default;
 };
 const config = await load(VERIFIED);
-const [api, web, upload] = config.webServer;
+const [api, web, upload, worker] = config.webServer;
 const PRIVILEGED = /DATABASE_(FIXTURE|BOOTSTRAP|MIGRATION)_URL|POSTGRES_|REDIS_PASSWORD/;
 
 // Playwright merges each `env` over the runner's environment, so isolation lives in the launcher's
 // allowlist; the config must only route every server through it and forward nothing privileged.
 describe("playwright webServer", () => {
-  it("has the api and two web servers", () => {
-    expect(config.webServer).toHaveLength(3);
+  it("has the api, two web servers and the worker", () => {
+    expect(config.webServer).toHaveLength(4);
   });
 
   it("starts every server through the launcher with the matching mode", () => {
@@ -37,6 +37,14 @@ describe("playwright webServer", () => {
       );
     }
     expect([api.cwd, web.cwd, upload.cwd]).toEqual([".", "apps/web", "apps/web"]);
+  });
+
+  it("starts the worker through the launcher and waits for its ready line", () => {
+    expect(worker.command).toBe(
+      "node scripts/launcher/run-with-env.mjs worker apps/worker/dist/main.mjs",
+    );
+    expect(worker.cwd).toBe(".");
+    expect(worker.wait.stdout.test("worker ready")).toBe(true);
   });
 
   it("loads no env file and forwards no privileged variable", () => {
@@ -53,7 +61,9 @@ describe("playwright webServer", () => {
     ]);
     expect(web.env).toEqual({ NODE_ENV: "production" });
   });
+});
 
+describe("playwright webServer settings", () => {
   it("keeps the ports, readiness and shutdown settings", () => {
     expect(api.url).toBe("http://127.0.0.1:3201/health");
     expect([web.url, upload.url]).toEqual(["http://127.0.0.1:3100", "http://127.0.0.1:3101"]);

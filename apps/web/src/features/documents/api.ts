@@ -33,3 +33,8 @@ export async function retryDocument(
   const path = `${base(workspaceId)}/${encodeURIComponent(documentId)}/retry`;
   return expectShape(await request(path, { method: "POST" }), parseDocumentResponse);
 }
+
+/** Idempotent: deleting a document that is already gone also succeeds. */
+export async function deleteDocument(workspaceId: string, documentId: string): Promise<void> {
+  await request(`${base(workspaceId)}/${encodeURIComponent(documentId)}`, { method: "DELETE" });
+}

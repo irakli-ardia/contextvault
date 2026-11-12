@@ -69,5 +69,17 @@ export default defineConfig({
       timeout: 60_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },
+    {
+      // The built worker (outbox dispatcher, parser, BullMQ consumer) against the verified Redis and
+      // database, so uploaded documents really move queued -> ready. No readiness URL exists, so it
+      // waits for the worker's own "ready" log line on stdout.
+      command: "node scripts/launcher/run-with-env.mjs worker apps/worker/dist/main.mjs",
+      cwd: ".",
+      env: { NODE_ENV: "development" },
+      wait: { stdout: /worker ready/ },
+      reuseExistingServer: false,
+      timeout: 60_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+    },
   ],
 });
