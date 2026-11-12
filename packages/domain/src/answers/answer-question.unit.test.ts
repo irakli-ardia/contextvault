@@ -16,7 +16,8 @@ const hit = (n: number, similarity: number): SearchHit => ({
   content: `content ${n}`,
   startOffset: 0,
   endOffset: 9,
-  similarity,
+  scores: { vector: similarity, keyword: null },
+  ranks: { vector: n, keyword: null },
 });
 
 function setup(hits: SearchHit[], draft: AnswerDraft) {
@@ -33,7 +34,13 @@ function setup(hits: SearchHit[], draft: AnswerDraft) {
     embedder: { model: "m", embed: async (t: readonly string[]) => t.map(() => [1]) },
     uow: {
       run: async <T>(_c: unknown, work: (r: { search: SearchRepository }) => Promise<T>) =>
-        work({ search: { nearest: async () => hits } }),
+        work({
+          search: {
+            nearest: async () =>
+              hits.map(({ scores, ...chunk }) => ({ ...chunk, score: scores.vector ?? 0 })),
+            keyword: async () => [],
+          },
+        }),
     },
   };
   return { deps, seen };

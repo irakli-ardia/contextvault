@@ -22,6 +22,13 @@ export {
   parseDocumentResponse,
 } from "./documents";
 export {
+  parseSearchResponse,
+  SEARCH_MODES,
+  type SearchMode,
+  type SearchResponse,
+  type SearchResult,
+} from "./search";
+export {
   MAX_UPLOAD_BYTES,
   parseUploadHeaders,
   type UploadHeaders,

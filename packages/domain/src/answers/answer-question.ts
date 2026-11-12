@@ -81,7 +81,7 @@ export async function answerQuestion(
 ): Promise<Answer> {
   const hits: readonly SearchHit[] = (
     await searchChunks(deps, actor, { query: input.question, limit: retrievedPassages })
-  ).filter((hit) => hit.similarity >= minEvidenceSimilarity);
+  ).filter((hit) => (hit.scores.vector ?? -1) >= minEvidenceSimilarity);
   if (hits.length === 0) return abstain("no_evidence");
 
   const passages = hits.map((hit, i) => ({
