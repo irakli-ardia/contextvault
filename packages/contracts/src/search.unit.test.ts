@@ -115,3 +115,61 @@ describe("parseSearchResponse mode consistency", () => {
     expect(parseSearchResponse(body)).toBeNull();
   });
 });
+
+describe("parseSearchResponse non-finite scores and result order", () => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects a %s score in every score field",
+    (bad) => {
+      expect(
+        parseSearchResponse({
+          ...ok,
+          results: [{ ...result, scores: { ...result.scores, keyword: bad } }],
+        }),
+      ).toBeNull();
+      expect(
+        parseSearchResponse(
+          hybrid({ ...both, scores: { ...both.scores, vector: bad }, similarity: bad }),
+        ),
+      ).toBeNull();
+      expect(
+        parseSearchResponse(hybrid({ ...both, scores: { ...both.scores, fused: bad } })),
+      ).toBeNull();
+    },
+  );
+
+  const keywordAt = (rank: number, fused: number | null = null) => ({
+    ...result,
+    chunkId: `c${rank}`,
+    scores: { vector: null, keyword: 0.1, fused },
+    ranks: { vector: null, keyword: rank },
+  });
+
+  it("accepts single-signal results numbered 1..n in order", () => {
+    const body = { ...ok, results: [keywordAt(1), keywordAt(2)] };
+    expect(parseSearchResponse(body)).toEqual(body);
+  });
+
+  it.each([
+    ["a repeated rank", [keywordAt(1), keywordAt(1)]],
+    ["a rank gap", [keywordAt(1), keywordAt(3)]],
+    ["ranks out of order", [keywordAt(2), keywordAt(1)]],
+  ])("rejects %s in keyword mode", (_name, results) => {
+    expect(parseSearchResponse({ ...ok, results })).toBeNull();
+  });
+
+  it("rejects hybrid results whose fused score increases or whose signal rank repeats", () => {
+    const low = { ...keywordAt(2, 1 / 62) };
+    const high = { ...keywordAt(1, 1 / 61) };
+    expect(
+      parseSearchResponse({ model: "m", mode: "hybrid", results: [high, low] }),
+    ).not.toBeNull();
+    expect(parseSearchResponse({ model: "m", mode: "hybrid", results: [low, high] })).toBeNull();
+    expect(
+      parseSearchResponse({
+        model: "m",
+        mode: "hybrid",
+        results: [high, { ...high, chunkId: "x" }],
+      }),
+    ).toBeNull();
+  });
+});

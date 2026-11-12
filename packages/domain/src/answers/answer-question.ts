@@ -72,6 +72,10 @@ export interface AnswerQuestionDeps {
   readonly answerer: Answerer;
 }
 
+// Finite and at or above the threshold; a NaN or infinite score is never evidence.
+const isVectorEvidence = (score: number | null) =>
+  score !== null && Number.isFinite(score) && score >= minEvidenceSimilarity;
+
 const abstain = (reason: AbstainReason): Answer => ({ kind: "insufficient_evidence", reason });
 
 /**
@@ -93,9 +97,7 @@ export async function answerQuestion(
     mode: "hybrid",
   });
   const hits: readonly SearchHit[] = pool
-    .filter(
-      (hit) => (hit.scores.vector ?? -1) >= minEvidenceSimilarity || hit.scores.keyword !== null,
-    )
+    .filter((hit) => isVectorEvidence(hit.scores.vector) || hit.scores.keyword !== null)
     .slice(0, retrievedPassages);
   if (hits.length === 0) return abstain("no_evidence");
 

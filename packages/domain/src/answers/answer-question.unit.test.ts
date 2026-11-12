@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { parseUserId, parseWorkspaceId } from "../kernel/ids";
 import type { SearchHit, SearchRepository } from "../retrieval/search-chunks";
-import { type AnswerDraft, type Answerer, answerQuestion } from "./answer-question";
+import {
+  type AnswerDraft,
+  type Answerer,
+  answerQuestion,
+  minEvidenceSimilarity,
+} from "./answer-question";
 
 const actor = {
   userId: parseUserId("00000000-0000-4000-8000-000000000002"),
@@ -138,5 +143,44 @@ describe("answerQuestion", () => {
     });
     await answerQuestion(deps, actor, { question: "q" });
     expect(seen[0]?.passages.map((p) => p.content).sort()).toEqual(["content 7", "content 8"]);
+  });
+
+  describe("evidence threshold", () => {
+    const run = async (similarity: number | null, keyword: number | null = null) => {
+      const { deps, seen } = setup([hit(1, similarity, keyword)], {
+        answerable: false,
+        text: "",
+        citations: [],
+      });
+      await answerQuestion(deps, actor, { question: "q" });
+      return seen.length === 1;
+    };
+
+    it("pins the threshold", () => {
+      expect(minEvidenceSimilarity).toBe(0.05);
+    });
+
+    it.each([
+      [minEvidenceSimilarity, true],
+      [0.0500001, true],
+      [0.0499999, false],
+      [0, false],
+      [-0.5, false],
+      [1, true],
+    ])("vector similarity %s is evidence: %s", async (similarity, admitted) => {
+      expect(await run(similarity)).toBe(admitted);
+    });
+
+    it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+      "a %s vector score is not evidence",
+      async (similarity) => {
+        expect(await run(similarity)).toBe(false);
+      },
+    );
+
+    it("a keyword match admits regardless of the vector score", async () => {
+      expect(await run(Number.NaN, 0.001)).toBe(true);
+      expect(await run(-1, 0.001)).toBe(true);
+    });
   });
 });

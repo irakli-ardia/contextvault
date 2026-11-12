@@ -53,6 +53,7 @@ function parseRanks(value: unknown) {
 // A signal has a score exactly when it has a rank, and the mode decides which signals exist:
 // a single-signal response has only its own and no fused score; hybrid has a fused score and
 // at least one signal behind it.
+// fallow-ignore-next-line complexity
 function consistent(
   mode: SearchMode,
   scores: SearchResult["scores"],
@@ -67,6 +68,23 @@ function consistent(
   return (hasVector || hasKeyword) && scores.fused !== null && scores.fused > 0;
 }
 
+// The server issues ranks from list position, so they are unique per signal; a single-signal mode
+// numbers its results 1..n in order, and hybrid results never increase in fused score. These are
+// structural facts, independent of the RRF constant, which the contract deliberately does not know.
+const uniqueRanks = (ranks: readonly (number | null)[]) => {
+  const present = ranks.filter((rank) => rank !== null);
+  return new Set(present).size === present.length;
+};
+
+function ordered(mode: SearchMode, results: readonly SearchResult[]) {
+  if (!uniqueRanks(results.map((r) => r.ranks.vector))) return false;
+  if (!uniqueRanks(results.map((r) => r.ranks.keyword))) return false;
+  if (mode !== "hybrid" && !results.every((r, i) => r.ranks[mode] === i + 1)) return false;
+  const fused = results.flatMap((r) => (r.scores.fused === null ? [] : [r.scores.fused]));
+  return fused.every((value, i) => i === 0 || value <= (fused[i - 1] ?? value));
+}
+
+// fallow-ignore-next-line complexity
 function parseResult(value: unknown, mode: SearchMode): SearchResult | null {
   if (!isRecord(value) || Object.keys(value).length !== 9) return null;
   const { chunkId, documentId, displayName, content, startOffset, endOffset, similarity } = value;
@@ -98,5 +116,7 @@ export function parseSearchResponse(value: unknown): SearchResponse | null {
   if (mode !== "vector" && mode !== "keyword" && mode !== "hybrid") return null;
   const parsed = results.map((result) => parseResult(result, mode));
   const valid = parsed.filter((r): r is SearchResult => r !== null);
-  return valid.length === parsed.length ? { model, mode, results: valid } : null;
+  return valid.length === parsed.length && ordered(mode, valid)
+    ? { model, mode, results: valid }
+    : null;
 }

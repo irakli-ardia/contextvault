@@ -21,18 +21,19 @@ const ESTIMATE = "explain (settings, format json) ";
 export async function loadProduction({
   tmp = tmpdir(),
   tsdown = join(root, "packages/db/node_modules/.bin/tsdown"),
+  name = "orphan-sql",
 } = {}) {
   const out = mkdtempSync(join(tmp, "cv-bench-bundle-"));
   try {
     const build = spawnSync(
       tsdown,
-      ["-c", join(root, "scripts/bench/orphan-sql.tsdown.config.mjs"), "-d", out, "-l", "warn"],
+      ["-c", join(root, `scripts/bench/${name}.tsdown.config.mjs`), "-d", out, "-l", "warn"],
       { cwd: join(root, "packages/db"), encoding: "utf8" },
     );
     if (build.status !== 0) {
       throw new Error(`bundle failed: ${(build.stderr || String(build.error)).slice(0, 300)}`);
     }
-    const lib = await import(join(out, "orphan-sql.entry.mjs"));
+    const lib = await import(join(out, `${name}.entry.mjs`));
     return { ...lib, dialect: new lib.PgDialect() };
   } finally {
     rmSync(out, { recursive: true, force: true });
