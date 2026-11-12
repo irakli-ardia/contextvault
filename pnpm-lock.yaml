@@ -197,6 +197,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: 3.1164.0
         version: 3.1164.0
+      '@contextvault/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@contextvault/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -301,6 +304,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: 3.1164.0
         version: 3.1164.0
+      '@contextvault/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@contextvault/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -338,6 +344,16 @@ importers:
       tsdown:
         specifier: 0.23.7
         version: 0.23.7(tsx@4.23.15)(typescript@6.0.3)
+
+  packages/ai:
+    dependencies:
+      '@contextvault/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
 
   packages/auth:
     dependencies:

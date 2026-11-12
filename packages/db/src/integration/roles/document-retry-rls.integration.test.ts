@@ -86,7 +86,8 @@ describe("the retry transition on document_versions", () => {
       `update document_versions set ${set} where id = $1`,
       [doc.versionId],
     );
-    expect(state).toBe("42501");
+    // Either the policy (42501) or, for an illegal transition, the lifecycle trigger (23514, fires first).
+    expect(state).toMatch(/^(42501|23514)$/);
     expect(await h.row(doc.versionId)).toMatchObject({ status: "failed", attempt: 3 });
   });
 

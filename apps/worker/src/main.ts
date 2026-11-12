@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { createEmbedder } from "@contextvault/ai";
 import { EnvError, loadWorkerEnv } from "@contextvault/config";
 import { createWorkerPersistence } from "@contextvault/db";
 import {
@@ -65,6 +66,11 @@ async function bootstrap(): Promise<void> {
       ),
     parse: (bytes, signal) => parseInChild(bytes, signal, { childPath: parserChildPath }),
     handoff: createParsedHandoff(),
+    embedder: createEmbedder({
+      provider: env.EMBEDDING_PROVIDER,
+      openaiApiKey: env.OPENAI_API_KEY,
+      openaiModel: env.OPENAI_EMBEDDING_MODEL,
+    }),
     newId: randomUUID,
   });
   const consumer = await createIngestionConsumer({

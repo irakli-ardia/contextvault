@@ -121,13 +121,13 @@ describe("cross-workspace discovery", () => {
 });
 
 describe("version writes are tenant-scoped", () => {
-  it("updates a version of the asserted workspace to processed", async () => {
+  it("updates a version of the asserted workspace to parsing", async () => {
     const status = await asWorker(wsA, async (q) => {
-      expect((await q(advance(docA.versionId, "processed"))).rowCount).toBe(1);
+      expect((await q(advance(docA.versionId, "parsing"))).rowCount).toBe(1);
       return (await q("select status from document_versions where id = $1", [docA.versionId]))
         .rows[0]?.status;
     });
-    expect(status).toBe("processed");
+    expect(status).toBe("parsing");
   });
 
   it("changes nothing in another workspace's version", async () => {
@@ -139,7 +139,11 @@ describe("version writes are tenant-scoped", () => {
   });
 
   it("cannot mark a version ready without chunks (the full set of fences: worker-integrity)", async () => {
-    expect(await sqlState(asWorker(wsA, (q) => q(advance(docA.versionId, "ready"))))).toBe(DENIED);
+    const toReady = async (q: (text: string) => Promise<unknown>) => {
+      for (const status of ["parsing", "chunking", "ready"])
+        await q(advance(docA.versionId, status));
+    };
+    expect(await sqlState(asWorker(wsA, toReady))).toBe(DENIED);
   });
 
   it.each([
@@ -249,6 +253,7 @@ describe("derived rows are tenant-scoped (M1.6)", () => {
 
   it("inserts a section for the asserted workspace only", async () => {
     const ok = await asWorker(wsA, async (q) => {
+      await q(advance(docA.versionId, "parsing"));
       await q(advance(docA.versionId, "chunking")); // derived rows are accepted only while chunking
       return q(section(randomUUID(), wsA, docA.versionId));
     });

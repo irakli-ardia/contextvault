@@ -204,7 +204,7 @@ describe("worker privileges (effective, PUBLIC included)", () => {
            else has_table_privilege(${worker}, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN') end
        order by 1`,
     );
-    expect(rows.map((r) => r.rel)).toEqual(["chunks", "outbox", "sections"]);
+    expect(rows.map((r) => r.rel)).toEqual(["chunk_embeddings", "chunks", "outbox", "sections"]);
   });
 });
 

@@ -59,6 +59,25 @@ const refineS3 = (
     ctx.addIssue({ code: "custom", path: ["S3_ENDPOINT"], message: "Must be https in production" });
   }
 };
+// Embeddings: `hash` is offline and free; `openai` bills per token, so it is never the default and
+// needs its key. The api and the worker must agree, or queries meet no vectors of their model.
+const embeddingFields = {
+  EMBEDDING_PROVIDER: z.enum(["openai", "hash"]).default("hash"),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_EMBEDDING_MODEL: z.string().min(1).default("text-embedding-3-small"),
+};
+const refineEmbedding = (
+  env: { EMBEDDING_PROVIDER: string; OPENAI_API_KEY?: string | undefined },
+  ctx: z.RefinementCtx<unknown>,
+): void => {
+  if (env.EMBEDDING_PROVIDER === "openai" && env.OPENAI_API_KEY === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["OPENAI_API_KEY"],
+      message: "Required when EMBEDDING_PROVIDER is openai",
+    });
+  }
+};
 const s3EnvSchema = baseEnvSchema.extend(s3Fields).superRefine(refineS3);
 
 // API_HOST is an explicit bind address (no all-interfaces default). WEB_ORIGIN is the one origin
@@ -67,6 +86,7 @@ const s3EnvSchema = baseEnvSchema.extend(s3Fields).superRefine(refineS3);
 // address spoofable.
 const apiEnvSchema = databaseEnvSchema
   .extend(s3Fields)
+  .extend(embeddingFields)
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535),
     API_HOST: z.string().min(1),
@@ -79,6 +99,7 @@ const apiEnvSchema = databaseEnvSchema
   })
   .superRefine((env, ctx) => {
     refineS3(env, ctx);
+    refineEmbedding(env, ctx);
     // Refinements also run when a field failed its own check, hence canParse.
     if (!URL.canParse(env.WEB_ORIGIN) || env.WEB_ORIGIN !== new URL(env.WEB_ORIGIN).origin) {
       ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "Must be a bare origin" });
@@ -116,6 +137,7 @@ const webEnvSchema = z.object({
 // Parsing reads the stored object, so the worker needs the same S3_* settings as the api.
 const workerEnvSchema = workerDatabaseEnvSchema
   .extend(s3Fields)
+  .extend(embeddingFields)
   .extend({
     REDIS_URL: z.url({ protocol: /^rediss?$/ }),
     // How long a deleted document's object and derived rows are kept before the purge (M1.7).
@@ -128,6 +150,7 @@ const workerEnvSchema = workerDatabaseEnvSchema
       .pipe(z.number().max(8_760)),
   })
   .superRefine(refineS3)
+  .superRefine(refineEmbedding)
   .superRefine((env, ctx) => {
     if (env.PURGE_RETENTION_HOURS === 0 && env.NODE_ENV !== "test") {
       ctx.addIssue({

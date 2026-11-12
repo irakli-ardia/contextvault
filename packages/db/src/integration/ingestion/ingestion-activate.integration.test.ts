@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import {
-  type ChunkSet,
   type DocumentVersionId,
+  type EmbeddedChunkSet,
   parseDocumentVersionId,
   type WorkspaceId,
 } from "@contextvault/domain";
 import { afterAll, describe, expect, it } from "vitest";
+import { withAxisEmbeddings } from "../../testing/embedded-chunk-set";
 import { createIngestionHarness } from "../../testing/ingestion-test-support";
 import { sqlState } from "../../testing/tenant-fixture";
 
@@ -15,7 +16,7 @@ const { wsA, wsB, run } = h;
 afterAll(() => h.close());
 
 const text = "ქართული ტექსტი 😀 and more words";
-function chunkSet(content = text, overrides: { secondOrdinal?: number } = {}): ChunkSet {
+function chunkSet(content = text, overrides: { secondOrdinal?: number } = {}): EmbeddedChunkSet {
   const sectionId = randomUUID();
   const chunk = (ordinal: number, start: number, end: number) => ({
     id: randomUUID(),
@@ -27,14 +28,14 @@ function chunkSet(content = text, overrides: { secondOrdinal?: number } = {}): C
     startOffset: start,
     endOffset: end,
   });
-  return {
+  return withAxisEmbeddings({
     strategyId: "fixed-window",
     strategyVersion: 1,
     sections: [
       { id: sectionId, ordinal: 0, page: null, startOffset: 0, endOffset: content.length },
     ],
     chunks: [chunk(0, 0, 14), chunk(overrides.secondOrdinal ?? 1, 10, content.length)],
-  };
+  });
 }
 
 async function chunking(): Promise<{ id: DocumentVersionId; gen: number }> {
@@ -50,7 +51,7 @@ async function chunking(): Promise<{ id: DocumentVersionId; gen: number }> {
 const activate = (
   id: DocumentVersionId,
   leaseGeneration: number,
-  set: ChunkSet = chunkSet(),
+  set: EmbeddedChunkSet = chunkSet(),
   ws: WorkspaceId = wsA,
 ) => run(ws, (r) => r.activate({ versionId: id, leaseGeneration, chunkSet: set }));
 const q = async <T extends Record<string, unknown>>(sql: string, id: string) =>
@@ -88,6 +89,22 @@ describe("activate", () => {
       rows.map((r) => r.content),
     );
     expect(rows[0]?.strategy_id).toBe("fixed-window");
+    // Every chunk has its vector, stored with the model that produced it.
+    expect(
+      await q(
+        `select e.model from chunk_embeddings e join chunks c on c.id = e.chunk_id
+         where c.version_id = $1`,
+        id,
+      ),
+    ).toEqual([{ model: "test-model" }, { model: "test-model" }]);
+  });
+
+  it("refuses a set whose embeddings do not match its chunks, writing nothing", async () => {
+    const { id, gen } = await chunking();
+    const short = { ...chunkSet(), embeddings: [] };
+    await expect(activate(id, gen, short)).rejects.toThrow("one embedding per chunk");
+    expect(await h.row(id)).toMatchObject({ status: "chunking" });
+    expect(await counts(id)).toEqual({ sections: 0, chunks: 0, active: null });
   });
 
   it("is a no-op when replayed: no second copy of any chunk", async () => {

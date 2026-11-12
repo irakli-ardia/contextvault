@@ -6,7 +6,7 @@ import {
   parseOutboxId,
   parseWorkspaceId,
 } from "../kernel/ids";
-import type { ChunkSet } from "./chunk-set";
+import type { EmbeddedChunkSet } from "./chunk-set";
 import { canTransition, type IngestionFailure, isRunning, maxAttempts } from "./lifecycle";
 import type {
   IngestionRepository,
@@ -59,7 +59,7 @@ export function fakeIngestion() {
   /** Versions whose enqueue always fails, while the queue works for the rest. */
   const poisoned = new Set<string>();
   /** What activation persisted, by version. */
-  const activations = new Map<string, ChunkSet>();
+  const activations = new Map<string, EmbeddedChunkSet>();
   const log: string[] = [];
   let open = false;
 

@@ -11,6 +11,7 @@ it("pins the worker role's policies to exactly the reviewed list", async () => {
     [ROLES.worker],
   );
   expect(rows.map((r) => r.p)).toEqual([
+    "chunk_embeddings.chunk_embeddings_worker_insert",
     "chunks.chunks_worker_insert",
     "chunks.chunks_worker_purge",
     "chunks.chunks_worker_select",

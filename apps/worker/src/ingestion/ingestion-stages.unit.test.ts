@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { hashEmbedder } from "@contextvault/ai";
 import {
+  type Embedder,
+  EmbeddingFailure,
   parseDocumentVersionId,
   parseWorkspaceId,
   StageFailure,
@@ -26,7 +29,7 @@ const input = (stage: StageInput["stage"], leaseGeneration = 1, signal = live): 
   signal,
 });
 
-function setup(over: { parse?: () => Promise<ParsedDocument> } = {}) {
+function setup(over: { parse?: () => Promise<ParsedDocument>; embedder?: Embedder } = {}) {
   const handoff = createParsedHandoff();
   const calls: string[] = [];
   const stages = createIngestionStages({
@@ -36,6 +39,7 @@ function setup(over: { parse?: () => Promise<ParsedDocument> } = {}) {
     },
     parse: over.parse ?? (async () => document),
     handoff,
+    embedder: over.embedder ?? hashEmbedder,
     newId: () => randomUUID(),
   });
   return { stages, handoff, calls };
@@ -47,6 +51,8 @@ describe("ingestion stages", () => {
     await stages.run(input("parsing"));
     const chunkSet = await stages.run(input("chunking"));
     expect(chunkSet?.chunks.map((c) => c.content)).toEqual(["hello"]);
+    expect(chunkSet?.embeddingModel).toBe(hashEmbedder.model);
+    expect(chunkSet?.embeddings).toHaveLength(1);
     expect(handoff.take({ versionId, leaseGeneration: 1 })).toBeUndefined();
     await expect(stages.run(input("chunking"))).rejects.toMatchObject({
       code: "handoff.missing",
@@ -67,6 +73,31 @@ describe("ingestion stages", () => {
     const { stages } = setup();
     await stages.run(input("parsing", 1));
     await expect(stages.run(input("chunking", 2))).rejects.toBeInstanceOf(StageFailure);
+  });
+
+  it("classifies a provider failure without a verdict on the document", async () => {
+    const failing: Embedder = {
+      model: "m",
+      embed: async () => {
+        throw new EmbeddingFailure("embedding.unavailable", true);
+      },
+    };
+    const { stages } = setup({ embedder: failing });
+    await stages.run(input("parsing"));
+    await expect(stages.run(input("chunking"))).rejects.toMatchObject({
+      code: "embedding.unavailable",
+      retryable: true,
+    });
+  });
+
+  it("refuses a provider that returns the wrong number of vectors", async () => {
+    const short: Embedder = { model: "m", embed: async () => [] };
+    const { stages } = setup({ embedder: short });
+    await stages.run(input("parsing"));
+    await expect(stages.run(input("chunking"))).rejects.toMatchObject({
+      code: "embedding.malformed_response",
+      retryable: false,
+    });
   });
 
   it("hands nothing over once the lease is lost", async () => {

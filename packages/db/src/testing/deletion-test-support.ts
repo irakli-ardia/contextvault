@@ -1,17 +1,18 @@
 import { randomUUID } from "node:crypto";
 import {
-  type ChunkSet,
   type DocumentId,
   type DocumentVersionId,
+  type EmbeddedChunkSet,
   parseDocumentId,
   type UserId,
   type WorkspaceId,
 } from "@contextvault/domain";
+import { withAxisEmbeddings } from "./embedded-chunk-set";
 import type { Harness } from "./recovery-test-support";
 
-export const chunkSet = (): ChunkSet => {
+export const chunkSet = (): EmbeddedChunkSet => {
   const sectionId = randomUUID();
-  return {
+  return withAxisEmbeddings({
     strategyId: "fixed-window",
     strategyVersion: 1,
     sections: [{ id: sectionId, ordinal: 0, page: null, startOffset: 0, endOffset: 20 }],
@@ -27,7 +28,7 @@ export const chunkSet = (): ChunkSet => {
         endOffset: 20,
       },
     ],
-  };
+  });
 };
 
 export interface Doc {

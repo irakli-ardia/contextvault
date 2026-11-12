@@ -31,3 +31,9 @@ export interface ChunkSet {
   readonly sections: readonly NewSection[];
   readonly chunks: readonly NewChunk[];
 }
+
+/** A chunk set plus one vector per chunk (same order), computed outside any transaction. */
+export interface EmbeddedChunkSet extends ChunkSet {
+  readonly embeddingModel: string;
+  readonly embeddings: readonly (readonly number[])[];
+}

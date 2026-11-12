@@ -110,7 +110,7 @@ export {
   type SessionTokenHash,
   type SessionTokens,
 } from "./identity/tokens";
-export type { ChunkSet, NewChunk, NewSection } from "./ingestion/chunk-set";
+export type { ChunkSet, EmbeddedChunkSet, NewChunk, NewSection } from "./ingestion/chunk-set";
 export {
   type DispatchFailure,
   type DispatchOutboxDeps,
@@ -218,6 +218,13 @@ export {
   type WorkspaceId,
 } from "./kernel/ids";
 export type { TenantContext, UnitOfWork, UnitOfWorkOptions } from "./kernel/unit-of-work";
+export { type Embedder, EmbeddingFailure, embeddingDimensions } from "./retrieval/embedder";
+export {
+  InvalidSearch,
+  type SearchHit,
+  type SearchRepository,
+  searchChunks,
+} from "./retrieval/search-chunks";
 export { AlreadyMember, UnknownUser, WorkspaceAccessDenied } from "./workspaces/errors";
 export {
   type Action,

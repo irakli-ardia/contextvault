@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
+import { hashEmbedder } from "@contextvault/ai";
 import { loadS3Env } from "@contextvault/config";
 import type { createIngestionHarness } from "@contextvault/db/testing/ingestion";
 import {
@@ -90,6 +91,7 @@ export function pipeline(
       ),
     parse,
     handoff,
+    embedder: hashEmbedder,
     newId: randomUUID,
   });
   return {

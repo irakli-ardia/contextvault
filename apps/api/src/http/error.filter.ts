@@ -1,8 +1,10 @@
 import {
   DocumentNotFound,
   DocumentNotRetryable,
+  EmbeddingFailure,
   HashingBusy,
   InvalidCredentials,
+  InvalidSearch,
   PermissionDenied,
   StorageError,
   Unauthenticated,
@@ -61,6 +63,9 @@ const rules: readonly Rule[] = [
   when(WorkspaceAccessDenied, () => known(404, "not_found")),
   when(DocumentNotFound, () => known(404, "not_found")),
   when(DocumentNotRetryable, (e) => known(409, e.code)),
+  when(InvalidSearch, (e) => known(400, e.code)),
+  // The embedding provider failing is an operational failure, never a client error.
+  when(EmbeddingFailure, () => known(503, "embedding.unavailable")),
   when(HashingBusy, () => ({ ...known(429, "auth.throttled"), headers: { "Retry-After": "1" } })),
   (error) => {
     const upload = uploadStatusOf(error);

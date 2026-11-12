@@ -148,6 +148,13 @@
       "when": 1794418817132,
       "tag": "0020_retry_policy_no_self_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794459116949,
+      "tag": "0021_embeddings_search",
+      "breakpoints": true
     }
   ]
 }

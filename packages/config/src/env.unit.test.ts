@@ -203,6 +203,26 @@ describe("parseWorkerEnv", () => {
   });
 });
 
+describe("embedding provider", () => {
+  it("defaults to the free offline provider so nothing bills by accident", () => {
+    expect(parseWorkerEnv(WORKER)).toMatchObject({ EMBEDDING_PROVIDER: "hash" });
+  });
+
+  it("requires a key for openai, in both apps, without echoing it", () => {
+    expect(() => parseWorkerEnv({ ...WORKER, EMBEDDING_PROVIDER: "openai" })).toThrow(
+      /OPENAI_API_KEY/,
+    );
+    const env = { ...WORKER, EMBEDDING_PROVIDER: "openai", OPENAI_API_KEY: "sk-test" };
+    expect(parseWorkerEnv(env).OPENAI_EMBEDDING_MODEL).toBe("text-embedding-3-small");
+  });
+
+  it("rejects an unknown provider", () => {
+    expect(() => parseWorkerEnv({ ...WORKER, EMBEDDING_PROVIDER: "other" })).toThrow(
+      /EMBEDDING_PROVIDER/,
+    );
+  });
+});
+
 describe("S3_ENDPOINT shape", () => {
   it.each([
     "http://127.0.0.1:8333/",

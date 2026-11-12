@@ -34,7 +34,16 @@ export const EXPECTED_GRANTS: Record<string, readonly string[]> = {
   ],
   "public.pending_uploads": ["SELECT", "INSERT", "DELETE"],
   "public.sections": [], // derived rows: worker-written, no application access until M2
-  "public.chunks": [],
+  // Retrieval (M2, migration 0021): evidence columns and vectors, read-only.
+  "public.chunks": [
+    "id",
+    "workspace_id",
+    "version_id",
+    "content",
+    "start_offset",
+    "end_offset",
+  ].map((c) => `SELECT(${c})`),
+  "public.chunk_embeddings": ["SELECT"],
   // Insert only, and not available_at, dispatched_at or created_at: an entry is always due and live.
   "public.outbox": ["id", "workspace_id", "version_id", "kind"].map((c) => `INSERT(${c})`),
 };
@@ -77,4 +86,6 @@ export const WORKER_EXPECTED_GRANTS: Record<string, readonly string[]> = {
   // deleted documents); no update, and no read beyond what the policies and the DELETE predicate need.
   "public.sections": ["INSERT", "DELETE", "SELECT(workspace_id)", "SELECT(version_id)"],
   "public.chunks": ["INSERT", "DELETE", "SELECT(id)", "SELECT(workspace_id)", "SELECT(version_id)"],
+  // Written with its chunk by the activation (migration 0021); removed by the chunk's cascade.
+  "public.chunk_embeddings": ["INSERT"],
 };

@@ -1,5 +1,6 @@
+import { createEmbedder } from "@contextvault/ai";
 import type { ApiEnv } from "@contextvault/config";
-import type { DocumentStore, PasswordHasher } from "@contextvault/domain";
+import type { DocumentStore, Embedder, PasswordHasher } from "@contextvault/domain";
 import {
   type DynamicModule,
   type MiddlewareConsumer,
@@ -18,7 +19,9 @@ import { WorkspaceGuard } from "./auth/workspace.guard";
 import { documentProviders, type UploadTimeouts } from "./documents/documents.providers";
 import { closeConnection } from "./documents/http/close-connection.middleware";
 import { DocumentsController } from "./documents/http/documents.controller";
+import { SearchController } from "./documents/http/search.controller";
 import { UploadsController } from "./documents/http/uploads.controller";
+import { EMBEDDER } from "./documents/tokens";
 import { HealthController } from "./health/health.controller";
 import { ErrorFilter } from "./http/error.filter";
 import { responseHeaders } from "./http/response-headers.middleware";
@@ -32,6 +35,7 @@ export class AppModule implements NestModule {
     options: {
       hasher?: PasswordHasher;
       store?: DocumentStore;
+      embedder?: Embedder;
       uploadTimeouts?: UploadTimeouts;
     } = {},
   ): DynamicModule {
@@ -43,11 +47,22 @@ export class AppModule implements NestModule {
         WorkspacesController,
         UploadsController,
         DocumentsController,
+        SearchController,
       ],
       providers: [
         ...authProviders(env, options.hasher),
         ...storageProviders(env, options.store),
         ...documentProviders(options.uploadTimeouts),
+        {
+          provide: EMBEDDER,
+          useValue:
+            options.embedder ??
+            createEmbedder({
+              provider: env.EMBEDDING_PROVIDER,
+              openaiApiKey: env.OPENAI_API_KEY,
+              openaiModel: env.OPENAI_EMBEDDING_MODEL,
+            }),
+        },
         AuthService,
         SessionCookies,
         // Order matters: origin (CSRF) first, then identity, then workspace membership.

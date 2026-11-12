@@ -1,3 +1,4 @@
+export { chunkEmbeddings } from "./chunk-embeddings";
 export { chunks } from "./chunks";
 export { documentVersions } from "./document-versions";
 export { documents } from "./documents";

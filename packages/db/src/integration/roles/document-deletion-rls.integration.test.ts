@@ -101,7 +101,8 @@ describe("application role writes on document versions", () => {
           running.versionId,
         ]),
       );
-      expect(state, set).toBe("42501");
+      // The policy (42501), or the lifecycle trigger (23514) when the transition is illegal; it fires first.
+      expect(state, set).toMatch(/^(42501|23514)$/);
     }
     expect(await affected(as(userA, wsA), close, [ready.versionId])).toBe(0);
     expect(await h.row(ready.versionId)).toMatchObject({ status: "ready" });

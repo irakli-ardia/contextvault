@@ -1,6 +1,6 @@
 import type { DeadlineSignal } from "../documents/ports";
 import type { DocumentVersionId, WorkspaceId } from "../kernel/ids";
-import type { ChunkSet } from "./chunk-set";
+import type { EmbeddedChunkSet } from "./chunk-set";
 import type { IngestionFailure, IngestionStage } from "./lifecycle";
 import type { IngestionUnitOfWork } from "./ports";
 import { type SettleFailureDeps, settleFailure } from "./settle-failure";
@@ -55,7 +55,7 @@ async function runStage(
   { stage, next }: (typeof stages)[number],
 ): Promise<Stopped | null> {
   const { workspaceId, versionId, leaseGeneration, signal } = claim;
-  let chunkSet: ChunkSet | undefined;
+  let chunkSet: EmbeddedChunkSet | undefined;
   try {
     chunkSet = await deps.stages.run({ stage, workspaceId, versionId, leaseGeneration, signal });
     if (next === "ready" && chunkSet === undefined)

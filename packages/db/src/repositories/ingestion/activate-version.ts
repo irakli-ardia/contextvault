@@ -1,13 +1,15 @@
 import type { IngestionRepository, WorkspaceId } from "@contextvault/domain";
 import { sql } from "drizzle-orm";
 import type { Executor } from "../../client";
-import { chunks, sections } from "../../schema/index";
+import { chunkEmbeddings, chunks, sections } from "../../schema/index";
 
 // A statement is one parameter list; stay well under PostgreSQL's 65,535.
 const chunkBatch = 1_000;
+// A vector is ~10 KB of text on the wire, so its batches are smaller.
+const embeddingBatch = 100;
 
 /**
- * The fenced chunking -> ready transition and everything that goes with it, in the caller's
+ * The fenced chunking -> ready transition and everything that goes with it (sections, chunks and their embeddings), in the caller's
  * transaction. The version row is locked first (that decides ownership, so a stale or cancelled run
  * writes nothing; the document is locked before it, see below), the derived rows are inserted while it is still `chunking` (the database refuses
  * them otherwise), and only then does it become `ready`, which the database refuses without chunks.
@@ -23,6 +25,9 @@ export async function activateVersion(
   // transaction ends with the throw. A ready version must have evidence to cite.
   if (chunkSet.sections.length === 0 || chunkSet.chunks.length === 0) {
     throw new Error("Activation needs at least one section and one chunk");
+  }
+  if (chunkSet.embeddings.length !== chunkSet.chunks.length) {
+    throw new Error("Activation needs exactly one embedding per chunk");
   }
   const fence = sql`dv.id = ${versionId} and dv.workspace_id = ${workspaceId}
       and dv.lease_generation = ${leaseGeneration} and dv.status = 'chunking'`;
@@ -54,6 +59,24 @@ export async function activateVersion(
         strategyId: chunkSet.strategyId,
         strategyVersion: chunkSet.strategyVersion,
       })),
+    );
+  }
+  for (let i = 0; i < chunkSet.chunks.length; i += embeddingBatch) {
+    await executor.insert(chunkEmbeddings).values(
+      chunkSet.chunks.slice(i, i + embeddingBatch).flatMap((chunk, offset) => {
+        const embedding = chunkSet.embeddings[i + offset];
+        return embedding === undefined
+          ? []
+          : [
+              {
+                chunkId: chunk.id,
+                workspaceId,
+                versionId,
+                model: chunkSet.embeddingModel,
+                embedding: [...embedding],
+              },
+            ];
+      }),
     );
   }
 

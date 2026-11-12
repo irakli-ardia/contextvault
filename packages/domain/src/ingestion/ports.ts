@@ -1,7 +1,7 @@
 import type { VersionStatus } from "../documents/document";
 import type { DocumentVersionId, OutboxId, WorkspaceId } from "../kernel/ids";
 import type { UnitOfWorkOptions } from "../kernel/unit-of-work";
-import type { ChunkSet } from "./chunk-set";
+import type { EmbeddedChunkSet } from "./chunk-set";
 import type { IngestionFailure } from "./lifecycle";
 
 /** The worker acts for no user: it asserts one workspace, and RLS confines the transaction to it. */
@@ -105,7 +105,7 @@ export interface IngestionRepository {
   activate(input: {
     readonly versionId: DocumentVersionId;
     readonly leaseGeneration: number;
-    readonly chunkSet: ChunkSet;
+    readonly chunkSet: EmbeddedChunkSet;
   }): Promise<boolean>;
   /** Same compare-and-set, ending in `failed` with the failure recorded. */
   failVersion(input: {

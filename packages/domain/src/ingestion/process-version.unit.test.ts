@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { DeadlineSignal } from "../documents/ports";
 import type { DocumentVersionId } from "../kernel/ids";
-import type { ChunkSet } from "./chunk-set";
+import type { EmbeddedChunkSet } from "./chunk-set";
 import { fakeIngestion, versionId, workspaceId } from "./fakes";
 import { maxAttempts } from "./lifecycle";
 import { processVersion } from "./process-version";
 import { StageFailure, type StageInput, type StageRunner } from "./stage-runner";
 
-const chunkSet: ChunkSet = {
+const chunkSet: EmbeddedChunkSet = {
+  embeddingModel: "test",
+  embeddings: [[1]],
   strategyId: "fixed-window",
   strategyVersion: 1,
   sections: [],

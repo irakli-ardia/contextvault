@@ -15,6 +15,7 @@ const worker = new pg.Pool({
 });
 const DENIED = "42501";
 const FK_VIOLATION = "23503";
+const ILLEGAL = "23514"; // the lifecycle trigger (migration 0021) and the CHECK-style fences
 
 let ws: WorkspaceId;
 let v1: Upload; // version_no 1 of document D
@@ -58,8 +59,13 @@ async function asWorker<T>(work: (q: Query) => Promise<T>): Promise<T> {
   }
 }
 
-const setStatus = (q: Query, id: string, status: string) =>
+const update = (q: Query, id: string, status: string) =>
   q("update document_versions set status = $2 where id = $1", [id, status]);
+// Walks the legal path from `uploaded`: a version reaches `chunking` only through `parsing`.
+const setStatus = async (q: Query, id: string, status: string) => {
+  if (status === "chunking") await update(q, id, "parsing");
+  return update(q, id, status);
+};
 const section = (q: Query, versionId: string, id = randomUUID()) =>
   q(
     `insert into sections (id, workspace_id, version_id, ordinal, start_offset, end_offset)
@@ -83,8 +89,13 @@ const point = (q: Query, documentId: string, versionId: string | null) =>
   q("update documents set active_version_id = $2 where id = $1", [documentId, versionId]);
 
 describe("ready needs chunks", () => {
-  it("refuses ready for a version without chunks, from any state", async () => {
-    for (const from of ["uploaded", "chunking", "failed"]) {
+  it("refuses ready for a version without chunks, and from any state but chunking", async () => {
+    // Only chunking -> ready is a legal transition; there the missing chunks are what refuses it.
+    for (const [from, code] of [
+      ["uploaded", ILLEGAL],
+      ["chunking", DENIED],
+      ["failed", ILLEGAL],
+    ] as const) {
       expect(
         await sqlState(
           asWorker(async (q) => {
@@ -92,7 +103,7 @@ describe("ready needs chunks", () => {
             await setStatus(q, v1.versionId, "ready");
           }),
         ),
-      ).toBe(DENIED);
+      ).toBe(code);
     }
   });
 
@@ -213,7 +224,7 @@ describe("the active pointer", () => {
     ).toBeUndefined();
   });
 
-  it("cannot be set on a deleted document", async () => {
+  it("cannot be set on a deleted document, whose version cannot even become ready", async () => {
     expect(
       await sqlState(
         asWorker(async (q) => {
@@ -221,6 +232,68 @@ describe("the active pointer", () => {
           await point(q, deleted.documentId, deleted.versionId);
         }),
       ),
-    ).toBe(DENIED);
+    ).toBe(ILLEGAL);
+  });
+});
+
+// Migration 0021: the legal transitions of packages/domain ingestion/lifecycle.ts (plus the manual
+// retry) are the only ones the runtime roles can make; `ready` is final.
+describe("lifecycle state machine", () => {
+  const owner = (id: string, status: string) =>
+    fx.fixture.query("update document_versions set status = $2 where id = $1", [id, status]);
+
+  it.each([
+    ["uploaded", "ready"],
+    ["uploaded", "chunking"],
+    ["queued", "chunking"],
+    ["queued", "ready"],
+    ["parsing", "ready"],
+    ["parsing", "uploaded"],
+    ["failed", "parsing"],
+    ["failed", "ready"],
+    ["ready", "chunking"],
+    ["ready", "queued"],
+    ["ready", "failed"],
+    ["processed", "queued"],
+  ])("refuses %s -> %s", async (from, to) => {
+    await owner(other.versionId, from);
+    expect(await sqlState(asWorker((q) => update(q, other.versionId, to)))).toBe(ILLEGAL);
+  });
+
+  it.each([
+    ["uploaded", "queued"],
+    ["uploaded", "parsing"],
+    ["queued", "parsing"],
+    ["parsing", "chunking"],
+    ["parsing", "queued"],
+    ["chunking", "queued"],
+    ["chunking", "failed"],
+    ["failed", "queued"],
+  ])("allows %s -> %s", async (from, to) => {
+    await owner(other.versionId, from);
+    expect(await sqlState(asWorker((q) => update(q, other.versionId, to)))).toBeUndefined();
+  });
+
+  it("does not constrain a write that leaves the status as it is", async () => {
+    await owner(other.versionId, "queued");
+    expect(
+      await sqlState(
+        asWorker((q) =>
+          q("update document_versions set status = status where id = $1", [other.versionId]),
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("refuses ready for a version of a deleted document even with chunks", async () => {
+    expect(
+      await sqlState(
+        asWorker(async (q) => {
+          await setStatus(q, deleted.versionId, "chunking");
+          await chunk(q, deleted.versionId, await section(q, deleted.versionId));
+          await update(q, deleted.versionId, "ready");
+        }),
+      ),
+    ).toBe(ILLEGAL);
   });
 });

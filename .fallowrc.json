@@ -77,7 +77,8 @@
           "config",
           "contracts",
           "db",
-          "domain"
+          "domain",
+          "ai"
         ]
       },
       { "from": "api-storage", "allow": ["config", "contracts", "domain", "storage"] },

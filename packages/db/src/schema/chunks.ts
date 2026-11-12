@@ -13,6 +13,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { documentVersions } from "./document-versions";
 import {
+  appRole,
+  inContextWorkspace,
   inWorkerWorkspace,
   versionInChunking,
   versionOfPurgeableDocument,
@@ -58,6 +60,8 @@ export const chunks = pgTable(
       table.strategyVersion,
       table.ordinal,
     ),
+    // Target of the embedding foreign key: a vector's chunk must belong to the vector's own version.
+    unique("chunks_id_workspace_version_unique").on(table.id, table.workspaceId, table.versionId),
     index("chunks_workspace_version_idx").on(table.workspaceId, table.versionId),
     index("chunks_section_idx").on(table.sectionId),
     check("chunks_ordinal", sql`${table.ordinal} >= 0`),
@@ -79,6 +83,13 @@ export const chunks = pgTable(
       for: "select",
       to: workerRole,
       using: inWorkerWorkspace(table.workspaceId),
+    }),
+    // Retrieval (M2, migration 0021): the application role reads the evidence columns of its own
+    // workspace (column grant: no hashes, no strategy details).
+    pgPolicy("chunks_app_select", {
+      for: "select",
+      to: appRole,
+      using: inContextWorkspace(table.workspaceId),
     }),
     // Purge (migration 0018): only the rows of a deleted, unpurged document.
     pgPolicy("chunks_worker_purge", {
