@@ -13,6 +13,8 @@ export interface Seed {
   status?: string;
   deleted?: boolean;
   model?: string;
+  /** Embed this text instead of `text`, so vector and keyword signals can disagree. */
+  embedAs?: string;
   /** Leave `active_version_id` unset: a version that was superseded or never activated. */
   inactive?: boolean;
 }
@@ -72,7 +74,7 @@ export async function seedChunk(fx: TenantFixture, seed: Seed) {
       seed.ws,
       versionId,
       seed.model ?? hashEmbedder.model,
-      `[${hashEmbed(seed.text).join(",")}]`,
+      `[${hashEmbed(seed.embedAs ?? seed.text).join(",")}]`,
     ],
   );
   if (!seed.inactive && !seed.deleted) {

@@ -49,7 +49,9 @@ export function createSearchRepository(executor: Executor): SearchRepository {
         where ${authorizedWhere(workspaceId)} and e.model = ${model}
         order by e.embedding <=> ${query}::vector, c.id
         limit ${limit}`);
-      return rows.map(toChunk);
+      // A zero-norm vector (a query with no tokens under the hash embedder, or an empty chunk) has no
+      // direction: the distance is NaN, which sorts last and means "no similarity", not a hit.
+      return rows.map(toChunk).filter((chunk) => Number.isFinite(chunk.score));
     },
 
     async keyword({ workspaceId, query, limit }) {

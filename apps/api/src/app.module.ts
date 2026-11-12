@@ -23,6 +23,7 @@ import { closeConnection } from "./documents/http/close-connection.middleware";
 import { DocumentsController } from "./documents/http/documents.controller";
 import { SearchController } from "./documents/http/search.controller";
 import { UploadsController } from "./documents/http/uploads.controller";
+import type { RetryLimiter } from "./documents/retry-limiter";
 import { ANSWERER, EMBEDDER } from "./documents/tokens";
 import { HealthController } from "./health/health.controller";
 import { ErrorFilter } from "./http/error.filter";
@@ -40,6 +41,7 @@ export class AppModule implements NestModule {
       embedder?: Embedder;
       answerer?: Answerer;
       uploadTimeouts?: UploadTimeouts;
+      searchLimiter?: RetryLimiter;
     } = {},
   ): DynamicModule {
     return {
@@ -56,7 +58,7 @@ export class AppModule implements NestModule {
       providers: [
         ...authProviders(env, options.hasher),
         ...storageProviders(env, options.store),
-        ...documentProviders(options.uploadTimeouts),
+        ...documentProviders(options.uploadTimeouts, options.searchLimiter),
         {
           provide: EMBEDDER,
           useValue:

@@ -11,9 +11,10 @@ import {
   startApi,
   webOrigin,
 } from "../../testing/test-support";
+import { RetryLimiter } from "../retry-limiter";
 import { seedChunk } from "./chunk-seed-test-support";
 
-// Semantic retrieval end to end with the offline hash embedder (no provider, no cost): the
+// Retrieval (vector, keyword, hybrid) end to end with the offline hash embedder (no provider, no cost): the
 // worker's activation output is seeded directly, then the HTTP route is asked.
 const fx = await createTenantFixture(4);
 let api: Api;
@@ -37,7 +38,9 @@ const refunds = "Refund policy: you can get a refund for annual plans within 30 
 let visible: Awaited<ReturnType<typeof seedChunk>>;
 
 beforeAll(async () => {
-  api = await startApi();
+  // This file sends far more requests per user than the production allowance; throttling has its own file.
+  const searchLimiter = new RetryLimiter(Date.now, "search.throttled", 10_000);
+  api = await startApi({}, { searchLimiter });
   const [a, b] = await Promise.all([seedAccount(fx), seedAccount(fx)]);
   wsA = await fx.createWorkspace(a.id, "A");
   wsB = await fx.createWorkspace(b.id, "B");
@@ -106,6 +109,8 @@ describe("POST /workspaces/:workspaceId/search", () => {
   describe.each([
     ["vector", refunds, ["kernel.txt", "refunds.txt"]],
     ["keyword", "refund", ["othermodel.txt", "refunds.txt"]],
+    // Union of both signals' authorized candidates; nothing outside either list can appear.
+    ["hybrid", "refund", ["kernel.txt", "othermodel.txt", "refunds.txt"]],
   ] as const)("%s mode", (mode, query, expected) => {
     const names = (res: { body: { results: { displayName: string }[] } }) =>
       res.body.results.map((r) => r.displayName).sort();
@@ -219,7 +224,9 @@ describe("POST /workspaces/:workspaceId/search", () => {
     [{ query: "x".repeat(1_001) }],
     [{ query: "ok", limit: 21 }],
     [{ query: "ok", limit: 0 }],
-    [{ query: "ok", mode: "hybrid" }],
+    [{ query: "ok", mode: "bogus" }],
+    [{ query: "ok", mode: "HYBRID" }],
+    [{ query: "   ", mode: "hybrid" }],
     [{ query: "ok", mode: null }],
     [{ query: "ok", mode: "KEYWORD" }],
     [{ query: "   ", mode: "keyword" }],

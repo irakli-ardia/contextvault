@@ -16,7 +16,7 @@ const hit = (n: number, similarity: number): SearchHit => ({
   content: `content ${n}`,
   startOffset: 0,
   endOffset: 9,
-  scores: { vector: similarity, keyword: null },
+  scores: { vector: similarity, keyword: null, fused: null },
   ranks: { vector: n, keyword: null },
 });
 

@@ -221,6 +221,8 @@ export type { TenantContext, UnitOfWork, UnitOfWorkOptions } from "./kernel/unit
 export { type Embedder, EmbeddingFailure, embeddingDimensions } from "./retrieval/embedder";
 export {
   InvalidSearch,
+  maxQueryLength,
+  maxSearchLimit,
   type SearchHit,
   type SearchRepository,
   searchChunks,

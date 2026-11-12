@@ -2,6 +2,7 @@ import type { UserId } from "@contextvault/domain";
 import { ApiError } from "../http/api-error";
 
 export const MAX_RETRIES_PER_USER = 5;
+export const MAX_SEARCHES_PER_USER = 30;
 export const RETRY_WINDOW_MS = 60_000;
 const maxKeys = 10_000;
 
@@ -21,9 +22,10 @@ export class RetryLimiter {
   constructor(
     private readonly now: () => number = Date.now,
     private readonly code = "retry.throttled",
+    private readonly max = MAX_RETRIES_PER_USER,
   ) {}
 
-  /** Counts this attempt. Throws 429 `retry.throttled` once the window's allowance is spent. */
+  /** Counts this attempt. Throws 429 (this limiter's code) once the window's allowance is spent. */
   take(userId: UserId): void {
     const now = this.now();
     const current = this.entries.get(userId);
@@ -31,7 +33,7 @@ export class RetryLimiter {
       current !== undefined && now < current.windowStart + RETRY_WINDOW_MS
         ? current
         : { count: 0, windowStart: now };
-    if (entry.count >= MAX_RETRIES_PER_USER) {
+    if (entry.count >= this.max) {
       const waitMs = entry.windowStart + RETRY_WINDOW_MS - now;
       throw new ApiError(429, this.code, {
         "Retry-After": String(Math.max(1, Math.ceil(waitMs / 1000))),

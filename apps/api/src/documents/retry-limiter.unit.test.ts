@@ -55,4 +55,23 @@ describe("RetryLimiter", () => {
     for (let n = 0; n < MAX_RETRIES_PER_USER; n++) limiter.take(user(1));
     expect(() => limiter.take(user(1))).toThrowError(expect.objectContaining(throttled));
   });
+
+  it("takes its allowance and error code from the constructor", () => {
+    let now = 0;
+    const limiter = new RetryLimiter(() => now, "search.throttled", 2);
+    limiter.take(user(1));
+    limiter.take(user(1));
+    now += 1;
+    try {
+      limiter.take(user(1));
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 429,
+        code: "search.throttled",
+        headers: { "Retry-After": "60" },
+      });
+    }
+    expect(() => limiter.take(user(2))).not.toThrow();
+  });
 });

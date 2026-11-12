@@ -17,7 +17,7 @@ const row = (id: string, score: number) => ({
   score,
 });
 
-function setup() {
+function setup(nearestRows: ReturnType<typeof row>[] = []) {
   const embedded: string[][] = [];
   const asked: Parameters<SearchRepository["nearest"]>[0][] = [];
   const keywordAsked: Parameters<SearchRepository["keyword"]>[0][] = [];
@@ -42,8 +42,9 @@ function setup() {
           return await work({
             search: {
               nearest: async (input) => {
+                expect(inTransaction).toBe(true);
                 asked.push(input);
-                return [];
+                return nearestRows;
               },
               keyword: async (input) => {
                 expect(inTransaction).toBe(true);
@@ -76,9 +77,30 @@ describe("searchChunks", () => {
     expect(asked).toEqual([]);
     expect(keywordAsked).toEqual([{ workspaceId, query: "INV-42", limit: 3 }]);
     expect(hits.map((h) => [h.chunkId, h.scores, h.ranks])).toEqual([
-      ["a", { vector: null, keyword: 0.4 }, { vector: null, keyword: 1 }],
-      ["b", { vector: null, keyword: 0.2 }, { vector: null, keyword: 2 }],
+      ["a", { vector: null, keyword: 0.4, fused: null }, { vector: null, keyword: 1 }],
+      ["b", { vector: null, keyword: 0.2, fused: null }, { vector: null, keyword: 2 }],
     ]);
+  });
+
+  it("hybrid embeds outside the transaction, asks both signals for 50 in one, and fuses", async () => {
+    const { deps, embedded, asked, keywordAsked } = setup([row("b", 0.9), row("c", 0.5)]);
+    const hits = await searchChunks(deps, actor, { query: " refunds ", mode: "hybrid", limit: 2 });
+    expect(embedded).toEqual([["refunds"]]);
+    expect(asked).toEqual([{ workspaceId, model: "m1", embedding: [1, 0], limit: 50 }]);
+    expect(keywordAsked).toEqual([{ workspaceId, query: "refunds", limit: 50 }]);
+    // keyword returns a, b; vector returns b, c -> b is in both signals.
+    expect(hits.map((h) => h.chunkId)).toEqual(["b", "a"]);
+    expect(hits[0]).toMatchObject({
+      scores: { vector: 0.9, keyword: 0.2, fused: 1 / 61 + 1 / 62 },
+      ranks: { vector: 1, keyword: 2 },
+    });
+  });
+
+  it("vector and keyword modes never report a fused score", async () => {
+    const { deps } = setup([row("a", 0.9)]);
+    const vector = await searchChunks(deps, actor, { query: "x" });
+    const keyword = await searchChunks(deps, actor, { query: "x", mode: "keyword" });
+    expect([...vector, ...keyword].map((h) => h.scores.fused)).toEqual([null, null, null]);
   });
 
   it("defaults to vector mode and never queries the keyword index", async () => {
@@ -94,7 +116,10 @@ describe("searchChunks", () => {
     [{ query: "ok", limit: 21 }],
     [{ query: "ok", limit: 1.5 }],
     [{ query: "   ", mode: "keyword" as const }],
-    [{ query: "ok", mode: "hybrid" }],
+    [{ query: "ok", mode: "bogus" }],
+    [{ query: "ok", mode: "Hybrid" }],
+    [{ query: "   ", mode: "hybrid" as const }],
+    [{ query: "ok", limit: 21, mode: "hybrid" as const }],
     [{ query: "ok", limit: 21, mode: "keyword" as const }],
   ])("rejects %j before any provider call", async (input) => {
     const { deps, embedded } = setup();
