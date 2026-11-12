@@ -9,15 +9,15 @@ const actor = {
   role: "member",
 } as const;
 
-const hit = (n: number, similarity: number): SearchHit => ({
+const hit = (n: number, similarity: number | null, keyword: number | null = null): SearchHit => ({
   chunkId: `chunk-${n}`,
   documentId: `doc-${n}`,
   displayName: `d${n}.txt`,
   content: `content ${n}`,
   startOffset: 0,
   endOffset: 9,
-  scores: { vector: similarity, keyword: null, fused: null },
-  ranks: { vector: n, keyword: null },
+  scores: { vector: similarity, keyword, fused: null },
+  ranks: { vector: similarity === null ? null : n, keyword: keyword === null ? null : n },
 });
 
 function setup(hits: SearchHit[], draft: AnswerDraft) {
@@ -37,8 +37,13 @@ function setup(hits: SearchHit[], draft: AnswerDraft) {
         work({
           search: {
             nearest: async () =>
-              hits.map(({ scores, ...chunk }) => ({ ...chunk, score: scores.vector ?? 0 })),
-            keyword: async () => [],
+              hits.flatMap(({ scores, ...chunk }) =>
+                scores.vector === null ? [] : [{ ...chunk, score: scores.vector }],
+              ),
+            keyword: async () =>
+              hits.flatMap(({ scores, ...chunk }) =>
+                scores.keyword === null ? [] : [{ ...chunk, score: scores.keyword }],
+              ),
           },
         }),
     },
@@ -84,5 +89,54 @@ describe("answerQuestion", () => {
     const { deps, seen } = setup([hit(1, 0.9)], { answerable: false, text: "", citations: [] });
     await answerQuestion(deps, actor, { question: " q " });
     expect(seen[0]).toEqual({ question: "q", passages: [{ number: 1, content: "content 1" }] });
+  });
+
+  it("never admits a hit on its RRF score: weak vector and no keyword is dropped", async () => {
+    const { deps, seen } = setup([hit(1, 0.01)], {
+      answerable: true,
+      text: "x",
+      citations: [1],
+    });
+    expect(await answerQuestion(deps, actor, { question: "q" })).toMatchObject({
+      reason: "no_evidence",
+    });
+    expect(seen).toHaveLength(0);
+  });
+
+  it("admits and cites a keyword-only hit (identifier match, no usable vector)", async () => {
+    const { deps, seen } = setup([hit(1, null, 0.4)], {
+      answerable: true,
+      text: "ZX-81",
+      citations: [1],
+    });
+    const result = await answerQuestion(deps, actor, { question: "ZX-81" });
+    expect(seen[0]?.passages).toHaveLength(1);
+    expect(result.kind === "answer" && result.citations[0]).toMatchObject({
+      chunkId: "chunk-1",
+      startOffset: 0,
+      endOffset: 9,
+      excerpt: "content 1",
+    });
+  });
+
+  it("admits a hit with both signals", async () => {
+    const { deps, seen } = setup([hit(1, 0.9, 0.4)], {
+      answerable: false,
+      text: "",
+      citations: [],
+    });
+    await answerQuestion(deps, actor, { question: "q" });
+    expect(seen[0]?.passages).toHaveLength(1);
+  });
+
+  it("conflicting signals: keeps only evidence-bearing hits, weak vector-only hits cannot crowd them out", async () => {
+    const weak = [1, 2, 3, 4, 5, 6].map((n) => hit(n, 0.01));
+    const { deps, seen } = setup([...weak, hit(7, 0.01, 0.2), hit(8, 0.8)], {
+      answerable: false,
+      text: "",
+      citations: [],
+    });
+    await answerQuestion(deps, actor, { question: "q" });
+    expect(seen[0]?.passages.map((p) => p.content).sort()).toEqual(["content 7", "content 8"]);
   });
 });

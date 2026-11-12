@@ -15,6 +15,7 @@ import { seedChunk } from "./chunk-seed-test-support";
 // Grounded answers end to end with offline providers: no model, no network, no cost.
 const fx = await createTenantFixture(4);
 const refunds = "Refund policy: you can get a refund for annual plans within 30 days of purchase.";
+const catalog = "Part code KX9000 ships from the Rotterdam depot.";
 let api: Api;
 let token: string;
 let otherToken: string;
@@ -45,6 +46,14 @@ beforeAll(async () => {
   [token, otherToken] = await Promise.all([signIn(a), signIn(b)]);
   await seedChunk(fx, { ws: wsA, by: a, name: "refunds.txt", text: refunds });
   await seedChunk(fx, { ws: wsA, by: a, name: "deleted.txt", text: refunds, deleted: true });
+  // Keyword-only evidence: the vector signal is deliberately unrelated to the identifier.
+  await seedChunk(fx, {
+    ws: wsB,
+    by: b,
+    name: "catalog.txt",
+    text: catalog,
+    embedAs: "lorem ipsum dolor sit amet consectetur",
+  });
   await seedChunk(fx, {
     ws: wsB,
     by: b,
@@ -107,6 +116,26 @@ describe("POST /workspaces/:workspaceId/answers", () => {
     expect(res.body.citations).toHaveLength(1);
     expect(res.body.citations[0].displayName).toBe("b-secret.txt");
     draft = null;
+  });
+
+  it("answers from keyword-only evidence and cites the exact authorized span", async () => {
+    draft = null;
+    const res = await ask(otherToken, wsB, { question: "KX9000" });
+    expect(res.body.kind).toBe("answer");
+    expect(res.body.citations).toHaveLength(1);
+    expect(res.body.citations[0]).toMatchObject({
+      displayName: "catalog.txt",
+      startOffset: 0,
+      endOffset: catalog.length,
+      excerpt: catalog,
+    });
+  });
+
+  it("does not let a keyword match in another workspace count as evidence", async () => {
+    prompts = [];
+    const res = await ask(otherToken, wsB, { question: "refund policy annual plans" });
+    expect(res.body).toMatchObject({ kind: "insufficient_evidence", reason: "no_evidence" });
+    expect(prompts).toHaveLength(0);
   });
 
   it("requires a session and a valid body, and throttles per user", async () => {

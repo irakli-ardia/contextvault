@@ -2,10 +2,15 @@ import type { DeadlineSignal } from "../documents/ports";
 import { DomainError } from "../kernel/errors";
 import type { UnitOfWork } from "../kernel/unit-of-work";
 import type { Embedder } from "../retrieval/embedder";
-import { type SearchHit, type SearchRepository, searchChunks } from "../retrieval/search-chunks";
+import {
+  maxSearchLimit,
+  type SearchHit,
+  type SearchRepository,
+  searchChunks,
+} from "../retrieval/search-chunks";
 import type { Actor } from "../workspaces/permissions";
 
-/** Below this cosine similarity a chunk is noise, not evidence; the model is never asked. */
+/** Vector signal only: below this cosine similarity a vector hit is noise. Never applied to RRF scores. */
 export const minEvidenceSimilarity = 0.05;
 const retrievedPassages = 5;
 const maxPassageChars = 2_000;
@@ -79,9 +84,19 @@ export async function answerQuestion(
   actor: Actor,
   input: { readonly question: string },
 ): Promise<Answer> {
-  const hits: readonly SearchHit[] = (
-    await searchChunks(deps, actor, { query: input.question, limit: retrievedPassages })
-  ).filter((hit) => (hit.scores.vector ?? -1) >= minEvidenceSimilarity);
+  // RRF decides order only. Evidence is judged on raw signals: a vector hit at or above the
+  // threshold, or any keyword match (all query terms present). The pool is filtered before it is
+  // cut to `retrievedPassages`, so fused-high but unsupported hits cannot crowd out evidence.
+  const pool = await searchChunks(deps, actor, {
+    query: input.question,
+    limit: maxSearchLimit,
+    mode: "hybrid",
+  });
+  const hits: readonly SearchHit[] = pool
+    .filter(
+      (hit) => (hit.scores.vector ?? -1) >= minEvidenceSimilarity || hit.scores.keyword !== null,
+    )
+    .slice(0, retrievedPassages);
   if (hits.length === 0) return abstain("no_evidence");
 
   const passages = hits.map((hit, i) => ({

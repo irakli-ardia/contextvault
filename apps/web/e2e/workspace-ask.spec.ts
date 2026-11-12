@@ -6,7 +6,7 @@ const policy = {
   name: "returns-policy.txt",
   mimeType: "text/plain",
   buffer: Buffer.from(
-    "Warranty claims: broken sprockets are replaced within 45 days of delivery. Shipping takes a week.",
+    "Warranty claims: broken sprockets are replaced within 45 days of delivery. Shipping takes a week. Spare part ZQ4417 is stocked in Rotterdam.",
   ),
 };
 
@@ -27,6 +27,11 @@ test("ask a question, read the cited answer, and get an abstention for the unrel
   await expect(answer).toContainText("replaced within 45 days");
   await answer.getByText(policy.name).click();
   await expect(answer.locator("blockquote")).toContainText("Warranty claims");
+
+  // An exact identifier: the keyword signal is what admits this evidence.
+  await page.getByLabel("Ask your documents").fill("ZQ4417");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(answer).toContainText("ZQ4417");
 
   await page
     .getByLabel("Ask your documents")
