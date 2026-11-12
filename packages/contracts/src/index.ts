@@ -1,4 +1,14 @@
 export {
+  type ApiErrorBody,
+  type LoginResponse,
+  type MeResponse,
+  parseApiErrorBody,
+  parseLoginResponse,
+  parseMeResponse,
+  type UserResponse,
+  type WorkspaceMembership,
+} from "./auth";
+export {
   DOCUMENT_STATUSES,
   type DocumentListResponse,
   type DocumentResponse,

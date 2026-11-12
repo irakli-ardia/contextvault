@@ -1,3 +1,5 @@
+import { SessionNav } from "../features/auth";
+
 const principles = [
   {
     title: "Cited answers",
@@ -18,9 +20,7 @@ export default function Page() {
     <div className="mx-auto flex min-h-dvh max-w-5xl flex-col px-6 sm:px-8">
       <header className="flex items-center justify-between py-6">
         <span className="font-mono text-sm font-semibold tracking-tight">ContextVault</span>
-        <span className="rounded-full border border-line px-3 py-1 text-xs text-muted">
-          Pre-release
-        </span>
+        <SessionNav />
       </header>
 
       <main className="flex-1">

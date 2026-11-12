@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "ContextVault",
@@ -11,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-canvas font-sans text-ink antialiased">{children}</body>
+      <body className="bg-canvas font-sans text-ink antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
