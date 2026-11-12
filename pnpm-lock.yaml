@@ -190,7 +190,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   apps/api:
     dependencies:
@@ -247,8 +247,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
       '@types/supertest':
         specifier: 7.2.1
         version: 7.2.1
@@ -272,7 +272,7 @@ importers:
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: 16.4.5
-        version: 16.4.5(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.5(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -284,8 +284,8 @@ importers:
         specifier: 4.3.5
         version: 4.3.5
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
@@ -336,8 +336,8 @@ importers:
         version: 8.23.1
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -352,8 +352,8 @@ importers:
         version: link:../domain
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/auth:
     dependencies:
@@ -362,8 +362,8 @@ importers:
         version: link:../domain
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/config:
     dependencies:
@@ -372,8 +372,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/contracts: {}
 
@@ -396,8 +396,8 @@ importers:
         version: 8.23.1
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -423,8 +423,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/storage:
     dependencies:
@@ -439,8 +439,8 @@ importers:
         version: link:../domain
     devDependencies:
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
 
 packages:
 
@@ -1813,8 +1813,8 @@ packages:
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
 
-  '@types/node@24.19.2':
-    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
+  '@types/node@26.6.6':
+    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -3042,8 +3042,8 @@ packages:
   unconfig-core@7.5.0:
     resolution: {integrity: sha512-Su3FauozOGP44ZmKdHy2oE6LPjk51M/TRRjHv2HNCWiDvfvCoxC2lno6jevMA91MYAdCdwP05QnWdWpSbncX/w==}
 
-  undici-types@7.24.6:
-    resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
   unpdf@2.1.0:
     resolution: {integrity: sha512-G/Hsrm++g0EoubUhV8TDFItq6oQ+FUu9EMvIRtHUwseKXB0iJoCvaLvBGOpYUBqyvggv/XfxhYYtohL2QpE3xQ==}
@@ -4158,13 +4158,13 @@ snapshots:
 
   '@types/methods@1.1.4': {}
 
-  '@types/node@24.19.2':
+  '@types/node@26.6.6':
     dependencies:
-      undici-types: 7.24.6
+      undici-types: 8.9.0
 
   '@types/pg@8.23.1':
     dependencies:
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
       pg-protocol: 1.16.1
       pg-types: 2.2.0
 
@@ -4180,7 +4180,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
       form-data: 4.0.6
 
   '@types/supertest@7.2.1':
@@ -4248,14 +4248,14 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vitest/mocker@5.1.0(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))':
+  '@vitest/mocker@5.1.0(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.1.0
       estree-walker: 3.0.3
       magic-string: 1.4.3
     optionalDependencies:
-      vite: 8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+      vite: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
   '@vitest/spy@5.1.0': {}
 
@@ -4804,7 +4804,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@16.4.5(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.5(@playwright/test@1.65.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.5
       '@swc/helpers': 0.5.23
@@ -4824,7 +4824,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 16.4.5
       '@next/swc-win32-x64-msvc': 16.4.5
       '@playwright/test': 1.65.0
-      sharp: 0.35.5(@types/node@24.19.2)
+      sharp: 0.35.5(@types/node@26.6.6)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -5094,7 +5094,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  sharp@0.35.5(@types/node@24.19.2):
+  sharp@0.35.5(@types/node@26.6.6):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -5125,7 +5125,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.5
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
     optional: true
 
   side-channel-list@1.0.1:
@@ -5314,7 +5314,7 @@ snapshots:
       '@quansync/fs': 1.1.0
       quansync: 1.0.0
 
-  undici-types@7.24.6: {}
+  undici-types@8.9.0: {}
 
   unpdf@2.1.0: {}
 
@@ -5324,7 +5324,7 @@ snapshots:
 
   verkit@0.5.0: {}
 
-  vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15):
+  vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -5332,16 +5332,16 @@ snapshots:
       rolldown: 1.2.15
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
       esbuild: 0.28.2
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.15
 
-  vitest@5.1.0(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
+  vitest@5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.0(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+      '@vitest/mocker': 5.1.0(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
       chai: 6.3.0
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -5352,10 +5352,10 @@ snapshots:
       tinybench: 6.2.2
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      vite: 8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+      vite: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
       why-is-node-running: 3.2.1
     optionalDependencies:
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
     transitivePeerDependencies:
       - msw
 
