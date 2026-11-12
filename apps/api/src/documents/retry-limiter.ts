@@ -18,7 +18,10 @@ interface Entry {
 export class RetryLimiter {
   private readonly entries = new Map<UserId, Entry>();
 
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(
+    private readonly now: () => number = Date.now,
+    private readonly code = "retry.throttled",
+  ) {}
 
   /** Counts this attempt. Throws 429 `retry.throttled` once the window's allowance is spent. */
   take(userId: UserId): void {
@@ -30,7 +33,7 @@ export class RetryLimiter {
         : { count: 0, windowStart: now };
     if (entry.count >= MAX_RETRIES_PER_USER) {
       const waitMs = entry.windowStart + RETRY_WINDOW_MS - now;
-      throw new ApiError(429, "retry.throttled", {
+      throw new ApiError(429, this.code, {
         "Retry-After": String(Math.max(1, Math.ceil(waitMs / 1000))),
       });
     }

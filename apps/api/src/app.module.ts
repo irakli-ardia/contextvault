@@ -1,6 +1,7 @@
-import { createEmbedder } from "@contextvault/ai";
+import { createAnswerer, createEmbedder } from "@contextvault/ai";
 import type { ApiEnv } from "@contextvault/config";
 import type { DocumentStore, Embedder, PasswordHasher } from "@contextvault/domain";
+import type { Answerer } from "@contextvault/domain/answers";
 import {
   type DynamicModule,
   type MiddlewareConsumer,
@@ -17,11 +18,12 @@ import { SessionGuard } from "./auth/session.guard";
 import { SessionCookies } from "./auth/session-cookies";
 import { WorkspaceGuard } from "./auth/workspace.guard";
 import { documentProviders, type UploadTimeouts } from "./documents/documents.providers";
+import { AnswersController } from "./documents/http/answers.controller";
 import { closeConnection } from "./documents/http/close-connection.middleware";
 import { DocumentsController } from "./documents/http/documents.controller";
 import { SearchController } from "./documents/http/search.controller";
 import { UploadsController } from "./documents/http/uploads.controller";
-import { EMBEDDER } from "./documents/tokens";
+import { ANSWERER, EMBEDDER } from "./documents/tokens";
 import { HealthController } from "./health/health.controller";
 import { ErrorFilter } from "./http/error.filter";
 import { responseHeaders } from "./http/response-headers.middleware";
@@ -36,6 +38,7 @@ export class AppModule implements NestModule {
       hasher?: PasswordHasher;
       store?: DocumentStore;
       embedder?: Embedder;
+      answerer?: Answerer;
       uploadTimeouts?: UploadTimeouts;
     } = {},
   ): DynamicModule {
@@ -48,6 +51,7 @@ export class AppModule implements NestModule {
         UploadsController,
         DocumentsController,
         SearchController,
+        AnswersController,
       ],
       providers: [
         ...authProviders(env, options.hasher),
@@ -61,6 +65,16 @@ export class AppModule implements NestModule {
               provider: env.EMBEDDING_PROVIDER,
               openaiApiKey: env.OPENAI_API_KEY,
               openaiModel: env.OPENAI_EMBEDDING_MODEL,
+            }),
+        },
+        {
+          provide: ANSWERER,
+          useValue:
+            options.answerer ??
+            createAnswerer({
+              provider: env.ANSWER_PROVIDER,
+              openaiApiKey: env.OPENAI_API_KEY,
+              openaiModel: env.OPENAI_ANSWER_MODEL,
             }),
         },
         AuthService,

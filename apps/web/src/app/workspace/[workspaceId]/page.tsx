@@ -26,7 +26,13 @@ export default async function WorkspaceDocumentsPage({
         <SessionNav />
       </header>
       <main className="flex-1 pb-12">
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">{workspace.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{workspace.name}</h1>
+        <Link
+          href={`/workspace/${workspace.id}/ask`}
+          className="mb-6 inline-block text-sm underline"
+        >
+          Ask your documents →
+        </Link>
         <DocumentLibrary workspaceId={workspace.id} />
       </main>
     </div>

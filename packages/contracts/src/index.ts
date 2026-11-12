@@ -1,4 +1,9 @@
 export {
+  type AnswerResponse,
+  type CitationResponse,
+  parseAnswerResponse,
+} from "./answers";
+export {
   type ApiErrorBody,
   type LoginResponse,
   type MeResponse,

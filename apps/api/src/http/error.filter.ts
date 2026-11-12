@@ -10,6 +10,7 @@ import {
   Unauthenticated,
   WorkspaceAccessDenied,
 } from "@contextvault/domain";
+import { AnswerFailure } from "@contextvault/domain/answers";
 import {
   type ArgumentsHost,
   Catch,
@@ -65,6 +66,7 @@ const rules: readonly Rule[] = [
   when(DocumentNotRetryable, (e) => known(409, e.code)),
   when(InvalidSearch, (e) => known(400, e.code)),
   // The embedding provider failing is an operational failure, never a client error.
+  when(AnswerFailure, () => known(503, "answer.unavailable")),
   when(EmbeddingFailure, () => known(503, "embedding.unavailable")),
   when(HashingBusy, () => ({ ...known(429, "auth.throttled"), headers: { "Retry-After": "1" } })),
   (error) => {

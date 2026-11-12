@@ -66,6 +66,12 @@ const embeddingFields = {
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_EMBEDDING_MODEL: z.string().min(1).default("text-embedding-3-small"),
 };
+// Answers: `extractive` is offline and free (quotes a passage, not a language model); `openai`
+// bills per token. Only the api generates answers.
+const answerFields = {
+  ANSWER_PROVIDER: z.enum(["openai", "extractive"]).default("extractive"),
+  OPENAI_ANSWER_MODEL: z.string().min(1).default("gpt-4o-mini"),
+};
 const refineEmbedding = (
   env: { EMBEDDING_PROVIDER: string; OPENAI_API_KEY?: string | undefined },
   ctx: z.RefinementCtx<unknown>,
@@ -87,6 +93,7 @@ const s3EnvSchema = baseEnvSchema.extend(s3Fields).superRefine(refineS3);
 const apiEnvSchema = databaseEnvSchema
   .extend(s3Fields)
   .extend(embeddingFields)
+  .extend(answerFields)
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535),
     API_HOST: z.string().min(1),
@@ -100,6 +107,13 @@ const apiEnvSchema = databaseEnvSchema
   .superRefine((env, ctx) => {
     refineS3(env, ctx);
     refineEmbedding(env, ctx);
+    if (env.ANSWER_PROVIDER === "openai" && env.OPENAI_API_KEY === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["OPENAI_API_KEY"],
+        message: "Required when ANSWER_PROVIDER is openai",
+      });
+    }
     // Refinements also run when a field failed its own check, hence canParse.
     if (!URL.canParse(env.WEB_ORIGIN) || env.WEB_ORIGIN !== new URL(env.WEB_ORIGIN).origin) {
       ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "Must be a bare origin" });

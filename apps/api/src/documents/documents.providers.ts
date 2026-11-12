@@ -5,7 +5,7 @@ import type { Provider } from "@nestjs/common";
 import { PERSISTENCE } from "../auth/tokens";
 import { DOCUMENT_STORE } from "../storage/tokens";
 import { RetryLimiter } from "./retry-limiter";
-import { UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "./tokens";
+import { ANSWER_LIMITER, UPLOAD_DEPS, UPLOAD_TIMEOUTS } from "./tokens";
 import { UploadLimiter } from "./upload-limiter";
 
 export interface UploadTimeouts {
@@ -23,6 +23,8 @@ export function documentProviders(timeouts: UploadTimeouts = defaultUploadTimeou
   return [
     UploadLimiter,
     { provide: RetryLimiter, useFactory: () => new RetryLimiter() },
+    // Each answer can be a paid model call, so it is throttled like a retry: per user, per minute.
+    { provide: ANSWER_LIMITER, useFactory: () => new RetryLimiter(Date.now, "answer.throttled") },
     { provide: UPLOAD_TIMEOUTS, useValue: timeouts },
     {
       provide: UPLOAD_DEPS,
