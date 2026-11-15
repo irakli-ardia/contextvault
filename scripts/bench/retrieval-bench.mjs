@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// M2.2e: query plans and latency of the production vector, keyword and hybrid retrieval statements
+// Query plans and latency of the production vector, keyword and hybrid retrieval statements
 // over a deterministic synthetic corpus, in the isolated test stack only.
 //
 //   CV_TEST_ENV_DIR=<dir> node scripts/test-stack/with-test-stack.mjs \
@@ -35,7 +35,7 @@ const SMALL = 5; // the default search limit
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 
 /** One transaction as the unit of work opens it: tenant context, then the callback. */
-async function inTenant(client, workspaceId, userId, work) {
+export async function inTenant(client, workspaceId, userId, work) {
   await client.query("begin");
   try {
     await client.query(

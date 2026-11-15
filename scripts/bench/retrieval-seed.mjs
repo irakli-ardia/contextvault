@@ -15,7 +15,12 @@ export async function createOwner(fixture) {
 }
 
 /** A workspace of `total` chunks over DOCUMENTS live documents, each with one ready, active version. */
-export async function seedWorkspace(fixture, userId, total) {
+export async function seedWorkspace(
+  fixture,
+  userId,
+  total,
+  { embeddings = true, analyze = true } = {},
+) {
   const workspaceId = randomUUID();
   await fixture.query(
     "insert into workspaces (id, name, created_by) values ($1, 'retrieval-bench', $2)",
@@ -80,6 +85,7 @@ export async function seedWorkspace(fixture, userId, total) {
         column((r) => r.endOffset),
       ],
     );
+    if (!embeddings) continue;
     await fixture.query(
       `insert into chunk_embeddings (chunk_id, workspace_id, version_id, model, embedding)
        select t.id, $1::uuid, t.version_id, $4, t.v::vector
@@ -93,10 +99,13 @@ export async function seedWorkspace(fixture, userId, total) {
       ],
     );
   }
-  await fixture.query("vacuum (analyze) chunks");
-  await fixture.query("vacuum (analyze) chunk_embeddings");
-  await fixture.query("analyze documents");
-  await fixture.query("analyze document_versions");
+  // The fixture role does not own the tables, so a caller that analyzes as the owner passes false.
+  if (analyze) {
+    await fixture.query("vacuum (analyze) chunks");
+    await fixture.query("vacuum (analyze) chunk_embeddings");
+    await fixture.query("analyze documents");
+    await fixture.query("analyze document_versions");
+  }
   return workspaceId;
 }
 
