@@ -58,11 +58,15 @@ const connect = async (url) => {
 };
 
 /** Starts the container, accepts it only after `docker inspect` passes, and builds the schema. */
-export async function prepare(docker, spec) {
+export async function prepare(
+  docker,
+  spec,
+  marker = `kwexp-${spec.id}-${randomBytes(6).toString("hex")}`,
+) {
   startContainer(docker, spec);
   await waitReady(docker, spec);
-  const port = assertContainerSafe(inspectContainer(docker, spec), spec);
-  const marker = `kwexp-${spec.id}-${randomBytes(6).toString("hex")}`;
+  const inspect = inspectContainer(docker, spec);
+  const port = assertContainerSafe(inspect, spec);
   psql(docker, spec, "postgres", `comment on database "${spec.database}" is '${marker}'`);
   psql(docker, spec, "contextvault_owner", migrationSql());
   const url = (user, password) =>
@@ -70,6 +74,7 @@ export async function prepare(docker, spec) {
   const { secrets } = spec;
   return {
     marker,
+    inspect,
     urls: {
       app: url("contextvault_app", secrets.POSTGRES_APP_PASSWORD),
       fixture: url("contextvault_fixture", secrets.POSTGRES_FIXTURE_PASSWORD),

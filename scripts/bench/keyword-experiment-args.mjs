@@ -88,7 +88,7 @@ const real = (path) => {
 };
 
 /** True when the path is in the repository by its spelling or after following every symlink. */
-const insideRepository = (repo, path) =>
+export const insideRepository = (repo, path) =>
   inside(repo, path) || inside(real(repo), join(real(dirname(path)), basename(path)));
 
 /**

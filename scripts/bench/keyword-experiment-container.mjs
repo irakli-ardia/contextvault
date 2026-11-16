@@ -12,8 +12,10 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const root = new URL("../../", import.meta.url).pathname;
-const LABEL = "cv.experiment=keyword-search";
-const NAME = /^cv-kwexp-[0-9a-f]{8}$/;
+/** What names a harness's containers: another benchmark passes its own, so none can touch another's. */
+export const KEYWORD = { kind: "keyword-search", name: "cv-kwexp", database: "cv_kwexp" };
+const nameOf = (profile) => new RegExp(`^${profile.name}-[0-9a-f]{8}$`);
+const labelOf = (profile) => `cv.experiment=${profile.kind}`;
 const SECRETS = [
   "POSTGRES_PASSWORD",
   "POSTGRES_APP_PASSWORD",
@@ -53,12 +55,13 @@ export function pinnedImage(composeText) {
 }
 
 export function containerSpec({
+  profile = KEYWORD,
   id = randomBytes(4).toString("hex"),
   image = pinnedImage(readFileSync(join(root, "infra/compose.yaml"), "utf8")),
   secret = () => randomBytes(18).toString("hex"),
 } = {}) {
-  const name = `cv-kwexp-${id}`;
-  const database = `cv_kwexp_${id}`;
+  const name = `${profile.name}-${id}`;
+  const database = `${profile.database}_${id}`;
   const binds = INIT.map(([from, to]) => ({
     source: join(root, "infra/postgres", from),
     target: `/docker-entrypoint-initdb.d/${to}`,
@@ -72,7 +75,7 @@ export function containerSpec({
       "--name",
       name,
       "--label",
-      LABEL,
+      labelOf(profile),
       "--label",
       `cv.experiment.run=${id}`,
     ],
@@ -86,7 +89,7 @@ export function containerSpec({
     image,
   ];
   const secrets = Object.fromEntries(SECRETS.map((variable) => [variable, secret()]));
-  return { id, name, database, image, binds, secrets, args };
+  return { id, name, database, image, binds, secrets, args, profile };
 }
 
 const refuse = (what) => {
@@ -97,9 +100,10 @@ const refuse = (what) => {
 // fallow-ignore-next-line complexity
 export function assertContainerSafe(inspect, spec) {
   const { Config: config, HostConfig: host, Mounts: mounts, NetworkSettings: net } = inspect;
-  if (inspect.Name !== `/${spec.name}` || !NAME.test(spec.name)) refuse("name");
+  if (inspect.Name !== `/${spec.name}` || !nameOf(spec.profile).test(spec.name)) refuse("name");
   if (config.Image !== spec.image) refuse("image");
-  if (config.Labels?.["cv.experiment"] !== "keyword-search") refuse("label");
+  if (config.Labels?.["cv.experiment"] !== spec.profile.kind) refuse("label");
+  if (config.Labels?.["cv.experiment.run"] !== spec.id) refuse("run label");
   if (!config.Env.includes(`POSTGRES_DB=${spec.database}`)) refuse("database name");
   if (host.Privileged || !["bridge", "default"].includes(host.NetworkMode)) refuse("privileges");
   const ports = Object.entries(net.Ports ?? {});
@@ -132,7 +136,7 @@ const ok = (result, what) => {
 };
 
 export function startContainer(docker, spec) {
-  if (ok(docker(["ps", "-aq", "--filter", `label=${LABEL}`]), "list").length > 0) {
+  if (ok(docker(["ps", "-aq", "--filter", `label=${labelOf(spec.profile)}`]), "list").length > 0) {
     throw new Error("an experiment container already exists: run the cleanup command first");
   }
   ok(docker(spec.args, { env: spec.secrets }), "docker run");
@@ -160,8 +164,9 @@ export function psql(docker, spec, user, sql) {
  * Removes the container, then proves it is gone: only "No such container" counts. A daemon that
  * cannot be reached, or a container that is still there, is reported as not removed.
  */
-export function removeContainer(docker, name) {
-  if (!NAME.test(name)) throw new Error("refusing to remove a container this harness did not name");
+export function removeContainer(docker, name, profile = KEYWORD) {
+  if (!nameOf(profile).test(name))
+    throw new Error("refusing to remove a container this harness did not name");
   const removal = docker(["rm", "-f", "-v", name]);
   const check = docker(["inspect", "--type", "container", name]);
   if (check.status !== 0 && /no such (object|container)/i.test(check.stderr)) {
@@ -173,15 +178,15 @@ export function removeContainer(docker, name) {
 }
 
 /** Removes only containers that carry the experiment label and the harness's name pattern. */
-export function removeLeftovers(docker) {
+export function removeLeftovers(docker, profile = KEYWORD) {
   const listed = ok(
-    docker(["ps", "-a", "--filter", `label=${LABEL}`, "--format", "{{.Names}}"]),
+    docker(["ps", "-a", "--filter", `label=${labelOf(profile)}`, "--format", "{{.Names}}"]),
     "list",
   );
   const results = listed
     .split("\n")
-    .filter((n) => NAME.test(n))
-    .map((name) => ({ name, ...removeContainer(docker, name) }));
+    .filter((n) => nameOf(profile).test(n))
+    .map((name) => ({ name, ...removeContainer(docker, name, profile) }));
   return {
     removed: results.filter((r) => r.removed).map((r) => r.name),
     failed: results.filter((r) => !r.removed),

@@ -23,7 +23,7 @@ const inspected = (patch = {}) => ({
   Name: `/${spec.name}`,
   Config: {
     Image: spec.image,
-    Labels: { "cv.experiment": "keyword-search" },
+    Labels: { "cv.experiment": "keyword-search", "cv.experiment.run": spec.id },
     Env: [`POSTGRES_DB=${spec.database}`, "POSTGRES_USER=postgres"],
   },
   HostConfig: { Privileged: false, NetworkMode: "bridge" },
