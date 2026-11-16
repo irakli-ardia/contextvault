@@ -4,7 +4,7 @@ Status: proposed — 2026-11-16. Not accepted until the deployment inventory is 
 
 ## Context
 
-Keyword search computes `to_tsvector('simple', c.content)` for every chunk in the workspace, once in the match predicate and again in `ts_rank_cd` for every match (`packages/db/src/repositories/retrieval/search-repository.ts`). The cost is linear in workspace size and independent of how many chunks match. [Retrieval performance](../retrieval-performance.md) measured keyword search as the application role against a 15 s `statement_timeout`: at 50,000 chunks the baseline took about 10.5 s for a rare term and timed out for a common one, and at 100,000 every case timed out. Hybrid search and grounded answers run keyword search, so they fail with it. The upload quota allows about 116,000 chunks in one workspace.
+Keyword search computes `to_tsvector('simple', c.content)` for every chunk in the workspace, once in the match predicate and again in `ts_rank_cd` for every match (`packages/db/src/repositories/retrieval/search-repository.ts`). The cost is linear in workspace size and independent of how many chunks match. [Retrieval performance](../retrieval-performance.md) measured keyword search as the application role against a 15 s `statement_timeout`: at 50,000 chunks the baseline took about 10.5 s for a rare term and timed out for a common one, and at 100,000 every case timed out. Hybrid search and grounded answers run keyword search, so they fail with it. A workspace holds at most 50 live documents of at most 2,000,000 characters each. A maximum-size document produced 1,113 chunks when measured, so a full workspace has about 56,000 searchable chunks (a bound derived from the chunker's window, overlap and break lookback is about 71,000). The byte quota (200 MiB, counted until a deleted document is purged) can briefly leave more rows behind. The 100,000-chunk measurements below are therefore a scale stress above what one workspace can reach, and are relevant to the global table, which no quota bounds.
 
 Facts from the code that constrain the decision:
 
@@ -40,12 +40,14 @@ This is the preferred architecture, subject to deployment and migration safety a
 
 All figures come from the repository's keyword experiment harness (`scripts/bench/keyword-experiment-run.mjs`) in a disposable PostgreSQL 18.6 container (pgvector 0.8.7) on one developer laptop. The corpus is synthetic text, caches are warm, and queries run as the application role under forced row-level security with the tenant context set (one large workspace plus a 1,000-chunk second tenant). The statement timeout is 15 s. Each latency is the median (p50) of five wall-clock samples of the keyword statement; slow statements get fewer samples, and a statement that exceeds the timeout during warm-up yields none.
 
-Two measurement sets are cited. Only the clean-tree results are committed, and no figure here is a published benchmark result.
+Three measurement sets are cited. Only the clean-tree results are committed, and no figure here is a published benchmark result.
 
 - **Clean-tree runs (B).** Commit `c1490c3` with `workingTreeDirty: false`, both runs complete, `containerRemoved: true`, 16 November 2026. Results: [`benchmarks/keyword-search/keyword-experiment-50k.json`](../../benchmarks/keyword-search/keyword-experiment-50k.json) and [`keyword-experiment-100k.json`](../../benchmarks/keyword-search/keyword-experiment-100k.json), unmodified harness output (see the [folder README](../../benchmarks/keyword-search/README.md)). Console logs are not kept. These are the primary evidence.
 - **Earlier exploratory runs (A).** Commit `6e54d39` with `workingTreeDirty: true` (uncommitted harness), 15 November 2026. Files: `keyword-experiment-50k-20261115T165222Z-51408.json` and `keyword-experiment-100k-20261115T171531Z-1372.json`. They are not committed and are context only.
 
-Each size was run once per set, so "reproduced" below means that A and B agree, not that a run was repeated for variance.
+- **Ingestion baseline (C).** Commit `09fa52f`, three complete runs with `workingTreeDirty: false`, 16 November 2026, before any stored vector exists. Files: [`benchmarks/ingestion/`](../../benchmarks/ingestion/README.md), unmodified harness output.
+
+Each keyword size was run once per set, so "reproduced" below means that A and B agree, not that a run was repeated for variance.
 
 ### Query latency, stored column, no index (p50, ms; sample range in brackets)
 
@@ -86,9 +88,32 @@ Timed out means the first warm-up execution exceeded the 15 s limit, so no laten
 - **The rewrite is long and variable.** At 100,000 chunks it took 62.8 s on a clean tree against 37.3 s in the exploratory run, and the stored-column-plus-GIN variant of the same run took 49.6 s. It held `ACCESS EXCLUSIVE` throughout. The proposed 60 s hard cap was exceeded in one run, so the cap is **not shown to be safe**, and the rate per chunk is not stable enough to extrapolate to other sizes or hardware.
 - **Insertion cost is about ten times the baseline.** Stored-column inserts took 1.5 s at 50,000 chunks and 3.2 s at 100,000, against 0.24 s and 0.32 s for the baseline. The proposed target of at most 2 s extra for a maximum-size activation is **not validated**: the measurement is a rolled-back `INSERT … SELECT` of synthetic rows, not the activation pipeline, and the 100,000-chunk figure (3.2 s) exceeds 2 s on its own.
 
+### Ingestion baseline (set C, current schema, no stored vector)
+
+The production worker consumer, stages and activation transaction, run as the unprivileged worker role under forced row-level security, with the offline hash embedder and an in-memory object store, in a disposable container limited to 2 CPUs (the worker runs on the host). Three complete runs, each 10 sequential documents per size class and 20 maximum-size documents at three concurrency levels in three rotated rounds. Every valid document reached `ready` on its first attempt in every run; there were no statement errors, rollbacks, deadlocks or retries; the document of exactly the parser's input limit was rejected as designed (`parse.text_too_large`); chunk and embedding counts matched. Running as that role under forced row-level security shows that the activation works with the production grants. It is not a cross-tenant isolation test: the benchmark used no second tenant and asserted no isolation, so isolation remains covered only by the checks cited above and by the tests in the gates.
+
+**Sequential, concurrency 1 (the database-cost baseline).** Median per document across the three runs (range of the three run medians), milliseconds. A maximum-size document is 1,113 chunks.
+
+| Document | Chunks | End to end | Activation transaction | Chunk INSERT | Embedding INSERT |
+| --- | --- | --- | --- | --- | --- |
+| small | 12 | 77–126 | 17–37 | 1.9–4.3 | 3.9–10.1 |
+| medium | 112 | 198–329 | 69–129 | 10.6–17.9 | 33–48 |
+| large | 556 | 741–905 | 283–397 | 60–86 | 136–195 |
+| max | 1,113 | 1,394–2,278 | 562–1,033 | 107–185 | 292–534 |
+
+- Parsing was 40–76 ms median at every size. Chunking and embedding each cost about 0.7 ms per chunk and run in the worker process, outside the transaction.
+- The largest single statement client-observed in the sequential max-size scenarios was 110–565 ms (a statement-level maximum, not a median). The largest activation transaction across all concurrency-1 scenarios (sequential and burst) was 2.3 s. Across all bursts, including concurrency 4, it was 6.7 s and the largest statement 2.9 s, both client-observed under a saturated worker.
+- WAL per chunk was 10.1–10.7 KB; table bytes per chunk were about 3.2 KB for `chunks` and 8.4 KB for `chunk_embeddings` (heap, index and TOAST as the harness reports them), stable within about 1 % across runs.
+- Concurrency 1, 2 and 4 over 20 maximum-size documents (nine samples per level): median 36, 49 and 49 documents per minute (ranges 19–40, 24–53 and 42–55). Concurrency 2 is about 1.35 times faster than 1, and 4 adds almost nothing over 2. At concurrency 4 the worker's event loop was 0.86–0.92 utilized in most scenarios (four flagged saturated), and the event-loop delay at p99 was about 0.75–0.8 s at concurrency 1 (one burst 1.8 s) and up to 1.0 s at 2 and 4. Client-observed activation times at concurrency 2 and 4 (median about 1.5 s and 3 s) therefore include worker scheduling and are not database cost.
+- Outliers: in several scenarios (the sequential scenarios of one run, several of the 27 bursts and one mixed workspace) the same work ran up to about twice as slow, often with the worker using under half a core. In the sequential case the CPU-only parse, chunk and embed stages slowed too, which points away from the database; no cause was diagnosed.
+
+**What this does not measure.** Every `*ClientMs` figure is client-observed (driver, network and event-loop delay included) and is not PostgreSQL execution time; `pg_stat_statements` was not enabled, so no server-side timing exists. S3 latency, PDF parsing, real embedding providers, the outbox dispatcher, recovery sweeps and fault injection are not covered. Absolute numbers are bound to one laptop.
+
+**Expected additional overhead (estimate, not a result).** The keyword experiment's clean-tree insert of 5,000 synthetic rows took 3.2 s against 0.32 s at 100,000 chunks (1.5 s against 0.24 s at 50,000), about 0.25–0.6 ms more per row. Applied to a maximum-size document's 1,113 rows this is roughly +0.3 to +0.7 s per activation, against a baseline median of 0.56–1.03 s at concurrency 1. This is arithmetic from a rolled-back `INSERT … SELECT`, not a measurement of the activation, and it is not an achieved or accepted target.
+
 ### Not measured
 
-116,000 chunks, hybrid search and the HTTP path after the change, concurrent load, cold cache, real text, the real ingestion pipeline, repeated runs for variance, and any database other than the disposable container.
+Hybrid search and the HTTP path after the change, concurrent load on search, cold cache, real text, ingestion after the column exists, server-side statement time, a quota-sized workspace of chunks (about 56,000, between the two measured sizes), and any database other than the disposable container.
 
 ## PostgreSQL behaviour this depends on
 
@@ -132,13 +157,14 @@ Known: a local development database exists and holds data; the isolated test sta
 
 ## Gates before migration 0022
 
-Migration 0022 (the column and grant) is not written until each gate is passed and recorded:
+Migration 0022 (the column and grant) is not written until gates 1 and 2 are passed, and no database other than the test stack and CI receives it until every gate is passed and recorded (gates 3 to 5 are rehearsed and measured on disposable copies that carry it):
 
 1. **Deployment inventory confirmed.** The owner states whether any hosted or deployed database exists or will hold data before this ships, and for each one its size and whether downtime is acceptable.
 2. **Migration approach approved** per database: generated column or trigger, using the criteria above.
 3. **Migration time and locking validated.** Rehearse on a restored copy or a synthetic table of the target's global size: rewrite duration, lock-acquisition wait, the longest blocked search and activation, disk and WAL. Approve the `lock_timeout` and `statement_timeout` values from those numbers; the 60 s cap is not approved as it stands.
-4. **Real worker ingestion measured.** Run the production activation path as the worker role, before and after the column, at small, medium and maximum document size, including concurrent activations and an injected failure. Approve an ingestion target from those numbers; the 2 s target is not approved as it stands.
-5. **Database change approved separately.** Approval of this record is not approval to change any database. Each environment (test stack and CI, local development, any hosted database) is approved on its own, with a verified backup and the rollback ready.
+4. **Real worker ingestion measured after the column.** The baseline exists (above). Still required: the same harness against the schema with the column (applied to the test stack and CI only), at the same commit-clean standard, interleaved with baseline runs on one machine; server-side statement time from `pg_stat_statements` in the disposable container; concurrent activations and an injected failure. Approve an ingestion target from the paired numbers; the 2 s target is not approved, and the baseline shows an absolute target needs to be set against the measured spread (a statement maximum varied about five-fold between runs).
+5. **Tenant isolation verified on the new column.** The production cross-tenant, deleted, superseded, unfinished and failed-version matrix passes against the keyword statement that reads the column, and the grant catalog pins `SELECT(content_tsv)` for the application role only. Running the ingestion benchmark under forced row-level security does not count.
+6. **Database change approved separately.** Approval of this record is not approval to change any database. Each environment (test stack and CI, local development, any hosted database) is approved on its own, with a verified backup and the rollback ready.
 
 ## Consequences
 

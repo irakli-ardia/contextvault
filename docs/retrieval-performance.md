@@ -37,7 +37,7 @@ PostgreSQL 18.6 and pgvector 0.8.7 in the repository's isolated test stack (a co
 | 50,000 | 989 / 919 ms | 11.2-13.9 s (n=2, slower of two) | **timeout (15 s)** | 12.0-12.9 s (n=2, slower of two) for selective terms, **timeout** for `mid`, `common`, `and`, `phrase` |
 | 100,000 | 2.7 / 3.3 s (n=2, slower of two) | **timeout (15 s) in every case, including no match** | timeout | **timeout** |
 
-The upload quota allows up to about 116,000 chunks in one workspace (200 MiB of text at one chunk per 1,800 new characters), so the 100,000 tier is close to the worst case the quota permits.
+A workspace holds at most 50 live documents of at most 2,000,000 characters, and a maximum-size document produced 1,113 chunks when measured (see [ingestion baseline](../benchmarks/ingestion/README.md)), so a full workspace has about 56,000 searchable chunks (a bound derived from the chunker settings is about 71,000). The 100,000 tier is therefore a scale stress above what one workspace can reach, and the 50,000 tier is close to a full workspace.
 
 ### Findings
 

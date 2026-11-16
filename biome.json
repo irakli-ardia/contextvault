@@ -16,7 +16,8 @@
       "!benchmarks/orphan-discovery/plans.json",
       "!benchmarks/orphan-discovery/clustered-results.json",
       "!benchmarks/orphan-discovery/clustered-plans.json",
-      "!benchmarks/keyword-search/*.json"
+      "!benchmarks/keyword-search/*.json",
+      "!benchmarks/ingestion/*.json"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },
