@@ -15,5 +15,6 @@ One short record per hard-to-reverse choice. A record is never edited to change 
 | [0009](0009-streaming-upload-transport.md) | Streaming upload transport and raw-body contract | accepted |
 | [0010](0010-isolated-test-stack.md) | Isolated test stack for pre-push checks | accepted |
 | [0011](0011-document-parsing.md) | Document parsing: unpdf, isolated child process, in-process hand-off | accepted |
+| [0012](0012-keyword-search-storage.md) | Keyword search storage: stored generated tsvector, no GIN index | proposed |
 
 Index and vector-search tuning (exact scan versus HNSW) and reranker choice are decided in the milestones that need them.
