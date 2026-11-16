@@ -19,7 +19,7 @@ describe("gitProvenance", () => {
   it("records sha, dirtiness, relative dirty files and a content-free diff fingerprint", () => {
     const run = answers({
       "rev-parse": "abc123\n",
-      status: " M apps/worker/a.ts\0?? scripts/new.mjs\0?? .env.test\0",
+      status: " M apps/worker/a.ts\0?? apps/worker/new.ts\0?? .env.test\0",
       diff: "diff text",
     });
     expect(gitProvenance(run)).toEqual({
@@ -27,7 +27,7 @@ describe("gitProvenance", () => {
       workingTreeDirty: true,
       dirtyFiles: [
         { status: "M", path: "apps/worker/a.ts" },
-        { status: "??", path: "scripts/new.mjs" },
+        { status: "??", path: "apps/worker/new.ts" },
         { status: "??", path: "<redacted>" },
       ],
       dirtyFilesTruncated: false,
