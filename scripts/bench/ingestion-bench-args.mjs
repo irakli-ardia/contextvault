@@ -5,7 +5,14 @@ import { join, resolve } from "node:path";
 import { insideRepository } from "./keyword-experiment-args.mjs";
 
 const root = new URL("../../", import.meta.url).pathname;
-const OPTIONS = { execute: false, smoke: false, repeats: true, rounds: true, out: true };
+const OPTIONS = {
+  execute: false,
+  smoke: false,
+  "server-stats": false,
+  repeats: true,
+  rounds: true,
+  out: true,
+};
 const COMMANDS = ["plan", "run", "cleanup"];
 export const DEFAULT_REPEATS = 5;
 export const DEFAULT_ROUNDS = 3;
@@ -14,7 +21,7 @@ export const MAX_ROUNDS = 9;
 
 const usage = (why) =>
   new Error(
-    `${why}\nusage: plan | run --execute [--smoke] [--repeats=1..20] [--rounds=3|6|9] [--out=<file.json>] | cleanup`,
+    `${why}\nusage: plan | run --execute [--smoke] [--server-stats] [--repeats=1..20] [--rounds=3|6|9] [--out=<file.json>] | cleanup`,
   );
 
 function integer(name, text, fallback) {
@@ -73,7 +80,16 @@ export function parseArgs(argv) {
     throw usage("--rounds is not 3, 6 or 9");
   }
   const { execute, smoke, out } = given;
-  return { command, execute: execute === true, smoke: smoke === true, repeats, rounds, out };
+  const serverStats = given["server-stats"] === true;
+  return {
+    command,
+    execute: execute === true,
+    smoke: smoke === true,
+    serverStats,
+    repeats,
+    rounds,
+    out,
+  };
 }
 
 /** The default tracked file is for a full run only; a smoke run must write outside the repository. */

@@ -19,6 +19,17 @@ export const MEASUREMENTS = {
     "A scenario is flagged when the worker event loop utilization or worker CPU is at least 0.9 of one core, or PostgreSQL uses at least 0.9 of its CPU limit: its client timings then include queuing, not only work.",
 };
 
+/** Replaces the 'not measured' statements when the optional server statistics are on. */
+export const SERVER_STATS_MEASUREMENTS = {
+  serverExecution:
+    "serverStatements: PostgreSQL executor time per statement class (pg_stat_statements, worker role only), summed over one scenario. It is not per transaction or per activation: only means and the slowest single statement of a class are available, and only classes whose client and server call counts agree are marked valid. Excludes planning (track_planning is off), parse, bind, driver, network and event-loop time. Client-observed '*ClientMs' values are never adjusted by it, and the difference between the two is not a measurement of network latency.",
+  lockWaits:
+    "lockWaits: waits of at least 100 ms (deadlock_timeout) logged by the server during the scenario, as counts and durations, for every role in this container. The flag sets deadlock_timeout to 100 ms (default 1 s), which changes lock and deadlock checking and can add overhead. Shorter waits are invisible here and are inside execution time.",
+};
+
+export const measurementsFor = (serverStats) =>
+  serverStats ? { ...MEASUREMENTS, ...SERVER_STATS_MEASUREMENTS } : MEASUREMENTS;
+
 export const LIMITATIONS = [
   "Object reads come from an in-memory store: S3 latency is not measured.",
   "Embeddings are the offline hash embedder; its CPU cost (single thread, in the worker process) is real but a provider's network latency is not.",
@@ -31,3 +42,17 @@ export const LIMITATIONS = [
   "No fault was injected: failures, retries and timeouts reported are only those that happened.",
   "The run is of the current schema only: there is no content_tsv column to compare against.",
 ];
+
+const NO_SERVER_TIME =
+  "Client-observed SQL timings include event-loop delay; no database-server execution time is measured.";
+const SERVER_STATS_LIMITS = [
+  "Server statement statistics are aggregated per statement class and scenario, not per transaction or activation. Planning time is not collected, begin/commit/rollback are reported but not validated, and statements outside a client transaction are not seen by the client probe, so a class whose counts differ is marked invalid rather than adjusted.",
+  "--server-stats changes deadlock_timeout from its 1 s default to 100 ms, which makes the server check for deadlocks sooner and log lock waits of 100 ms or more; that alters lock and deadlock checking behavior and can add measurement overhead. It is not subtracted, and runs with and without the flag are not interchangeable.",
+  "Statement statistics add overhead of their own (the extension and lock-wait logging run in the measured container); it is not subtracted and has not been calibrated by this run.",
+  "Statement identifiers are never compared across databases, runs or schema variants.",
+];
+
+export const limitationsFor = (serverStats) =>
+  serverStats
+    ? [...LIMITATIONS.filter((l) => l !== NO_SERVER_TIME), ...SERVER_STATS_LIMITS]
+    : LIMITATIONS;

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { assertIsolated, isolateEnv } from "./ingestion-bench-guards.mjs";
 import { compareConcurrency, scenarios } from "./ingestion-bench-plan.mjs";
 import { createContext, runScenario } from "./ingestion-bench-run.mjs";
+import { startServerStats } from "./ingestion-bench-server-stats.mjs";
 import { environment } from "./retrieval-env.mjs";
 
 const root = new URL("../../", import.meta.url).pathname;
@@ -56,7 +57,17 @@ const orderOf = (list) =>
     discarded: s.discard === true,
   }));
 
-export async function measure({ docker, pg, bundle, redisPort, urls, marker, opts, state }) {
+export async function measure({
+  docker,
+  pg,
+  bundle,
+  redisPort,
+  urls,
+  accepted,
+  marker,
+  opts,
+  state,
+}) {
   const worker = new URL(urls.app);
   worker.username = "contextvault_worker";
   worker.password = pg.secrets.POSTGRES_WORKER_PASSWORD;
@@ -91,6 +102,11 @@ export async function measure({ docker, pg, bundle, redisPort, urls, marker, opt
       runs: opts.repeats,
       smoke: opts.smoke,
     });
+    // Privileged work only after every identity check above has passed.
+    const serverStats = opts.serverStats
+      ? await startServerStats({ docker, spec: pg, accepted, marker })
+      : undefined;
+    if (serverStats) state.serverStats = serverStats.metadata;
     const lib = await import(bundle.entry);
     const list = scenarios({ ...opts, inputLimit: lib.parseLimits.maxInputBytes });
     state.scenarioOrder = orderOf(list);
@@ -103,6 +119,7 @@ export async function measure({ docker, pg, bundle, redisPort, urls, marker, opt
       postgres: pg.name,
       postgresCpuLimit: state.containers.postgres.cpuLimit,
       pgClient,
+      serverStats,
     };
     await runAll({ list, shared, state, harnesses });
     state.comparison = compareConcurrency(state.scenarios);

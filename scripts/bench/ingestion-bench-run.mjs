@@ -67,6 +67,7 @@ export function createContext({
   postgres,
   postgresCpuLimit,
   pgClient,
+  serverStats,
 }) {
   const probe = installProbe(pgClient, performance, () => als.getStore()?.call);
   return {
@@ -79,6 +80,7 @@ export function createContext({
     postgres,
     postgresCpuLimit,
     probe,
+    serverStats,
     events: [],
     store: memoryStore(),
   };
@@ -196,6 +198,8 @@ export async function runScenario(ctx, scenario) {
   };
   const enqueuedAt = new Map();
   const before = await snapshot(h.fx.fixture, ctx.docker, ctx.postgres);
+  // After the consumer exists and the documents are seeded: the window holds only this scenario.
+  ctx.serverStats?.reset();
   const meter = startLoadMeter();
   const start = now();
   let wallMs;
@@ -208,6 +212,11 @@ export async function runScenario(ctx, scenario) {
   }
   const loadOver = meter.stop();
   const after = await snapshot(h.fx.fixture, ctx.docker, ctx.postgres);
+  // The consumer has closed (in-flight jobs done); the next scenario resets before it measures.
+  const serverStatements = ctx.serverStats?.read({
+    transactions: probe.transactions.slice(from.tx),
+    errors: probe.errors.slice(from.errors),
+  });
   const { group = null, round = null, position = null } = scenario;
   const measured = await report(ctx, {
     items,
@@ -219,5 +228,6 @@ export async function runScenario(ctx, scenario) {
     wallMs,
     jobs,
   });
-  return { name, group, round, position, concurrency, sequential, ...measured };
+  const server = serverStatements ? { serverStatements } : {};
+  return { name, group, round, position, concurrency, sequential, ...measured, ...server };
 }

@@ -18,13 +18,18 @@ const burstOf = (smoke) => (smoke ? 4 : 20);
 export const mixOf = (smoke) =>
   Object.fromEntries(Object.entries(MIX).map(([cls, n]) => [cls, smoke ? Math.ceil(n / 5) : n]));
 
-export function plan({ smoke, repeats, rounds }) {
+export function plan({ smoke, repeats, rounds, serverStats }) {
   const classes = classesOf(smoke);
-  return [
+  const lines = [
     `sequential, concurrency 1, ${repeats}x each of ${Object.keys(classes).join("/")} (after one discarded warm-up)`,
     "one document of exactly parseLimits.maxInputBytes (rejected by the parser: shows the real chunk ceiling)",
     `${burstOf(smoke)} maximum-size documents at concurrency 1, 2 (the default) and 4: ${rounds} rounds, level order rotated per round, identical documents`,
     `one workspace of ${Object.values(mixOf(smoke)).reduce((a, b) => a + b)} mixed documents at concurrency 2`,
+  ];
+  if (!serverStats) return lines;
+  return [
+    ...lines,
+    "server statistics: pg_stat_statements and lock-wait logging in this run's own container, read as its bootstrap superuser over the container socket after identity checks; reset and read around each scenario",
   ];
 }
 

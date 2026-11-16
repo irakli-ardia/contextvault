@@ -7,6 +7,7 @@ describe("parseArgs", () => {
       command: "plan",
       execute: false,
       smoke: false,
+      serverStats: false,
       repeats: 5,
       rounds: 3,
       out: undefined,
@@ -19,12 +20,20 @@ describe("parseArgs", () => {
       command: "run",
       execute: true,
       smoke: true,
+      serverStats: false,
       repeats: 2,
       rounds: 6,
       out: "a.json",
     });
   });
+  it("enables server statistics only with the flag", () => {
+    expect(parseArgs(["run", "--execute", "--server-stats"]).serverStats).toBe(true);
+    expect(parseArgs(["plan", "--server-stats"]).serverStats).toBe(true);
+  });
   it.each([
+    [["run", "--server-stats=1"], /takes no value/],
+    [["run", "--server-stats", "--server-stats"], /given twice/],
+    [["cleanup", "--server-stats"], /no options/],
     [["run", "--bogus"], /unknown option/],
     [["run", "--repeats=2", "--repeats=3"], /given twice/],
     [["run", "--execute=1"], /takes no value/],

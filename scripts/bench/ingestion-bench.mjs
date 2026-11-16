@@ -29,7 +29,7 @@ import {
   startRedis,
 } from "./ingestion-bench-infra.mjs";
 import { measure } from "./ingestion-bench-measure.mjs";
-import { LIMITATIONS, MEASUREMENTS } from "./ingestion-bench-notes.mjs";
+import { LIMITATIONS, limitationsFor, measurementsFor } from "./ingestion-bench-notes.mjs";
 import { classesOf, LEVELS, plan } from "./ingestion-bench-plan.mjs";
 import {
   containerFacts,
@@ -39,6 +39,7 @@ import {
   newExperimentId,
   sanitizeText,
 } from "./ingestion-bench-provenance.mjs";
+import { SERVER_ARGS } from "./ingestion-bench-server-stats.mjs";
 import { assertCreatable, writeOnce } from "./keyword-experiment-args.mjs";
 import {
   containerSpec,
@@ -64,6 +65,8 @@ function configuration(opts) {
     workspaceMix: MIX,
     discardedWarmups: 1,
     outputFile: opts.out === undefined ? "default" : basename(opts.out),
+    // Present only when asked for, so a run without the flag records exactly what it always did.
+    ...(opts.serverStats ? { serverStats: true } : {}),
   };
 }
 
@@ -78,8 +81,8 @@ function newState({ experimentId, runId, opts, argv }) {
     config: configuration(opts),
     ...gitProvenance(),
     containers: {},
-    limitations: LIMITATIONS,
-    measurements: MEASUREMENTS,
+    limitations: limitationsFor(opts.serverStats),
+    measurements: measurementsFor(opts.serverStats),
     plan: plan(opts),
     scenarios: [],
   };
@@ -112,7 +115,8 @@ function preflight(opts, argv, docker) {
   assertCreatable(out);
   const runId = newRunId();
   const experimentId = newExperimentId();
-  const pg = containerSpec({ profile: INGESTION, id: runId });
+  const serverArgs = opts.serverStats ? SERVER_ARGS : [];
+  const pg = containerSpec({ profile: INGESTION, id: runId, serverArgs });
   return {
     out,
     pg,
@@ -152,6 +156,7 @@ async function provisionAndMeasure(run, { docker, opts }, stages) {
     bundle: run.bundle,
     redisPort: started.port,
     urls,
+    accepted: prepared.inspect,
     marker,
     opts,
     state,

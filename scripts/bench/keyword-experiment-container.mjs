@@ -59,6 +59,7 @@ export function containerSpec({
   id = randomBytes(4).toString("hex"),
   image = pinnedImage(readFileSync(join(root, "infra/compose.yaml"), "utf8")),
   secret = () => randomBytes(18).toString("hex"),
+  serverArgs = [],
 } = {}) {
   const name = `${profile.name}-${id}`;
   const database = `${profile.database}_${id}`;
@@ -87,6 +88,8 @@ export function containerSpec({
     ...["--env", "POSTGRES_USER=postgres", "--env", `POSTGRES_DB=${database}`],
     ...SECRETS.flatMap((variable) => ["--env", variable]),
     image,
+    // Server arguments follow the image; empty (the default) leaves the argument list unchanged.
+    ...serverArgs,
   ];
   const secrets = Object.fromEntries(SECRETS.map((variable) => [variable, secret()]));
   return { id, name, database, image, binds, secrets, args, profile };
