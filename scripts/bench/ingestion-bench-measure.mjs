@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { assertIsolated, isolateEnv } from "./ingestion-bench-guards.mjs";
 import { compareConcurrency, scenarios } from "./ingestion-bench-plan.mjs";
 import { createContext, runScenario } from "./ingestion-bench-run.mjs";
+import { prepareSchema } from "./ingestion-bench-schema.mjs";
 import { startServerStats } from "./ingestion-bench-server-stats.mjs";
 import { environment } from "./retrieval-env.mjs";
 
@@ -101,6 +102,15 @@ export async function measure({
     state.environment = await environment(fixture, workerRole, {
       runs: opts.repeats,
       smoke: opts.smoke,
+    });
+    // The schema arm is applied and verified here: after the migrations, before any document exists
+    // and before the first scenario, so no measured interval includes it.
+    await prepareSchema({
+      pgClient,
+      url: urls.owner,
+      marker,
+      arm: opts.schema,
+      state,
     });
     // Privileged work only after every identity check above has passed.
     const serverStats = opts.serverStats

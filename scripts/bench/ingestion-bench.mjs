@@ -81,9 +81,11 @@ function newState({ experimentId, runId, opts, argv }) {
     config: configuration(opts),
     ...gitProvenance(),
     containers: {},
-    limitations: limitationsFor(opts.serverStats),
+    limitations: limitationsFor(opts.serverStats, opts.schema),
     measurements: measurementsFor(opts.serverStats),
     plan: plan(opts),
+    // The arm is verified before the first scenario; `verified` is set only by that step, and only `true` completes.
+    schema: { arm: opts.schema },
     scenarios: [],
   };
 }
@@ -100,8 +102,10 @@ function serialize(state, secrets) {
 
 function conclude(state) {
   const bad = state.scenarios.filter((s) => !s.verification.ok);
-  state.status = bad.length === 0 ? "complete" : "invalid";
-  if (bad.length > 0)
+  const unverified = state.schema?.verified !== true;
+  state.status = bad.length === 0 && !unverified ? "complete" : "invalid";
+  if (unverified) state.error = "schema arm not verified";
+  else if (bad.length > 0)
     state.error = `row-count verification failed in: ${bad.map((s) => s.name).join(", ")}`;
 }
 

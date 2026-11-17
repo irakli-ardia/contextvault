@@ -52,7 +52,13 @@ const SERVER_STATS_LIMITS = [
   "Statement identifiers are never compared across databases, runs or schema variants.",
 ];
 
-export const limitationsFor = (serverStats) =>
-  serverStats
-    ? [...LIMITATIONS.filter((l) => l !== NO_SERVER_TIME), ...SERVER_STATS_LIMITS]
-    : LIMITATIONS;
+const BASELINE_SCHEMA_ONLY = LIMITATIONS.at(-1);
+const STORED_TSV_ONLY =
+  "The run is of the stored-tsv arm only: the ADR 0012 content_tsv column (STORED, no index) was added by the harness after the migrations. It is not compared with the baseline arm here; any comparison is made across separate runs and is not measured by this run.";
+
+export function limitationsFor(serverStats, schema = "baseline") {
+  const base = LIMITATIONS.map((l) =>
+    l === BASELINE_SCHEMA_ONLY && schema === "stored-tsv" ? STORED_TSV_ONLY : l,
+  );
+  return serverStats ? [...base.filter((l) => l !== NO_SERVER_TIME), ...SERVER_STATS_LIMITS] : base;
+}

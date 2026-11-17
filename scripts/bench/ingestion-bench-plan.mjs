@@ -18,7 +18,7 @@ const burstOf = (smoke) => (smoke ? 4 : 20);
 export const mixOf = (smoke) =>
   Object.fromEntries(Object.entries(MIX).map(([cls, n]) => [cls, smoke ? Math.ceil(n / 5) : n]));
 
-export function plan({ smoke, repeats, rounds, serverStats }) {
+export function plan({ smoke, repeats, rounds, serverStats, schema }) {
   const classes = classesOf(smoke);
   const lines = [
     `sequential, concurrency 1, ${repeats}x each of ${Object.keys(classes).join("/")} (after one discarded warm-up)`,
@@ -26,6 +26,10 @@ export function plan({ smoke, repeats, rounds, serverStats }) {
     `${burstOf(smoke)} maximum-size documents at concurrency 1, 2 (the default) and 4: ${rounds} rounds, level order rotated per round, identical documents`,
     `one workspace of ${Object.values(mixOf(smoke)).reduce((a, b) => a + b)} mixed documents at concurrency 2`,
   ];
+  if (schema === "stored-tsv")
+    lines.push(
+      "schema arm stored-tsv: ADR 0012 stored generated column added by the owner role in this run's own container, after migrations and before any document, then verified in the catalog",
+    );
   if (!serverStats) return lines;
   return [
     ...lines,

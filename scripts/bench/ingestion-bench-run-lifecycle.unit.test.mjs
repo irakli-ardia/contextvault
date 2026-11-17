@@ -25,7 +25,10 @@ function fakeStages(calls, overrides = {}) {
       buildBundles: () => step(calls, "bundle", bundle),
       prepare: async () => step(calls, "prepare", { inspect: [], urls: { app: "", fixture: "" } }),
       startRedis: async () => step(calls, "redis", { inspect: [], port: 1 }),
-      measure: async () => void calls.push("measure"),
+      measure: async ({ state }) => {
+        calls.push("measure");
+        state.schema.verified = true;
+      },
       removePostgres: () => step(calls, "rm-pg", GONE),
       removeRedis: () => step(calls, "rm-redis", GONE),
       ...overrides,

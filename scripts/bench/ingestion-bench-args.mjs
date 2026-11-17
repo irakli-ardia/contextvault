@@ -2,6 +2,7 @@
 // errors, so the recorded configuration is exactly what was asked for.
 
 import { join, resolve } from "node:path";
+import { SCHEMA_ARMS } from "./ingestion-bench-schema.mjs";
 import { insideRepository } from "./keyword-experiment-args.mjs";
 
 const root = new URL("../../", import.meta.url).pathname;
@@ -11,6 +12,7 @@ const OPTIONS = {
   "server-stats": false,
   repeats: true,
   rounds: true,
+  schema: true,
   out: true,
 };
 const COMMANDS = ["plan", "run", "cleanup"];
@@ -21,7 +23,7 @@ export const MAX_ROUNDS = 9;
 
 const usage = (why) =>
   new Error(
-    `${why}\nusage: plan | run --execute [--smoke] [--server-stats] [--repeats=1..20] [--rounds=3|6|9] [--out=<file.json>] | cleanup`,
+    `${why}\nusage: plan | run --execute [--smoke] [--server-stats] [--repeats=1..20] [--rounds=3|6|9] [--schema=baseline|stored-tsv] [--out=<file.json>] | cleanup`,
   );
 
 function integer(name, text, fallback) {
@@ -80,12 +82,15 @@ export function parseArgs(argv) {
     throw usage("--rounds is not 3, 6 or 9");
   }
   const { execute, smoke, out } = given;
+  const schema = given.schema ?? "baseline";
+  if (!SCHEMA_ARMS.includes(schema)) throw usage("--schema is not baseline or stored-tsv");
   const serverStats = given["server-stats"] === true;
   return {
     command,
     execute: execute === true,
     smoke: smoke === true,
     serverStats,
+    schema,
     repeats,
     rounds,
     out,

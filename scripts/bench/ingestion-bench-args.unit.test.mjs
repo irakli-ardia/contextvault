@@ -8,6 +8,7 @@ describe("parseArgs", () => {
       execute: false,
       smoke: false,
       serverStats: false,
+      schema: "baseline",
       repeats: 5,
       rounds: 3,
       out: undefined,
@@ -21,6 +22,7 @@ describe("parseArgs", () => {
       execute: true,
       smoke: true,
       serverStats: false,
+      schema: "baseline",
       repeats: 2,
       rounds: 6,
       out: "a.json",
@@ -67,5 +69,31 @@ describe("resolveOutput", () => {
   });
   it("requires a .json file", () => {
     expect(() => resolveOutput({ smoke: false, out: "/elsewhere/x.txt", repo })).toThrow(/\.json/);
+  });
+});
+
+describe("--schema", () => {
+  it("defaults to baseline and accepts both arms", () => {
+    expect(parseArgs(["run", "--execute"]).schema).toBe("baseline");
+    expect(parseArgs(["run", "--execute", "--schema=stored-tsv"]).schema).toBe("stored-tsv");
+    expect(parseArgs(["plan", "--schema=baseline"]).schema).toBe("baseline");
+  });
+  it("combines with --smoke and --server-stats without changing them", () => {
+    expect(
+      parseArgs(["run", "--execute", "--smoke", "--server-stats", "--schema=stored-tsv"]),
+    ).toMatchObject({
+      smoke: true,
+      serverStats: true,
+      schema: "stored-tsv",
+    });
+  });
+  it.each([
+    [["run", "--schema=gin"], /not baseline or stored-tsv/],
+    [["run", "--schema="], /needs one value/],
+    [["run", "--schema"], /needs one value/],
+    [["run", "--schema=baseline", "--schema=stored-tsv"], /given twice/],
+    [["cleanup", "--schema=baseline"], /no options/],
+  ])("rejects %j", (argv, message) => {
+    expect(() => parseArgs(argv)).toThrow(message);
   });
 });
