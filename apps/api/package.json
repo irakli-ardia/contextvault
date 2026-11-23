@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.1164.0",
+    "@aws-sdk/client-s3": "3.1173.0",
     "@contextvault/ai": "workspace:*",
     "@contextvault/auth": "workspace:*",
     "@contextvault/config": "workspace:*",
@@ -16,9 +16,9 @@
     "@contextvault/db": "workspace:*",
     "@contextvault/domain": "workspace:*",
     "@contextvault/storage": "workspace:*",
-    "@nestjs/common": "12.4.0",
-    "@nestjs/core": "12.4.0",
-    "@nestjs/platform-express": "12.4.0",
+    "@nestjs/common": "12.6.0",
+    "@nestjs/core": "12.6.0",
+    "@nestjs/platform-express": "12.6.0",
     "cookie": "1.1.1",
     "drizzle-orm": "0.45.4",
     "pg": "8.23.1",
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@types/node": "24.19.2",
     "@types/supertest": "7.2.1",
-    "supertest": "7.3.1",
+    "supertest": "7.3.2",
     "tsdown": "0.23.7"
   }
 }
