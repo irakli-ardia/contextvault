@@ -81,7 +81,7 @@ function assertStart(before) {
   if (selectable.worker.includes("content_tsv")) refuse("worker can already read content_tsv");
 }
 
-function verifyColumn(c) {
+export function verifyColumn(c) {
   if (c === null) refuse("content_tsv missing");
   if (c.type !== "tsvector") refuse(`content_tsv type is ${c.type}`);
   if (c.generated !== "s") refuse("content_tsv is not a stored generated column");
