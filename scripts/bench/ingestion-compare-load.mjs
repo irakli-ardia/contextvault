@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { SCHEMA_ARMS, STORED_TSV_DDL, verifyColumn } from "./ingestion-bench-schema.mjs";
+import { scenarioMetrics } from "./ingestion-compare-metrics.mjs";
 import {
   canonical,
   compareProvenance,
@@ -22,7 +23,13 @@ import {
   checkTimes,
   matches,
 } from "./ingestion-compare-records.mjs";
-import { checkControls, checkServer, failure, shown } from "./ingestion-compare-server.mjs";
+import {
+  checkControls,
+  checkServer,
+  failure,
+  serverScenario,
+  shown,
+} from "./ingestion-compare-server.mjs";
 
 const text = (v) => typeof v === "string" && v !== "";
 
@@ -116,10 +123,16 @@ export function validateResult(result) {
     arm: result.schema?.arm ?? null,
     gitSha: result.gitSha ?? null,
   };
+  const server = checkServer(result);
   return {
     failures,
     identity,
-    server: checkServer(result),
+    server,
+    metrics: Array.isArray(result.scenarios)
+      ? result.scenarios
+          .filter(isRecord)
+          .map((s) => scenarioMetrics(s, server.enabled ? serverScenario(s) : undefined))
+      : [],
     controls: control.controls,
     provenance: normalizeProvenance(result),
   };

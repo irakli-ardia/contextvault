@@ -54,7 +54,7 @@ const figures = (data, reasons, missingClasses) => ({
 });
 
 /** One scenario's server data: `missing`, `invalid` (with reasons) or `valid`. */
-function serverScenario(s) {
+export function serverScenario(s) {
   const data = s.serverStatements;
   if (data === undefined || data === null) return { status: "missing", reasons: [] };
   if (!wellFormed(data)) return { status: "invalid", reasons: ["malformed serverStatements"] };

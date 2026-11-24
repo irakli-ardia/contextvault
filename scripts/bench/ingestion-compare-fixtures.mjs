@@ -48,6 +48,8 @@ export function serverStatements({ dealloc = 0, omit = [] } = {}) {
   return { ...summarize({ rows, info, client }), lockWaits: parseLockWaits("") };
 }
 
+const READY = { status: "ready", attempt: 1, error_stage: null, error_code: null, versions: 10 };
+const OVERSIZE = { stage: "parsing", failure: "parse.text_too_large" };
 const stat = (median) => ({ n: 10, min: median, median, p95: median, max: median, mean: median });
 const SCENARIOS = [
   ["sequential-small", "small"],
@@ -75,7 +77,7 @@ function scenario([name, size], { serverStats, embedMs }) {
     sequential: name.startsWith("sequential") || rejected,
     summary: { [size]: { docs: 10, embedMs: stat(embedMs) } },
     verification: {
-      statuses: ["ready"],
+      statuses: [READY],
       ok: true,
       checked: 10,
       mismatchedVersions: 0,
@@ -88,6 +90,58 @@ function scenario([name, size], { serverStats, embedMs }) {
   };
 }
 
+const TIMING_FIELDS = [
+  "endToEndMs",
+  "processingMs",
+  "chunkStageMs",
+  "embedMs",
+  "activationTxMs",
+  "chunkInsertClientMs",
+  "embeddingInsertClientMs",
+  "lockClientMs",
+  "commitClientMs",
+  "longestStatementClientMs",
+];
+
+/** A scenario with every measured block the harness serializes (`summary`, `db`, `load`, jobs). */
+export function fullScenario(
+  name = "sequential-max",
+  { serverStats = true, oversize = false } = {},
+) {
+  const base = scenario([name, "max"], { serverStats, embedMs: 750 });
+  const timings = Object.fromEntries(TIMING_FIELDS.map((f, i) => [f, stat(100 + i)]));
+  return {
+    ...base,
+    group: null,
+    round: null,
+    position: null,
+    dataset: { documents: 10, chars: 20_000_000, expectedChunks: 11130 },
+    jobs: 10,
+    wallMs: 17080.5,
+    completed: oversize ? 0 : 10,
+    docsPerMinute: oversize ? 0 : 35.1,
+    load: {
+      workerCpuCores: 0.61,
+      eventLoop: { utilization: 0.58 },
+      postgresCpuCores: 0.27,
+      saturated: [],
+    },
+    db: {
+      walBytes: 112594592,
+      walBytesPerChunk: 10116,
+      chunksAdded: oversize ? 0 : 11130,
+      chunkTableBytesPerChunk: 3196,
+      embeddingTableBytesPerChunk: 8435,
+      postgresCpuMs: 5149.1,
+      counters: { xact_commit: 109, xact_rollback: 0, deadlocks: 0, temp_files: 0 },
+    },
+    sizesAfter: { chunks: { heap: 3284992, indexes: 4472832, toastAndMaps: 49717248 } },
+    summary: { max: { docs: 10, completed: oversize ? 0 : 10, ...timings } },
+    jobLog: Array(10).fill(oversize ? done("failed", OVERSIZE) : done("processed")),
+  };
+}
+
+const done = (outcome, extra) => ({ code: "INGESTION_JOB_DONE", outcome, ...extra });
 const storedSchema = () => ({
   arm: "stored-tsv",
   verified: true,
