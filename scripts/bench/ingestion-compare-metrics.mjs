@@ -8,10 +8,10 @@
 import { CHECKED } from "./ingestion-bench-server-stats-rules.mjs";
 import { isRecord } from "./ingestion-compare-provenance.mjs";
 
-const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+export const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const bool = (v) => (typeof v === "boolean" ? v : null);
-const str = (v) => (typeof v === "string" ? v : null);
-const get = (o, k) => (isRecord(o) && Object.hasOwn(o, k) ? o[k] : undefined);
+export const str = (v) => (typeof v === "string" ? v : null);
+export const get = (o, k) => (isRecord(o) && Object.hasOwn(o, k) ? o[k] : undefined);
 const dig = (o, ...path) => path.reduce((acc, k) => get(acc, k), o);
 const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, num(get(o, k))]));
 const tally = (items) => {

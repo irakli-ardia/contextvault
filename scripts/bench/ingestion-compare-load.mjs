@@ -9,6 +9,7 @@ import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { SCHEMA_ARMS, STORED_TSV_DDL, verifyColumn } from "./ingestion-bench-schema.mjs";
 import { scenarioMetrics } from "./ingestion-compare-metrics.mjs";
+import { standingOf } from "./ingestion-compare-outcomes.mjs";
 import {
   canonical,
   compareProvenance,
@@ -149,6 +150,7 @@ export function loadText(file, bytes) {
     valid: false,
     failures: [failure(code, detail)],
     identity: null,
+    standing: standingOf({ failures: [failure(code, detail)] }),
   });
   let parsed;
   try {
@@ -160,7 +162,8 @@ export function loadText(file, bytes) {
     const checked = validateResult(parsed);
     // Every provenance comparison later canonicalizes this; a value that cannot be is rejected here.
     if (checked.provenance) canonical(checked.provenance);
-    return { ...base, valid: checked.failures.length === 0, ...checked };
+    const standing = standingOf({ failures: checked.failures, result: parsed });
+    return { ...base, valid: checked.failures.length === 0, ...checked, standing };
   } catch {
     return rejected("structure", "the JSON value has an unexpected structure");
   }
@@ -172,6 +175,7 @@ const unreadable = (file, code, detail) => ({
   valid: false,
   failures: [failure(code, detail)],
   identity: null,
+  standing: standingOf({ failures: [failure(code, detail)] }),
 });
 
 /** Reads only regular files: a symlink, FIFO, device or directory is refused before any read. */
